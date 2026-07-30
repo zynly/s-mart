@@ -13,8 +13,6 @@ declare module 'ziggy-js' {
     ],
     "password.email": [],
     "password.update": [],
-    "register": [],
-    "register.store": [],
     "user-profile-information.update": [],
     "user-password.update": [],
     "password.confirm": [],
@@ -29,19 +27,51 @@ declare module 'ziggy-js' {
     "two-factor.secret-key": [],
     "two-factor.recovery-codes": [],
     "two-factor.regenerate-recovery-codes": [],
-    "passkey.login-options": [],
-    "passkey.login": [],
-    "passkey.confirm-options": [],
-    "passkey.confirm": [],
-    "passkey.registration-options": [],
-    "passkey.store": [],
-    "passkey.destroy": [
+    "authorization.override": [],
+    "profile.edit": [],
+    "profile.update": [],
+    "profile.pin.update": [],
+    "admin.dashboard": [],
+    "admin.users.index": [],
+    "admin.users.store": [],
+    "admin.users.update": [
         {
-            "name": "passkey",
+            "name": "user",
             "required": true,
             "binding": "id"
         }
     ],
+    "admin.users.destroy": [
+        {
+            "name": "user",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.users.reset-password": [
+        {
+            "name": "user",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.users.set-pin": [
+        {
+            "name": "user",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.roles.index": [],
+    "admin.roles.store": [],
+    "admin.roles.update": [
+        {
+            "name": "role",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.activity-logs.index": [],
     "storage.local": [
         {
             "name": "path",

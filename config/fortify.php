@@ -45,7 +45,7 @@ return [
     |
     */
 
-    'username' => 'email',
+    'username' => 'username',
 
     'email' => 'email',
 
@@ -73,7 +73,7 @@ return [
     |
     */
 
-    'home' => '/home',
+    'home' => '/admin',
 
     /*
     |--------------------------------------------------------------------------
@@ -162,17 +162,13 @@ return [
     */
 
     'features' => [
-        Features::registration(),
+        // Registrasi publik dinonaktifkan — pengguna staf dibuat manual oleh
+        // admin/owner lewat CRUD Pengguna (T-009), bukan self-service.
         Features::resetPasswords(),
-        // Features::emailVerification(),
         Features::updateProfileInformation(),
         Features::updatePasswords(),
         Features::twoFactorAuthentication([
             'confirm' => true,
-            'confirmPassword' => true,
-            // 'window' => 0,
-        ]),
-        Features::passkeys([
             'confirmPassword' => true,
         ]),
     ],

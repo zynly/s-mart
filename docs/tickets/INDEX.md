@@ -30,14 +30,14 @@ di index ini; detail penuh ditulis saat fase tersebut mulai dikerjakan
 - [x] ✅ [T-004](T-004-helper-money-referencegenerator.md) — Helper Money (PHP+TS) & ReferenceGenerator
 - [x] ✅ [T-005](T-005-komponen-custom-datatable.md) — 11 komponen custom (Money, DataTable, dst) + halaman uji
 
-## Fase 1 — Autentikasi, Role & Pengguna
+## Fase 1 — Autentikasi, Role & Pengguna `[SELESAI]`
 
-- [ ] ⬜ 🔑 [T-006](T-006-migration-users-spatie-permission.md) — Migration users + tabel spatie/permission (7 role)
-- [ ] ⬜ [T-007](T-007-seeder-roles-permissions.md) — Seeder roles & permissions granular (format `modul.aksi`)
-- [ ] ⬜ [T-008](T-008-authorizationservice-pin.md) — `AuthorizationService::requestOverride()` (PIN otorisasi supervisor)
-- [ ] ⬜ [T-009](T-009-halaman-login-crud-pengguna.md) — Halaman login + CRUD pengguna (React pages, Fortify)
-- [ ] ⬜ [T-010](T-010-middleware-session-lifetime.md) — Middleware `AdjustSessionLifetime` (timeout per role)
-- [ ] ⬜ [T-011](T-011-middleware-idempotency-rate-limit.md) — Middleware `EnsureIdempotencyKey` + rate limit login (5x/menit/IP)
+- [x] ✅ 🔑 [T-006](T-006-migration-users-spatie-permission.md) — Migration users + tabel spatie/permission (7 role)
+- [x] ✅ [T-007](T-007-seeder-roles-permissions.md) — Seeder roles & permissions granular (format `modul.aksi`)
+- [x] ✅ [T-008](T-008-authorizationservice-pin.md) — `AuthorizationService::requestOverride()` (PIN otorisasi supervisor)
+- [x] ✅ [T-009](T-009-halaman-login-crud-pengguna.md) — Halaman login + CRUD pengguna (React pages, Fortify)
+- [x] ✅ [T-010](T-010-middleware-session-lifetime.md) — Middleware `AdjustSessionLifetime` (timeout per role)
+- [x] ✅ [T-011](T-011-middleware-idempotency-rate-limit.md) — Middleware `EnsureIdempotencyKey` + rate limit login (5x/menit/IP)
 
 **Blocking:** Fase 0 selesai.
 

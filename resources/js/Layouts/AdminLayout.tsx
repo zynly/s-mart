@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { Link } from '@inertiajs/react'
+import { Link, router, usePage } from '@inertiajs/react'
 import { Menu, ChevronDown } from 'lucide-react'
 import { Sheet, SheetContent } from '@/Components/ui/sheet'
 import { Avatar, AvatarFallback } from '@/Components/ui/avatar'
@@ -7,10 +7,19 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from '@/Components/ui/button'
 import { useSidebarStore } from '@/Store/useSidebarStore'
 import { cn } from '@/Lib/utils'
+import type { PageProps } from '@/Types'
 
 type AdminLayoutProps = {
   children: ReactNode
 }
+
+const NAV_ITEMS = [
+  { label: 'Dashboard', href: '/admin' },
+  { label: 'Pengguna', href: '/admin/users' },
+  { label: 'Role & Izin', href: '/admin/roles' },
+  { label: 'Log Aktivitas', href: '/admin/activity-logs' },
+  { label: 'Uji Komponen', href: '/uji-komponen' },
+]
 
 function SidebarContent() {
   return (
@@ -20,12 +29,15 @@ function SidebarContent() {
       </div>
       <nav className="flex-1 space-y-1 px-2">
         {/* Menu lengkap & permission filtering dikerjakan di Fase UI-01. */}
-        <Link
-          href="/uji-komponen"
-          className="block rounded-md px-3 py-2 text-sm text-navy-100 hover:bg-navy-700"
-        >
-          Uji Komponen
-        </Link>
+        {NAV_ITEMS.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="block rounded-md px-3 py-2 text-sm text-navy-100 hover:bg-navy-700"
+          >
+            {item.label}
+          </Link>
+        ))}
       </nav>
     </div>
   )
@@ -34,6 +46,14 @@ function SidebarContent() {
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const { collapsed, toggle } = useSidebarStore()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { auth } = usePage<PageProps>().props
+
+  const initials = (auth.user?.name ?? 'SM')
+    .split(' ')
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase()
 
   return (
     <div className="flex min-h-screen bg-bg">
@@ -81,14 +101,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-navy-500">
                 <Avatar className="size-7">
-                  <AvatarFallback className="bg-navy-400 text-xs text-navy-50">SM</AvatarFallback>
+                  <AvatarFallback className="bg-navy-400 text-xs text-navy-50">{initials}</AvatarFallback>
                 </Avatar>
                 <ChevronDown className="size-3.5" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem>Profil</DropdownMenuItem>
-              <DropdownMenuItem>Keluar</DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={route('profile.edit')}>Profil</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.post(route('logout'))}>Keluar</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </header>

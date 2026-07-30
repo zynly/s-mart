@@ -10,9 +10,15 @@ import { createInertiaApp } from '@inertiajs/react'
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers'
 import { createRoot } from 'react-dom/client'
 import { Toaster } from 'sonner'
+import { route as ziggyRoute } from 'ziggy-js'
 import type { ComponentType } from 'react'
 
 const appName = import.meta.env.VITE_APP_NAME || 'Skillage Mart'
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function route(name?: string, params?: any, absolute?: boolean): string
+}
 
 createInertiaApp({
   title: (title) => (title ? `${title} - ${appName}` : appName),
@@ -24,6 +30,12 @@ createInertiaApp({
       (module: any) => module.default as ComponentType,
     ),
   setup({ el, App, props }) {
+    // any: config Ziggy dibagikan lewat prop Inertia (bentuknya dinamis per
+    // halaman), bukan tipe RouteList statis yang dikenal ziggy-js.
+    const ziggyConfig = props.initialPage.props.ziggy as any
+    globalThis.route = (name, params, absolute) =>
+      ziggyRoute(name as never, params, absolute, ziggyConfig) as unknown as string
+
     createRoot(el).render(
       <>
         <App {...props} />
