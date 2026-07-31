@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             ProductSeeder::class,
             MemberLevelSeeder::class,
             MemberSeeder::class,
+            StockLayerSeeder::class,
         ]);
     }
 }

@@ -219,6 +219,14 @@ declare module 'ziggy-js' {
     "admin.deposit.topup": [],
     "admin.deposit.withdrawal": [],
     "admin.deposit.adjustment": [],
+    "admin.stock.index": [],
+    "admin.stock.movements": [
+        {
+            "name": "product",
+            "required": true,
+            "binding": "id"
+        }
+    ],
     "storage.local": [
         {
             "name": "path",

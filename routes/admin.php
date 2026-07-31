@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\OutletController;
 use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\StockController;
 use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\UnitController;
 use App\Http\Controllers\Admin\UserController;
@@ -101,4 +102,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::post('/deposit/topup', [DepositController::class, 'storeTopup'])->name('deposit.topup')->middleware(['can:topup.create', 'idempotent']);
     Route::post('/deposit/withdrawal', [DepositController::class, 'storeWithdrawal'])->name('deposit.withdrawal')->middleware(['can:withdrawal.create', 'idempotent']);
     Route::post('/deposit/adjustment', [DepositController::class, 'storeAdjustment'])->name('deposit.adjustment')->middleware(['can:deposit.adjust', 'idempotent']);
+
+    // Inventory & Stock Layer FEFO (Fase 5)
+    Route::middleware('can:stock.view')->group(function () {
+        Route::get('/stock', [StockController::class, 'index'])->name('stock.index');
+        Route::get('/stock/{product}/movements', [StockController::class, 'movements'])->name('stock.movements');
+    });
 });

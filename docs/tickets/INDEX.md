@@ -75,13 +75,13 @@ di index ini; detail penuh ditulis saat fase tersebut mulai dikerjakan
 
 **Blocking:** Fase 3 selesai.
 
-## Fase 5 — Inventory & Stock Layer (FEFO)
+## Fase 5 — Inventory & Stock Layer (FEFO) `[SELESAI]`
 
-- [ ] ⬜ 🔑 [T-031](T-031-migration-stock-layers.md) — Migration `stock_layers` + `stock_layer_consumptions` + `stocks` (cache)
-- [ ] ⬜ 🔑 [T-032](T-032-stockservice-fefo-consume.md) — `StockService::consume()` FEFO (`expired_at` ASC NULLS LAST, `received_at` ASC)
-- [ ] ⬜ T-033 — `StockService`: retur kembalikan ke layer asal via `stock_layer_consumption_id`
-- [ ] ⬜ T-034 — Command `stock:check-expiry` (chunked, shared hosting safe)
-- [ ] ⬜ T-035 — Halaman kartu stok & daftar stok kritis
+- [x] ✅ 🔑 [T-031](T-031-migration-stock-layers.md) — Migration `stock_layers` + `stock_layer_consumptions` + `stock_movements` + `stocks` (cache)
+- [x] ✅ 🔑 [T-032](T-032-stockservice-fefo-consume.md) — `StockService::consume()` FEFO (`expired_at` ASC NULLS LAST, `received_at` ASC)
+- [x] ✅ T-033 — `StockService::returnToLayer()`: retur kembalikan ke layer asal, tandai `is_returned`
+- [x] ✅ T-034 — Command `stock:check-expiry` (+ `stock:recalculate-cache`), chunked, terjadwal harian 05:00
+- [x] ✅ T-035 — Halaman Stok: Ringkasan (badge Aman/Rendah/Habis), Kartu Stok per produk, Akan Kadaluwarsa/Kadaluwarsa
 
 **Blocking:** Fase 2 selesai (independen dari Fase 3/4).
 

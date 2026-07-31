@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command('deposit:reconcile')->dailyAt('23:00');
 Schedule::command('member:birthday-bonus')->dailyAt('06:00');
+Schedule::command('stock:check-expiry')->dailyAt('05:00');
