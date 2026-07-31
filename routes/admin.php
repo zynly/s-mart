@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\MemberController;
 use App\Http\Controllers\Admin\OutletController;
 use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\ProductController;
@@ -80,4 +81,15 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::post('/outlets', [OutletController::class, 'store'])->name('outlets.store')->middleware('can:outlet.create');
     Route::put('/outlets/{outlet}', [OutletController::class, 'update'])->name('outlets.update')->middleware('can:outlet.update');
     Route::delete('/outlets/{outlet}', [OutletController::class, 'destroy'])->name('outlets.destroy')->middleware('can:outlet.delete');
+
+    // Anggota & Kartu (Fase 3)
+    Route::middleware('can:member.view')->group(function () {
+        Route::get('/members', [MemberController::class, 'index'])->name('members.index');
+    });
+    Route::post('/members', [MemberController::class, 'store'])->name('members.store')->middleware('can:member.create');
+    Route::put('/members/{member}', [MemberController::class, 'update'])->name('members.update')->middleware('can:member.update');
+    Route::delete('/members/{member}', [MemberController::class, 'destroy'])->name('members.destroy')->middleware('can:member.delete');
+    Route::put('/members/{member}/reset-pin', [MemberController::class, 'resetPin'])->name('members.reset-pin')->middleware('can:member.update');
+    Route::post('/members/{member}/reissue-card', [MemberController::class, 'reissueCard'])->name('members.reissue-card')->middleware('can:card.create');
+    Route::get('/members/print-cards', [MemberController::class, 'printCards'])->name('members.print-cards')->middleware('can:member.print');
 });

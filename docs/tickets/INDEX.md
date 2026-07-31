@@ -53,14 +53,14 @@ di index ini; detail penuh ditulis saat fase tersebut mulai dikerjakan
 
 **Blocking:** Fase 1 selesai (butuh role `warehouse`/`admin`).
 
-## Fase 3 — Anggota & Kartu
+## Fase 3 — Anggota & Kartu `[SELESAI]`
 
-- [ ] ⬜ T-019 — Migration `members` + `member_cards` (`receivable_limit`, tanpa `allow_negative`/`credit_limit`)
-- [ ] ⬜ T-020 — `ReferenceGenerator` nomor anggota otomatis
-- [ ] ⬜ T-021 — `MemberService` (buat anggota, ganti kartu via `card_transfer_in`/`out`)
-- [ ] ⬜ T-022 — Cetak kartu barcode Code128 massal (picqer/php-barcode-generator)
-- [ ] ⬜ T-023 — Halaman CRUD anggota + reset PIN
-- [ ] ⬜ T-024 — Listener `RemoveCategoryFromMemberBlocklist` (cleanup `blocked_categories`)
+- [x] ✅ T-019 — Migration `member_levels` + `members` + `member_cards` (`receivable_limit`, tanpa `allow_negative`/`credit_limit`)
+- [x] ✅ T-020 — `ReferenceGenerator::generateMemberNumber()` nomor anggota otomatis per tipe+angkatan
+- [x] ✅ T-021 — `MemberService` + `CardService` (buat anggota, terbitkan/ganti kartu — saldo di `Member`, bukan di kartu, jadi ganti kartu tidak butuh ledger `card_transfer_in`/`out`; itu disisipkan di Fase 4 bila diperlukan) + `MemberPinService` + `MemberLimitService`
+- [x] ✅ T-022 — `CardPrintService` cetak kartu barcode Code128 massal (dompdf + picqer/php-barcode-generator, A4 2 kolom)
+- [x] ✅ T-023 — Halaman CRUD anggota (tab Identitas/Wali/Level & Limit) + reset PIN + terbitkan ulang kartu + cetak kartu (satuan & massal)
+- [x] ✅ T-024 — Event `CategoryDeleting` + Listener `RemoveCategoryFromMemberBlocklist` (cleanup `blocked_categories`)
 
 **Blocking:** Fase 2 selesai.
 

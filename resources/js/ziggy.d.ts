@@ -184,6 +184,37 @@ declare module 'ziggy-js' {
             "binding": "id"
         }
     ],
+    "admin.members.index": [],
+    "admin.members.store": [],
+    "admin.members.update": [
+        {
+            "name": "member",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.members.destroy": [
+        {
+            "name": "member",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.members.reset-pin": [
+        {
+            "name": "member",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.members.reissue-card": [
+        {
+            "name": "member",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.members.print-cards": [],
     "storage.local": [
         {
             "name": "path",
