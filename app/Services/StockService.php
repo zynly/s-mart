@@ -130,6 +130,26 @@ class StockService
     }
 
     /**
+     * Kurangi qty_remaining sebuah layer secara langsung — dipakai retur
+     * pembelian ke supplier (bukan penjualan, jadi bukan lewat FEFO
+     * consume() yang memilihkan layer sendiri; di sini layer sudah pasti
+     * diketahui dari purchase_item yang diretur).
+     */
+    public function reduceLayer(StockLayer $layer, float $qty): void
+    {
+        DB::transaction(function () use ($layer, $qty) {
+            $locked = StockLayer::lockForUpdate()->findOrFail($layer->id);
+
+            if ((float) $locked->qty_remaining < $qty) {
+                throw InsufficientStockException::make($locked->product->name, (float) $locked->qty_remaining, $qty);
+            }
+
+            $locked->decrement('qty_remaining', $qty);
+            $this->recalculateCache($locked->product, $locked->outlet);
+        });
+    }
+
+    /**
      * $qtyBefore wajib diambil pemanggil (mis. via getAvailable()) SEBELUM
      * memanggil addLayer()/consume() — StockService sudah memutakhirkan
      * cache stocks di dalam kedua method itu, jadi membaca cache di sini

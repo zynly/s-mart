@@ -3,11 +3,15 @@
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\ConsignmentController;
+use App\Http\Controllers\Admin\DebtController;
 use App\Http\Controllers\Admin\DepositController;
 use App\Http\Controllers\Admin\MemberController;
 use App\Http\Controllers\Admin\OutletController;
 use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\PurchaseController;
+use App\Http\Controllers\Admin\PurchaseOrderController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\StockController;
 use App\Http\Controllers\Admin\SupplierController;
@@ -108,4 +112,31 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::get('/stock', [StockController::class, 'index'])->name('stock.index');
         Route::get('/stock/{product}/movements', [StockController::class, 'movements'])->name('stock.movements');
     });
+
+    // Pembelian, Konsinyasi & Hutang (Fase 6)
+    Route::middleware('can:purchase_order.view')->group(function () {
+        Route::get('/purchase-orders', [PurchaseOrderController::class, 'index'])->name('purchase-orders.index');
+    });
+    Route::post('/purchase-orders', [PurchaseOrderController::class, 'store'])->name('purchase-orders.store')->middleware('can:purchase_order.create');
+    Route::put('/purchase-orders/{purchaseOrder}/approve', [PurchaseOrderController::class, 'approve'])->name('purchase-orders.approve')->middleware('can:purchase_order.approve');
+
+    Route::middleware('can:purchase.view')->group(function () {
+        Route::get('/purchases', [PurchaseController::class, 'index'])->name('purchases.index');
+        Route::get('/purchases/{purchase}', [PurchaseController::class, 'show'])->name('purchases.show');
+        Route::get('/purchases/{purchase}/items', [PurchaseController::class, 'items'])->name('purchases.items');
+    });
+    Route::post('/purchases', [PurchaseController::class, 'store'])->name('purchases.store')->middleware('can:purchase.create');
+    Route::post('/purchase-returns', [PurchaseController::class, 'storeReturn'])->name('purchase-returns.store')->middleware('can:purchase_return.create');
+
+    Route::middleware('can:debt.view')->group(function () {
+        Route::get('/debts', [DebtController::class, 'index'])->name('debts.index');
+    });
+    Route::post('/debts/{debt}/pay', [DebtController::class, 'pay'])->name('debts.pay')->middleware('can:debt.update');
+
+    Route::middleware('can:consignment.view')->group(function () {
+        Route::get('/consignment', [ConsignmentController::class, 'index'])->name('consignment.index');
+    });
+    Route::post('/consignment', [ConsignmentController::class, 'store'])->name('consignment.store')->middleware('can:consignment.create');
+    Route::put('/consignment/{consignment}/approve', [ConsignmentController::class, 'approve'])->name('consignment.approve')->middleware('can:consignment.approve');
+    Route::put('/consignment/{consignment}/mark-paid', [ConsignmentController::class, 'markPaid'])->name('consignment.mark-paid')->middleware('can:consignment.update');
 });

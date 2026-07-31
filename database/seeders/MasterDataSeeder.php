@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Category;
 use App\Models\Outlet;
 use App\Models\PaymentMethod;
+use App\Models\Supplier;
 use App\Models\Unit;
 use Illuminate\Database\Seeder;
 
@@ -59,6 +60,19 @@ class MasterDataSeeder extends Seeder
             PaymentMethod::firstOrCreate(
                 ['code' => $method['code']],
                 [...$method, 'sort_order' => $sort],
+            );
+        }
+
+        $suppliers = [
+            ['code' => 'SUP-01', 'name' => 'Toko Grosir Jaya', 'contact_person' => 'Pak Hendra', 'phone' => '081234567001', 'payment_term_days' => 30, 'is_consignor' => false],
+            ['code' => 'SUP-02', 'name' => 'CV Sumber Rejeki', 'contact_person' => 'Bu Sri', 'phone' => '081234567002', 'payment_term_days' => 14, 'is_consignor' => false],
+            ['code' => 'SUP-03', 'name' => 'Warung Kue Ibu Ani', 'contact_person' => 'Bu Ani', 'phone' => '081234567003', 'payment_term_days' => 0, 'is_consignor' => true],
+        ];
+
+        foreach ($suppliers as $supplier) {
+            Supplier::firstOrCreate(
+                ['code' => $supplier['code']],
+                [...$supplier, 'is_active' => true],
             );
         }
     }

@@ -85,15 +85,15 @@ di index ini; detail penuh ditulis saat fase tersebut mulai dikerjakan
 
 **Blocking:** Fase 2 selesai (independen dari Fase 3/4).
 
-## Fase 6 — Pembelian, Konsinyasi & Hutang
+## Fase 6 — Pembelian, Konsinyasi & Hutang `[SELESAI]`
 
-- [ ] ⬜ T-036 — Migration `purchase_orders` + `purchase_order_items`
-- [ ] ⬜ T-037 — Migration `purchases` (penerimaan barang) + `debts`
-- [ ] ⬜ T-038 — Migration konsinyasi (`is_consignment` di `stock_layers`, tanpa jurnal saat terima — ADR-0006)
-- [ ] ⬜ T-039 — `PurchaseService` (PO → penerimaan → stock layer baru)
-- [ ] ⬜ T-040 — `DebtService` (hutang bercicilan; retur pembelian mengurangi hutang, bukan menambah kas)
-- [ ] ⬜ T-041 — Halaman PO, penerimaan barang (scan barcode), daftar hutang
-- [ ] ⬜ T-042 — Halaman konsinyasi & settlement pemilik barang
+- [x] ✅ T-036 — Migration `purchase_orders` + `purchase_order_items`
+- [x] ✅ T-037 — Migration `purchases` + `purchase_items` + `purchase_other_costs` + `purchase_returns` + `purchase_return_items` + `debts` + `debt_payments`
+- [x] ✅ T-038 — Migration konsinyasi (`consignment_settlements` + items; `is_consignment` di `stock_layers` sudah ada dari Fase 5, tanpa jurnal/hutang saat terima — ADR-0006)
+- [x] ✅ T-039 — `PurchaseService` (createOrder/approveOrder, receive → stock layer + movement, allocateOtherCosts proporsional, processReturn)
+- [x] ✅ T-040 — `DebtService` (createFromPurchase, pay bercicilan, reduceFromReturn, getAging, getDueSoon) + `ConsignmentService` (calculateSettlement dari stock_layer_consumptions, settle, approve, markPaid)
+- [x] ✅ T-041 — Halaman Purchase Order, Pembelian (terima barang + retur), Hutang (aging + bayar cicil)
+- [x] ✅ T-042 — Halaman Konsinyasi & settlement pemilik barang
 
 **Blocking:** Fase 5 selesai.
 

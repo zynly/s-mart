@@ -227,6 +227,56 @@ declare module 'ziggy-js' {
             "binding": "id"
         }
     ],
+    "admin.purchase-orders.index": [],
+    "admin.purchase-orders.store": [],
+    "admin.purchase-orders.approve": [
+        {
+            "name": "purchaseOrder",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.purchases.index": [],
+    "admin.purchases.show": [
+        {
+            "name": "purchase",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.purchases.items": [
+        {
+            "name": "purchase",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.purchases.store": [],
+    "admin.purchase-returns.store": [],
+    "admin.debts.index": [],
+    "admin.debts.pay": [
+        {
+            "name": "debt",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.consignment.index": [],
+    "admin.consignment.store": [],
+    "admin.consignment.approve": [
+        {
+            "name": "consignment",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.consignment.mark-paid": [
+        {
+            "name": "consignment",
+            "required": true,
+            "binding": "id"
+        }
+    ],
     "storage.local": [
         {
             "name": "path",
