@@ -5,9 +5,12 @@ namespace App\Services;
 use App\Models\Member;
 use App\Models\MemberCard;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class CardService
 {
+    public function __construct(private readonly DepositService $depositService) {}
+
     public function issue(Member $member): MemberCard
     {
         return MemberCard::create([
@@ -48,7 +51,7 @@ class CardService
 
             $sequence = $member->cards()->count() + 1;
 
-            return MemberCard::create([
+            $newCard = MemberCard::create([
                 'member_id' => $member->id,
                 'card_number' => sprintf('%s-%02d', $member->member_number, $sequence),
                 'type' => 'barcode',
@@ -56,6 +59,12 @@ class CardService
                 'issued_at' => now(),
                 'issued_by' => auth()->id(),
             ]);
+
+            if ($current !== null) {
+                $this->depositService->transferCard($member, $current, $newCard, (string) Str::uuid());
+            }
+
+            return $newCard;
         });
     }
 

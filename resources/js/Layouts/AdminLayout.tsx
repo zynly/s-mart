@@ -23,6 +23,7 @@ const NAV_ITEMS = [
   { label: 'Metode Bayar', href: '/admin/payment-methods' },
   { label: 'Outlet', href: '/admin/outlets' },
   { label: 'Anggota', href: '/admin/members' },
+  { label: 'Deposit', href: '/admin/deposit' },
   { label: 'Pengguna', href: '/admin/users' },
   { label: 'Role & Izin', href: '/admin/roles' },
   { label: 'Log Aktivitas', href: '/admin/activity-logs' },

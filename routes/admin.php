@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\DepositController;
 use App\Http\Controllers\Admin\MemberController;
 use App\Http\Controllers\Admin\OutletController;
 use App\Http\Controllers\Admin\PaymentMethodController;
@@ -92,4 +93,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::put('/members/{member}/reset-pin', [MemberController::class, 'resetPin'])->name('members.reset-pin')->middleware('can:member.update');
     Route::post('/members/{member}/reissue-card', [MemberController::class, 'reissueCard'])->name('members.reissue-card')->middleware('can:card.create');
     Route::get('/members/print-cards', [MemberController::class, 'printCards'])->name('members.print-cards')->middleware('can:member.print');
+
+    // Deposit & Saldo (Fase 4)
+    Route::middleware('can:deposit.view')->group(function () {
+        Route::get('/deposit', [DepositController::class, 'index'])->name('deposit.index');
+    });
+    Route::post('/deposit/topup', [DepositController::class, 'storeTopup'])->name('deposit.topup')->middleware(['can:topup.create', 'idempotent']);
+    Route::post('/deposit/withdrawal', [DepositController::class, 'storeWithdrawal'])->name('deposit.withdrawal')->middleware(['can:withdrawal.create', 'idempotent']);
+    Route::post('/deposit/adjustment', [DepositController::class, 'storeAdjustment'])->name('deposit.adjustment')->middleware(['can:deposit.adjust', 'idempotent']);
 });

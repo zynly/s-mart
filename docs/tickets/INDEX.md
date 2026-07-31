@@ -64,14 +64,14 @@ di index ini; detail penuh ditulis saat fase tersebut mulai dikerjakan
 
 **Blocking:** Fase 2 selesai.
 
-## Fase 4 — Deposit & Saldo
+## Fase 4 — Deposit & Saldo `[SELESAI]`
 
-- [ ] ⬜ T-025 — Migration `deposit_transactions` (ledger append-only) + `members.balance_cache`
-- [ ] ⬜ 🔑 [T-026](T-026-depositservice-lockforupdate.md) — `DepositService::record()` dengan `lockForUpdate()` + `idempotency_key` wajib
-- [ ] ⬜ T-027 — Command `deposit:reconcile` (rekonsiliasi harian)
-- [ ] ⬜ T-028 — Halaman top-up & riwayat mutasi saldo
-- [ ] ⬜ T-029 — Job bonus ulang tahun otomatis (`birthday_bonus_amount`)
-- [ ] ⬜ T-030 — Implementasi `card_transfer_out`/`card_transfer_in` (transfer nol-sum antar kartu)
+- [x] ✅ T-025 — Migration `deposit_transactions` (ledger append-only) + `deposit_reconciliations` + `topup_requests`
+- [x] ✅ 🔑 [T-026](T-026-depositservice-lockforupdate.md) — `DepositService::record()` dengan `lockForUpdate()` + `idempotency_key` wajib
+- [x] ✅ T-027 — Command `deposit:reconcile` (+ `--fix`), terjadwal harian 23:00
+- [x] ✅ T-028 — Halaman top-up & riwayat mutasi saldo (+ dialog Tarik Saldo & Sesuaikan Saldo)
+- [x] ✅ T-029 — Command `member:birthday-bonus` (`birthday_bonus_amount`), terjadwal harian 06:00, maksimal sekali/tahun
+- [x] ✅ T-030 — `card_transfer_out`/`card_transfer_in` via `DepositService::transferCard()`, dipanggil otomatis dari `CardService::reissue()`
 
 **Blocking:** Fase 3 selesai.
 

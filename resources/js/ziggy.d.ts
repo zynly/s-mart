@@ -215,6 +215,10 @@ declare module 'ziggy-js' {
         }
     ],
     "admin.members.print-cards": [],
+    "admin.deposit.index": [],
+    "admin.deposit.topup": [],
+    "admin.deposit.withdrawal": [],
+    "admin.deposit.adjustment": [],
     "storage.local": [
         {
             "name": "path",
