@@ -31,6 +31,7 @@ const NAV_ITEMS = [
   { label: 'Konsinyasi', href: '/admin/consignment' },
   { label: 'Sesi Kasir', href: '/admin/cashier-session' },
   { label: 'Kas', href: '/admin/cash' },
+  { label: 'Layar Kasir', href: '/pos' },
   { label: 'Pengguna', href: '/admin/users' },
   { label: 'Role & Izin', href: '/admin/roles' },
   { label: 'Log Aktivitas', href: '/admin/activity-logs' },

@@ -107,15 +107,15 @@ di index ini; detail penuh ditulis saat fase tersebut mulai dikerjakan
 
 **Blocking:** Fase 4 & Fase 6 selesai.
 
-## Fase 8 — Layar Kasir (POS)
+## Fase 8 — Layar Kasir (POS) `[SELESAI]`
 
-- [ ] ⬜ T-048 — Migration `sales` + `sale_items` + `sale_holds`
-- [ ] ⬜ T-049 — Layar kasir React: tata letak + hotkey F1–F12 (`react-hotkeys-hook`)
-- [ ] ⬜ T-050 — Identifikasi anggota: scan kartu / input manual / cari nama (3 jalur)
-- [ ] ⬜ 🔑 [T-051](T-051-saleservice-complete.md) — `SaleService::complete()` — orkestrasi stok FEFO + saldo + jurnal + kas sesi
-- [ ] ⬜ T-052 — Hold/recall transaksi (`SaleHold`, `max_hold_per_cashier`)
-- [ ] ⬜ T-053 — Cetak struk thermal 58mm & 80mm (dompdf)
-- [ ] ⬜ T-054 — `CashierSessionService::addSaleCash()` terisi dari `SaleService`
+- [x] ✅ T-048 — Migration `sales` + `sale_items` + `sale_holds`
+- [x] ✅ T-049 — Layar kasir React: tata letak + hotkey (F3 scan, F4 hold, F5 recall, F9 bayar, Esc tutup dialog — set F1–F12 penuh menyusul UI-01)
+- [x] ✅ T-050 — Identifikasi anggota: scan kartu / input manual / cari nama (via `CardService::resolve()` + fallback LIKE search)
+- [x] ✅ 🔑 [T-051](T-051-saleservice-complete.md) — `SaleService::complete()` — orkestrasi stok FEFO + saldo + kas sesi (cash & deposit; metode lain menyusul Fase 9 sesuai cakupan tiket; jurnal otomatis menyusul Observer Fase 13)
+- [x] ✅ T-052 — Hold/recall transaksi (`SaleHold`, `max_hold_per_cashier`)
+- [x] ✅ T-053 — Cetak struk thermal (dompdf, lebar dari `config('pos.receipt_width')`)
+- [x] ✅ T-054 — `CashierSessionService::addSaleCash()`/`addSaleDeposit()` terisi dari `SaleService`
 
 **Blocking:** Fase 7 selesai.
 

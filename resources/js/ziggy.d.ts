@@ -290,6 +290,39 @@ declare module 'ziggy-js' {
     "admin.cash.in": [],
     "admin.cash.out": [],
     "admin.cash.transfer": [],
+    "pos.index": [],
+    "pos.scan": [],
+    "pos.search-member": [],
+    "pos.sales.store": [],
+    "pos.holds.store": [],
+    "pos.holds.recall": [
+        {
+            "name": "saleHold",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "pos.sales.void": [
+        {
+            "name": "sale",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "pos.sales.receipt": [
+        {
+            "name": "sale",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "pos.sales.receipt-pdf": [
+        {
+            "name": "sale",
+            "required": true,
+            "binding": "id"
+        }
+    ],
     "storage.local": [
         {
             "name": "path",
