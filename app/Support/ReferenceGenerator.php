@@ -20,10 +20,24 @@ class ReferenceGenerator
         'public' => 'mbr-pub',
     ];
 
+    /**
+     * $outletId TIDAK dipakai sebagai kunci counter — counter dibuat
+     * global per prefix+tanggal (sentinel outlet_id=0), bukan per
+     * outlet. Alasan: setiap tabel `reference` di aplikasi ini unique
+     * secara GLOBAL (bukan per-outlet), padahal counter lama
+     * dipisah per-outlet — begitu ada 2 outlet aktif, keduanya bisa
+     * menghasilkan reference string yang identik di hari yang sama
+     * (SO-20260731-0001 dobel, dst) dan gagal insert. Baru ketahuan
+     * di Fase 12 (Transfer Stok — fitur pertama yang benar-benar
+     * menyentuh 2 outlet sekaligus). Tidak berdampak ke data lama:
+     * dengan 1 outlet, counter global = counter per-outlet, sama
+     * persis. Parameter $outletId dipertahankan (tidak dipakai) supaya
+     * semua pemanggil lama di 11 fase sebelumnya tidak perlu diubah.
+     */
     public static function generate(string $prefix, int $outletId): string
     {
         $date = now()->format('Ymd');
-        $lastNumber = self::increment($prefix, $outletId, $date);
+        $lastNumber = self::increment($prefix, 0, $date);
 
         return sprintf('%s-%s-%04d', $prefix, $date, $lastNumber);
     }

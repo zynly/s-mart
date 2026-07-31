@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Stock extends Model
 {
     protected $fillable = [
-        'product_id', 'outlet_id', 'qty', 'reserved_qty', 'avg_cost',
+        'product_id', 'outlet_id', 'qty', 'avg_cost',
         'last_cost', 'last_movement_at',
     ];
 
@@ -16,7 +16,6 @@ class Stock extends Model
     {
         return [
             'qty' => 'decimal:3',
-            'reserved_qty' => 'decimal:3',
             'avg_cost' => 'integer',
             'last_cost' => 'integer',
             'last_movement_at' => 'datetime',

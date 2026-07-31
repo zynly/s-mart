@@ -35,6 +35,10 @@ class RolePermissionSeeder extends Seeder
         'receivable.delete',
         'period.close',
         'system.reset',
+        // Fase 12: selisih opname di atas config('pos.opname_tolerance_percent')
+        // wajib disetujui owner, bukan sekadar siapa pun pemegang
+        // opname.approve (supervisor & warehouse juga pegang itu).
+        'opname.approve_variance',
     ];
 
     public function run(): void
@@ -69,6 +73,7 @@ class RolePermissionSeeder extends Seeder
                 'period.close',
                 'system.reset',
                 'product.view_cost',
+                'opname.approve_variance',
             ], true))
         );
 

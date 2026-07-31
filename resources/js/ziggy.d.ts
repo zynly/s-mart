@@ -363,6 +363,117 @@ declare module 'ziggy-js' {
             "binding": "id"
         }
     ],
+    "admin.opnames.index": [],
+    "admin.opnames.show": [
+        {
+            "name": "opname",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.opnames.store": [],
+    "admin.opnames.scan": [
+        {
+            "name": "opname",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.opnames.count": [
+        {
+            "name": "opname",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.opnames.reason": [
+        {
+            "name": "opname",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.opnames.finish-counting": [
+        {
+            "name": "opname",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.opnames.approve": [
+        {
+            "name": "opname",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.opnames.post": [
+        {
+            "name": "opname",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.opnames.cancel": [
+        {
+            "name": "opname",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.transfers.index": [],
+    "admin.transfers.store": [],
+    "admin.transfers.approve": [
+        {
+            "name": "transfer",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.transfers.send": [
+        {
+            "name": "transfer",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.transfers.receive": [
+        {
+            "name": "transfer",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.transfers.cancel": [
+        {
+            "name": "transfer",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.stock-adjustments.index": [],
+    "admin.stock-adjustments.layers": [
+        {
+            "name": "product",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.stock-adjustments.store": [],
+    "admin.stock-adjustments.approve": [
+        {
+            "name": "stockAdjustment",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.stock-adjustments.post": [
+        {
+            "name": "stockAdjustment",
+            "required": true,
+            "binding": "id"
+        }
+    ],
     "pos.index": [],
     "pos.scan": [],
     "pos.search-member": [],

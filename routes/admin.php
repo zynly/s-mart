@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\CouponController;
 use App\Http\Controllers\Admin\DebtController;
 use App\Http\Controllers\Admin\DepositController;
 use App\Http\Controllers\Admin\MemberController;
+use App\Http\Controllers\Admin\OpnameController;
 use App\Http\Controllers\Admin\OutletController;
 use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\PointController;
@@ -20,8 +21,10 @@ use App\Http\Controllers\Admin\PurchaseOrderController;
 use App\Http\Controllers\Admin\ReceivableController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SaleReturnController;
+use App\Http\Controllers\Admin\StockAdjustmentController;
 use App\Http\Controllers\Admin\StockController;
 use App\Http\Controllers\Admin\SupplierController;
+use App\Http\Controllers\Admin\TransferController;
 use App\Http\Controllers\Admin\UnitController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\WriteOffController;
@@ -199,4 +202,35 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::put('/write-offs/{writeOff}/approve', [WriteOffController::class, 'approve'])->name('write-offs.approve')->middleware('can:adjustment.approve');
     Route::put('/write-offs/{writeOff}/process', [WriteOffController::class, 'process'])->name('write-offs.process')->middleware('can:adjustment.approve');
     Route::put('/write-offs/{writeOff}/reject', [WriteOffController::class, 'reject'])->name('write-offs.reject')->middleware('can:adjustment.approve');
+
+    // Stock Opname, Transfer & Penyesuaian (Fase 12)
+    Route::middleware('can:opname.view')->group(function () {
+        Route::get('/opnames', [OpnameController::class, 'index'])->name('opnames.index');
+        Route::get('/opnames/{opname}', [OpnameController::class, 'show'])->name('opnames.show');
+    });
+    Route::post('/opnames', [OpnameController::class, 'store'])->name('opnames.store')->middleware('can:opname.create');
+    Route::post('/opnames/{opname}/scan', [OpnameController::class, 'scan'])->name('opnames.scan')->middleware('can:opname.update');
+    Route::post('/opnames/{opname}/count', [OpnameController::class, 'count'])->name('opnames.count')->middleware('can:opname.update');
+    Route::put('/opnames/{opname}/reason', [OpnameController::class, 'updateReason'])->name('opnames.reason')->middleware('can:opname.update');
+    Route::put('/opnames/{opname}/finish-counting', [OpnameController::class, 'finishCounting'])->name('opnames.finish-counting')->middleware('can:opname.update');
+    Route::put('/opnames/{opname}/approve', [OpnameController::class, 'approve'])->name('opnames.approve')->middleware('can:opname.approve');
+    Route::put('/opnames/{opname}/post', [OpnameController::class, 'post'])->name('opnames.post')->middleware('can:opname.approve');
+    Route::put('/opnames/{opname}/cancel', [OpnameController::class, 'cancel'])->name('opnames.cancel')->middleware('can:opname.update');
+
+    Route::middleware('can:transfer.view')->group(function () {
+        Route::get('/transfers', [TransferController::class, 'index'])->name('transfers.index');
+    });
+    Route::post('/transfers', [TransferController::class, 'store'])->name('transfers.store')->middleware('can:transfer.create');
+    Route::put('/transfers/{transfer}/approve', [TransferController::class, 'approve'])->name('transfers.approve')->middleware('can:transfer.approve');
+    Route::put('/transfers/{transfer}/send', [TransferController::class, 'send'])->name('transfers.send')->middleware('can:transfer.update');
+    Route::put('/transfers/{transfer}/receive', [TransferController::class, 'receive'])->name('transfers.receive')->middleware('can:transfer.update');
+    Route::put('/transfers/{transfer}/cancel', [TransferController::class, 'cancel'])->name('transfers.cancel')->middleware('can:transfer.update');
+
+    Route::middleware('can:adjustment.view')->group(function () {
+        Route::get('/stock-adjustments', [StockAdjustmentController::class, 'index'])->name('stock-adjustments.index');
+    });
+    Route::get('/stock-adjustments/{product}/layers', [StockAdjustmentController::class, 'layers'])->name('stock-adjustments.layers')->middleware('can:adjustment.create');
+    Route::post('/stock-adjustments', [StockAdjustmentController::class, 'store'])->name('stock-adjustments.store')->middleware('can:adjustment.create');
+    Route::put('/stock-adjustments/{stockAdjustment}/approve', [StockAdjustmentController::class, 'approve'])->name('stock-adjustments.approve')->middleware('can:adjustment.approve');
+    Route::put('/stock-adjustments/{stockAdjustment}/post', [StockAdjustmentController::class, 'post'])->name('stock-adjustments.post')->middleware('can:adjustment.approve');
 });

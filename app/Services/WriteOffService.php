@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\SaleReturnItem;
 use App\Models\StockLayer;
+use App\Models\StockTransferItem;
 use App\Models\StockWriteOff;
 use App\Models\User;
 use App\Support\ReferenceGenerator;
@@ -139,6 +140,38 @@ class WriteOffService
 
             return $writeOff;
         });
+    }
+
+    /**
+     * Transfer (Fase 12): qty_received < qty_sent. Beda dari
+     * createFromReturn(), di sini TIDAK ADA pengurangan stok tambahan —
+     * StockService::consume() di TransferService::send() SUDAH
+     * mengurangi qty_sent penuh dari outlet asal (barang dianggap
+     * "keluar" saat itu juga), jadi baris yang tidak pernah sampai ini
+     * murni pencatatan audit/pelaporan ("kenapa transfer_out lebih
+     * besar dari transfer_in"), bukan mutasi stok kedua kalinya —
+     * memanggil reduceLayer()/recordMovement() lagi di sini akan
+     * dobel-hitung kehilangan yang sama.
+     */
+    public function createFromTransferShortfall(StockTransferItem $transferItem, float $shortQty, ?User $approver): StockWriteOff
+    {
+        $writeOff = StockWriteOff::create([
+            'reference' => ReferenceGenerator::generate('WO', $transferItem->transfer->from_outlet_id),
+            'outlet_id' => $transferItem->transfer->from_outlet_id,
+            'product_id' => $transferItem->product_id,
+            'stock_layer_id' => null,
+            'qty' => $shortQty,
+            'unit_cost' => $transferItem->unit_cost,
+            'total_cost' => (int) round($shortQty * $transferItem->unit_cost),
+            'type' => 'lost',
+            'reason' => "Hilang dalam perjalanan — transfer {$transferItem->transfer->reference}",
+            'status' => 'completed',
+            'requested_by' => $approver?->id ?? auth()->id(),
+            'approved_by' => $approver?->id,
+            'approved_at' => $approver !== null ? now() : null,
+        ]);
+
+        return $writeOff;
     }
 
     private function applyStockReduction(StockWriteOff $writeOff): void
