@@ -277,6 +277,19 @@ declare module 'ziggy-js' {
             "binding": "id"
         }
     ],
+    "admin.cashier-session.index": [],
+    "admin.cashier-session.open": [],
+    "admin.cashier-session.close": [
+        {
+            "name": "cashierSession",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.cash.index": [],
+    "admin.cash.in": [],
+    "admin.cash.out": [],
+    "admin.cash.transfer": [],
     "storage.local": [
         {
             "name": "path",

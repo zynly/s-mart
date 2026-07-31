@@ -85,7 +85,8 @@ class RolePermissionSeeder extends Seeder
 
         $cashier = Role::firstOrCreate(['name' => 'cashier']);
         $cashier->syncPermissions([
-            ...$this->permissionsFor(['pos', 'sale'], ['view', 'create']),
+            ...$this->permissionsFor(['pos'], ['view', 'create', 'update']),
+            ...$this->permissionsFor(['sale'], ['view', 'create']),
             ...$this->permissionsFor(['sale_return'], ['view', 'create']),
             ...$this->permissionsFor(['topup', 'deposit'], ['view', 'create']),
             ...$this->permissionsFor(['member', 'card', 'product', 'stock', 'promo', 'coupon'], ['view']),

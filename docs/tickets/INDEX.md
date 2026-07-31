@@ -97,13 +97,13 @@ di index ini; detail penuh ditulis saat fase tersebut mulai dikerjakan
 
 **Blocking:** Fase 5 selesai.
 
-## Fase 7 — Sesi Kasir & Kas
+## Fase 7 — Sesi Kasir & Kas `[SELESAI]`
 
-- [ ] ⬜ T-043 — Migration `cashier_sessions` (kolom terpisah per metode: cash/topup/receivable)
-- [ ] ⬜ T-044 — Migration `cash_transactions` (kas masuk/keluar, drop cash)
-- [ ] ⬜ 🔑 [T-045](T-045-cashiersessionservice.md) — `CashierSessionService` (buka/tutup sesi, expected cash, cek hold)
-- [ ] ⬜ T-046 — Halaman buka/tutup sesi + rekap selisih kas
-- [ ] ⬜ T-047 — Command `session:auto-close` (tutup paksa sesi terbuka)
+- [x] ✅ T-043 — Migration `cashier_sessions` (kolom terpisah per metode: cash/topup/receivable_cash/receivable_noncash)
+- [x] ✅ T-044 — Migration `cash_accounts` + `cash_categories` + `cash_transactions` (+ retrofit FK `cash_account_id`/`cashier_session_id` di `deposit_transactions`/`debt_payments`/`consignment_settlements` dari Fase 4/6)
+- [x] ✅ 🔑 [T-045](T-045-cashiersessionservice.md) — `CashierSessionService` (open/getActive/calculateExpected/close/forceClose/handover, addSaleCash dkk untuk fase mendatang) + `CashService` (recordIn/recordOut/transfer/dropCash/depositToBank)
+- [x] ✅ T-046 — Halaman Sesi Kasir (buka/tutup + rincian + selisih real-time + PIN supervisor) dan Kas (Buku Kas/Masuk/Keluar/Transfer)
+- [x] ✅ T-047 — Command `session:auto-close`, terjadwal harian 23:59
 
 **Blocking:** Fase 4 & Fase 6 selesai.
 

@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\BrandController;
+use App\Http\Controllers\Admin\CashController;
+use App\Http\Controllers\Admin\CashierSessionController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ConsignmentController;
 use App\Http\Controllers\Admin\DebtController;
@@ -139,4 +141,18 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::post('/consignment', [ConsignmentController::class, 'store'])->name('consignment.store')->middleware('can:consignment.create');
     Route::put('/consignment/{consignment}/approve', [ConsignmentController::class, 'approve'])->name('consignment.approve')->middleware('can:consignment.approve');
     Route::put('/consignment/{consignment}/mark-paid', [ConsignmentController::class, 'markPaid'])->name('consignment.mark-paid')->middleware('can:consignment.update');
+
+    // Sesi Kasir & Kas (Fase 7)
+    Route::middleware('can:pos.view')->group(function () {
+        Route::get('/cashier-session', [CashierSessionController::class, 'index'])->name('cashier-session.index');
+    });
+    Route::post('/cashier-session/open', [CashierSessionController::class, 'open'])->name('cashier-session.open')->middleware('can:pos.create');
+    Route::put('/cashier-session/{cashierSession}/close', [CashierSessionController::class, 'close'])->name('cashier-session.close')->middleware('can:pos.update');
+
+    Route::middleware('can:cash.view')->group(function () {
+        Route::get('/cash', [CashController::class, 'index'])->name('cash.index');
+    });
+    Route::post('/cash/in', [CashController::class, 'storeIn'])->name('cash.in')->middleware('can:cash.create');
+    Route::post('/cash/out', [CashController::class, 'storeOut'])->name('cash.out')->middleware('can:cash.create');
+    Route::post('/cash/transfer', [CashController::class, 'transfer'])->name('cash.transfer')->middleware('can:cash.create');
 });

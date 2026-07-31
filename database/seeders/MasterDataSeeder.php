@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Models\CashAccount;
+use App\Models\CashCategory;
 use App\Models\Category;
 use App\Models\Outlet;
 use App\Models\PaymentMethod;
@@ -73,6 +75,43 @@ class MasterDataSeeder extends Seeder
             Supplier::firstOrCreate(
                 ['code' => $supplier['code']],
                 [...$supplier, 'is_active' => true],
+            );
+        }
+
+        $outletId = Outlet::where('code', 'SKM')->value('id');
+
+        $cashAccounts = [
+            ['code' => 'LACI-1', 'name' => 'Laci Kasir 1', 'type' => 'cash', 'is_drawer' => true, 'is_default' => true],
+            ['code' => 'BRANKAS', 'name' => 'Brankas', 'type' => 'cash', 'is_drawer' => false],
+            ['code' => 'BANK-BCA', 'name' => 'Bank BCA', 'type' => 'bank', 'bank_name' => 'BCA', 'account_number' => '1234567890', 'account_holder' => 'Skillage Mart', 'is_drawer' => false],
+        ];
+
+        foreach ($cashAccounts as $account) {
+            $cashAccount = CashAccount::firstOrCreate(
+                ['code' => $account['code']],
+                [...$account, 'outlet_id' => $outletId, 'opening_balance' => 0, 'is_active' => true],
+            );
+
+            if ($cashAccount->wasRecentlyCreated) {
+                $cashAccount->forceFill(['current_balance' => 0])->save();
+            }
+        }
+
+        $cashCategories = [
+            ['code' => 'PENJUALAN', 'name' => 'Penjualan', 'type' => 'in', 'is_system' => true],
+            ['code' => 'TOPUP', 'name' => 'Top-Up Deposit', 'type' => 'in', 'is_system' => true],
+            ['code' => 'PELUNASAN', 'name' => 'Pelunasan Piutang', 'type' => 'in', 'is_system' => true],
+            ['code' => 'MODAL', 'name' => 'Setoran Modal', 'type' => 'in'],
+            ['code' => 'BELANJA_OPS', 'name' => 'Belanja Operasional', 'type' => 'out'],
+            ['code' => 'BAYAR_HUTANG', 'name' => 'Pembayaran Hutang', 'type' => 'out', 'is_system' => true],
+            ['code' => 'GAJI', 'name' => 'Gaji/Honor', 'type' => 'out'],
+            ['code' => 'LAIN_LAIN', 'name' => 'Lain-lain', 'type' => 'out'],
+        ];
+
+        foreach ($cashCategories as $category) {
+            CashCategory::firstOrCreate(
+                ['code' => $category['code']],
+                [...$category, 'is_system' => $category['is_system'] ?? false, 'is_active' => true],
             );
         }
     }

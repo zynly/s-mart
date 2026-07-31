@@ -29,6 +29,8 @@ const NAV_ITEMS = [
   { label: 'Pembelian', href: '/admin/purchases' },
   { label: 'Hutang', href: '/admin/debts' },
   { label: 'Konsinyasi', href: '/admin/consignment' },
+  { label: 'Sesi Kasir', href: '/admin/cashier-session' },
+  { label: 'Kas', href: '/admin/cash' },
   { label: 'Pengguna', href: '/admin/users' },
   { label: 'Role & Izin', href: '/admin/roles' },
   { label: 'Log Aktivitas', href: '/admin/activity-logs' },
