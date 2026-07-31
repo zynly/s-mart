@@ -7,6 +7,7 @@ use App\Models\CashierSession;
 use App\Models\Member;
 use App\Models\Outlet;
 use App\Models\Product;
+use App\Models\Promo;
 use App\Models\Sale;
 use App\Models\SaleHold;
 use App\Models\SaleItem;
@@ -25,11 +26,14 @@ class SaleService
         private readonly PriceService $priceService,
         private readonly CashierSessionService $sessionService,
         private readonly PaymentService $paymentService,
+        private readonly PromoEngine $promoEngine,
+        private readonly VoucherService $voucherService,
+        private readonly PointService $pointService,
     ) {}
 
     /**
      * @param  array{outlet_id:int, cashier_session_id:int, member_id?:int, member_card_id?:int,
-     *     bill_discount?:int, idempotency_key:string,
+     *     bill_discount?:int, coupon_code?:string, idempotency_key:string,
      *     payments: array<int, array<string, mixed>>,
      *     items: array<int, array{product_id:int, unit_id:int, qty:float, price_override?:int}>}  $cart
      */
@@ -50,11 +54,12 @@ class SaleService
 
             $outlet = Outlet::findOrFail($cart['outlet_id']);
             $memberId = $cart['member_id'] ?? null;
+            $member = $memberId !== null ? Member::findOrFail($memberId) : null;
 
             $lines = [];
             $subtotal = 0;
 
-            foreach ($cart['items'] as $item) {
+            foreach ($cart['items'] as $index => $item) {
                 $product = Product::findOrFail($item['product_id']);
                 $unit = Unit::findOrFail($item['unit_id']);
                 $activePrice = $this->priceService->getActivePrice($product, $outlet, $unit, $memberId);
@@ -63,6 +68,7 @@ class SaleService
                 $lineSubtotal = (int) round($unitPrice * (float) $item['qty']);
 
                 $lines[] = [
+                    'key' => (string) $index,
                     'product' => $product,
                     'unit' => $unit,
                     'qty' => (float) $item['qty'],
@@ -75,9 +81,44 @@ class SaleService
                 $subtotal += $lineSubtotal;
             }
 
-            $billDiscount = $cart['bill_discount'] ?? 0;
-            $grandTotal = max(0, $subtotal - $billDiscount);
-            $member = $memberId !== null ? Member::findOrFail($memberId) : null;
+            $promoResult = $this->promoEngine->applyToCart(
+                array_map(fn ($l) => ['key' => $l['key'], 'product' => $l['product'], 'qty' => $l['qty'], 'unit_price' => $l['unit_price'], 'subtotal' => $l['subtotal']], $lines),
+                $member,
+                now(),
+                $outlet,
+            );
+
+            $itemDiscountTotal = (int) array_sum(array_column($promoResult['items'], 'discount'));
+            $promoBillDiscount = (int) $promoResult['bill_discount'];
+            $manualBillDiscount = $cart['bill_discount'] ?? 0;
+
+            $couponDiscount = 0;
+            $coupon = null;
+
+            if (! empty($cart['coupon_code'])) {
+                $couponCheck = $this->voucherService->validate(
+                    $cart['coupon_code'],
+                    array_map(fn ($l) => ['product_id' => $l['product']->id, 'subtotal' => $l['subtotal'] - ($promoResult['items'][$l['key']]['discount'] ?? 0)], $lines),
+                    $member,
+                );
+
+                if (! $couponCheck['valid']) {
+                    throw new DomainException($couponCheck['message'] ?? 'Kupon tidak valid.');
+                }
+
+                $coupon = $couponCheck['coupon'];
+                $couponDiscount = $couponCheck['discount'];
+            }
+
+            $totalDiscount = $itemDiscountTotal + $promoBillDiscount + $couponDiscount + $manualBillDiscount;
+            $maxDiscount = (int) round($subtotal * (int) config('pos.max_discount_percent', 50) / 100);
+
+            if ($totalDiscount > $maxDiscount) {
+                $promoResult['warnings'][] = "Total diskon dipotong ke batas maksimal {$maxDiscount}% dari subtotal.";
+                $totalDiscount = $maxDiscount;
+            }
+
+            $grandTotal = max(0, $subtotal - $totalDiscount);
 
             $sale = Sale::create([
                 'reference' => ReferenceGenerator::generate('INV', $outlet->id),
@@ -86,6 +127,7 @@ class SaleService
                 'user_id' => auth()->id(),
                 'member_id' => $memberId,
                 'member_card_id' => $cart['member_card_id'] ?? null,
+                'coupon_id' => $coupon?->id,
                 // Nota split-payment tidak punya satu metode tunggal — kolom ini
                 // hanya terisi untuk kemudahan tampilan bila persis satu metode
                 // dipakai. Rincian lengkap selalu ada di sale_payments (T-055).
@@ -93,16 +135,29 @@ class SaleService
                 'sale_date' => now(),
                 'type' => 'regular',
                 'subtotal' => $subtotal,
-                'bill_discount' => $billDiscount,
-                'total_discount' => $billDiscount,
+                'item_discount' => $itemDiscountTotal,
+                'bill_discount' => $manualBillDiscount,
+                'promo_discount' => $promoBillDiscount,
+                'coupon_discount' => $couponDiscount,
+                'total_discount' => $totalDiscount,
                 'grand_total' => $grandTotal,
                 'status' => 'completed',
                 'idempotency_key' => $cart['idempotency_key'],
+                'note' => $promoResult['warnings'] !== [] ? implode(' ', $promoResult['warnings']) : null,
             ]);
 
             $totalCost = 0;
+            $appliedPromoIds = [];
 
             foreach ($lines as $line) {
+                $itemPromo = $promoResult['items'][$line['key']];
+                $firstPromoCode = $itemPromo['applied_promos'][0] ?? null;
+                $firstPromo = $firstPromoCode !== null ? Promo::where('code', $firstPromoCode)->first() : null;
+
+                if ($firstPromo !== null) {
+                    $appliedPromoIds[] = $firstPromo->id;
+                }
+
                 $saleItem = SaleItem::create([
                     'sale_id' => $sale->id,
                     'product_id' => $line['product']->id,
@@ -111,7 +166,9 @@ class SaleService
                     'qty_base' => $line['qty_base'],
                     'original_price' => $line['original_price'],
                     'unit_price' => $line['unit_price'],
-                    'subtotal' => $line['subtotal'],
+                    'promo_id' => $firstPromo?->id,
+                    'promo_discount' => $itemPromo['discount'],
+                    'subtotal' => $line['subtotal'] - $itemPromo['discount'],
                     'price_changed_by' => $line['price_changed'] ? auth()->id() : null,
                 ]);
 
@@ -138,6 +195,16 @@ class SaleService
                 );
             }
 
+            foreach (array_unique($appliedPromoIds) as $promoId) {
+                Promo::whereKey($promoId)->increment('used_count');
+            }
+
+            if ($coupon !== null) {
+                $this->voucherService->redeem($coupon, $sale, $member, $couponDiscount);
+            }
+
+            $pointsEarned = $member !== null ? $this->pointService->earn($member, $grandTotal, $sale) : 0;
+
             $grossProfit = $grandTotal - $totalCost;
             $payments = $this->paymentService->process($sale, $cart['payments'], $member, $session, $outlet);
             $this->sessionService->recordSaleCompleted($session);
@@ -148,11 +215,12 @@ class SaleService
             $sale->update([
                 'total_cost' => $totalCost,
                 'gross_profit' => $grossProfit,
+                'points_earned' => $pointsEarned,
                 'paid_amount' => $paidAmount,
                 'change_amount' => $changeAmount,
             ]);
 
-            return $sale->fresh(['items.product', 'member', 'paymentMethod', 'payments.paymentMethod']);
+            return $sale->fresh(['items.product', 'member', 'paymentMethod', 'payments.paymentMethod', 'coupon']);
         });
     }
 
@@ -238,6 +306,16 @@ class SaleService
                 }
 
                 $this->paymentService->refund($payment, $session);
+            }
+
+            if ($locked->member_id !== null && $locked->points_earned > 0) {
+                $this->pointService->voidEarn(Member::findOrFail($locked->member_id), $locked->points_earned, $locked);
+            }
+
+            $promoIds = $locked->items()->whereNotNull('promo_id')->pluck('promo_id')->unique();
+
+            foreach ($promoIds as $promoId) {
+                Promo::whereKey($promoId)->where('used_count', '>', 0)->decrement('used_count');
             }
 
             $this->sessionService->addVoid($session);

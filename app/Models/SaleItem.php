@@ -45,4 +45,9 @@ class SaleItem extends Model
     {
         return $this->belongsTo(Unit::class);
     }
+
+    public function promo(): BelongsTo
+    {
+        return $this->belongsTo(Promo::class);
+    }
 }

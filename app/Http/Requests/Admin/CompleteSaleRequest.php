@@ -22,6 +22,7 @@ class CompleteSaleRequest extends FormRequest
             'member_id' => ['nullable', 'exists:members,id'],
             'member_card_id' => ['nullable', 'exists:member_cards,id'],
             'bill_discount' => ['nullable', 'integer', 'min:0'],
+            'coupon_code' => ['nullable', 'string', 'max:30'],
 
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'exists:products,id'],

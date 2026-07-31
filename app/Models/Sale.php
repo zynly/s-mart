@@ -14,11 +14,11 @@ class Sale extends Model
 
     protected $fillable = [
         'reference', 'outlet_id', 'cashier_session_id', 'user_id', 'member_id',
-        'member_card_id', 'payment_method_id', 'sale_date', 'type', 'subtotal',
-        'item_discount', 'bill_discount', 'promo_discount', 'total_discount', 'tax',
-        'rounding', 'grand_total', 'total_cost', 'gross_profit', 'paid_amount',
-        'change_amount', 'status', 'void_reason', 'voided_by', 'voided_at',
-        'price_changed_by', 'discount_approved_by', 'idempotency_key', 'note',
+        'member_card_id', 'payment_method_id', 'coupon_id', 'sale_date', 'type', 'subtotal',
+        'item_discount', 'bill_discount', 'promo_discount', 'coupon_discount', 'total_discount',
+        'tax', 'rounding', 'grand_total', 'total_cost', 'gross_profit', 'points_earned',
+        'points_redeemed', 'paid_amount', 'change_amount', 'status', 'void_reason', 'voided_by',
+        'voided_at', 'price_changed_by', 'discount_approved_by', 'idempotency_key', 'note',
     ];
 
     protected function casts(): array
@@ -29,12 +29,15 @@ class Sale extends Model
             'item_discount' => 'integer',
             'bill_discount' => 'integer',
             'promo_discount' => 'integer',
+            'coupon_discount' => 'integer',
             'total_discount' => 'integer',
             'tax' => 'integer',
             'rounding' => 'integer',
             'grand_total' => 'integer',
             'total_cost' => 'integer',
             'gross_profit' => 'integer',
+            'points_earned' => 'integer',
+            'points_redeemed' => 'integer',
             'paid_amount' => 'integer',
             'change_amount' => 'integer',
             'voided_at' => 'datetime',
@@ -84,6 +87,16 @@ class Sale extends Model
     public function receivable(): HasOne
     {
         return $this->hasOne(Receivable::class);
+    }
+
+    public function coupon(): BelongsTo
+    {
+        return $this->belongsTo(Coupon::class);
+    }
+
+    public function couponRedemption(): HasOne
+    {
+        return $this->hasOne(CouponRedemption::class);
     }
 
     public function voider(): BelongsTo

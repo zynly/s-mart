@@ -21,4 +21,8 @@ return [
     'point_value' => 100, // 1 poin = Rp 100
     'point_expiry_months' => 12,
     'receivable_due_days' => 30, // default tempo piutang anggota (metode Kredit)
+    'clearance_days' => 7, // ambang "mendekati kadaluwarsa" untuk promo clearance
+    'birthday_bonus_mode' => 'deposit', // deposit|coupon
+    'birthday_coupon_discount_percent' => 10,
+    'birthday_coupon_valid_days' => 7,
 ];

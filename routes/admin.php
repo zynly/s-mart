@@ -6,12 +6,15 @@ use App\Http\Controllers\Admin\CashController;
 use App\Http\Controllers\Admin\CashierSessionController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ConsignmentController;
+use App\Http\Controllers\Admin\CouponController;
 use App\Http\Controllers\Admin\DebtController;
 use App\Http\Controllers\Admin\DepositController;
 use App\Http\Controllers\Admin\MemberController;
 use App\Http\Controllers\Admin\OutletController;
 use App\Http\Controllers\Admin\PaymentMethodController;
+use App\Http\Controllers\Admin\PointController;
 use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\PromoController;
 use App\Http\Controllers\Admin\PurchaseController;
 use App\Http\Controllers\Admin\PurchaseOrderController;
 use App\Http\Controllers\Admin\ReceivableController;
@@ -163,4 +166,21 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     });
     Route::post('/receivables/{receivable}/pay', [ReceivableController::class, 'pay'])->name('receivables.pay')->middleware('can:receivable.update');
     Route::delete('/receivables/{receivable}', [ReceivableController::class, 'writeOff'])->name('receivables.write-off')->middleware('can:receivable.delete');
+
+    // Diskon & Promo (Fase 10 — T-067)
+    Route::middleware('can:promo.view')->group(function () {
+        Route::get('/promos', [PromoController::class, 'index'])->name('promos.index');
+    });
+    Route::post('/promos', [PromoController::class, 'store'])->name('promos.store')->middleware('can:promo.create');
+    Route::put('/promos/{promo}', [PromoController::class, 'update'])->name('promos.update')->middleware('can:promo.update');
+    Route::put('/promos/{promo}/toggle', [PromoController::class, 'toggle'])->name('promos.toggle')->middleware('can:promo.update');
+    Route::delete('/promos/{promo}', [PromoController::class, 'destroy'])->name('promos.destroy')->middleware('can:promo.delete');
+
+    Route::middleware('can:coupon.view')->group(function () {
+        Route::get('/coupons', [CouponController::class, 'index'])->name('coupons.index');
+    });
+    Route::post('/coupons', [CouponController::class, 'store'])->name('coupons.store')->middleware('can:coupon.create');
+    Route::put('/coupons/{coupon}/cancel', [CouponController::class, 'cancel'])->name('coupons.cancel')->middleware('can:coupon.update');
+
+    Route::get('/points', [PointController::class, 'index'])->name('points.index')->middleware('can:member.view');
 });

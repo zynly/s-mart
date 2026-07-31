@@ -130,15 +130,15 @@ di index ini; detail penuh ditulis saat fase tersebut mulai dikerjakan
 
 **Blocking:** Fase 8 selesai.
 
-## Fase 10 — Diskon & Promo
+## Fase 10 — Diskon & Promo `[SELESAI]`
 
-- [ ] ⬜ T-061 — Migration `promos` (`is_public`, `days_of_week` ISO) + `coupons` + `coupon_redemptions`
-- [ ] ⬜ T-062 — Migration `member_points` (poin reward)
-- [ ] ⬜ T-063 — `PromoEngine`: prioritas 3 tahap, floor di HPP, `warnings[]`
-- [ ] ⬜ T-064 — `VoucherService` (redeem, revert saat void)
-- [ ] ⬜ T-065 — Bonus ulang tahun terintegrasi voucher (lanjutan T-029)
-- [ ] ⬜ T-066 — `PointService` (akrual, redeem, expiry 12 bulan)
-- [ ] ⬜ T-067 — Halaman kelola promo/voucher/poin
+- [x] ✅ T-061 — Migration `promos` (`is_public`, `days_of_week` ISO) + `promo_products`/`promo_categories`/`promo_member_levels` + `coupons` + `coupon_redemptions`
+- [x] ✅ T-062 — Migration `point_transactions` (ledger poin reward, mengikuti pola `deposit_transactions`)
+- [x] ✅ T-063 — `PromoEngine`: prioritas 3 tahap (item pilih-satu → item tambahan stackable → bill member-level), floor di HPP (estimasi `stocks.avg_cost`), `warnings[]`
+- [x] ✅ T-064 — `VoucherService` (validate + redeem; revert saat void tetap tanggung jawab Fase 11 sesuai CATATAN-PERBAIKAN.md)
+- [x] ✅ T-065 — Bonus ulang tahun terintegrasi kupon (lanjutan T-029, `pos.birthday_bonus_mode` = deposit|coupon)
+- [x] ✅ T-066 — `PointService` (akrual proporsional `point_multiplier` level, redeem, expiry 12 bulan via `point:expire`, void membalikkan poin earn)
+- [x] ✅ T-067 — Halaman Promo (CRUD + tipe-conditional form), Kupon (buat/generate massal + batalkan), Poin (mutasi per anggota). Simulator diskon & Laporan Efektivitas Promo di-skip (di luar cakupan jalur kritis fase ini — bisa disusulkan di Fase UI-01/Fase 16 laporan).
 
 **Blocking:** Fase 9 selesai.
 

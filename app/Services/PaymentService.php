@@ -31,6 +31,7 @@ class PaymentService
         private readonly DepositService $depositService,
         private readonly CashierSessionService $sessionService,
         private readonly CreditHandler $creditHandler,
+        private readonly PointService $pointService,
     ) {}
 
     /**
@@ -107,8 +108,8 @@ class PaymentService
             return;
         }
 
-        $member = Member::lockForUpdate()->findOrFail($payment->sale->member_id);
-        $member->forceFill(['point_balance' => $member->point_balance + $payment->point_used])->save();
+        $member = Member::findOrFail($payment->sale->member_id);
+        $this->pointService->refund($member, $payment->point_used, $payment->sale);
     }
 
     private function refundCredit(SalePayment $payment, int $amount): void

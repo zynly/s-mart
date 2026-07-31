@@ -305,6 +305,39 @@ declare module 'ziggy-js' {
             "binding": "id"
         }
     ],
+    "admin.promos.index": [],
+    "admin.promos.store": [],
+    "admin.promos.update": [
+        {
+            "name": "promo",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.promos.toggle": [
+        {
+            "name": "promo",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.promos.destroy": [
+        {
+            "name": "promo",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.coupons.index": [],
+    "admin.coupons.store": [],
+    "admin.coupons.cancel": [
+        {
+            "name": "coupon",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.points.index": [],
     "pos.index": [],
     "pos.scan": [],
     "pos.search-member": [],
