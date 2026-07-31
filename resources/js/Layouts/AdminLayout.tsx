@@ -15,6 +15,13 @@ type AdminLayoutProps = {
 
 const NAV_ITEMS = [
   { label: 'Dashboard', href: '/admin' },
+  { label: 'Produk', href: '/admin/products' },
+  { label: 'Kategori', href: '/admin/categories' },
+  { label: 'Brand', href: '/admin/brands' },
+  { label: 'Satuan', href: '/admin/units' },
+  { label: 'Supplier', href: '/admin/suppliers' },
+  { label: 'Metode Bayar', href: '/admin/payment-methods' },
+  { label: 'Outlet', href: '/admin/outlets' },
   { label: 'Pengguna', href: '/admin/users' },
   { label: 'Role & Izin', href: '/admin/roles' },
   { label: 'Log Aktivitas', href: '/admin/activity-logs' },

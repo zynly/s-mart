@@ -72,6 +72,118 @@ declare module 'ziggy-js' {
         }
     ],
     "admin.activity-logs.index": [],
+    "admin.products.index": [],
+    "admin.products.store": [],
+    "admin.products.update": [
+        {
+            "name": "product",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.products.destroy": [
+        {
+            "name": "product",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.categories.index": [],
+    "admin.categories.store": [],
+    "admin.categories.update": [
+        {
+            "name": "category",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.categories.destroy": [
+        {
+            "name": "category",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.brands.index": [],
+    "admin.brands.store": [],
+    "admin.brands.update": [
+        {
+            "name": "brand",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.brands.destroy": [
+        {
+            "name": "brand",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.units.index": [],
+    "admin.units.store": [],
+    "admin.units.update": [
+        {
+            "name": "unit",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.units.destroy": [
+        {
+            "name": "unit",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.suppliers.index": [],
+    "admin.suppliers.store": [],
+    "admin.suppliers.update": [
+        {
+            "name": "supplier",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.suppliers.destroy": [
+        {
+            "name": "supplier",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.payment-methods.index": [],
+    "admin.outlets.index": [],
+    "admin.payment-methods.store": [],
+    "admin.payment-methods.update": [
+        {
+            "name": "paymentMethod",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.payment-methods.destroy": [
+        {
+            "name": "paymentMethod",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.outlets.store": [],
+    "admin.outlets.update": [
+        {
+            "name": "outlet",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.outlets.destroy": [
+        {
+            "name": "outlet",
+            "required": true,
+            "binding": "id"
+        }
+    ],
     "storage.local": [
         {
             "name": "path",

@@ -41,15 +41,15 @@ di index ini; detail penuh ditulis saat fase tersebut mulai dikerjakan
 
 **Blocking:** Fase 0 selesai.
 
-## Fase 2 — Master Data
+## Fase 2 — Master Data `[SELESAI]`
 
-- [ ] ⬜ 🔑 [T-012](T-012-migration-products.md) — Migration products + kategori + konversi satuan
-- [ ] ⬜ T-013 — Migration `product_barcodes` (multi-barcode per produk)
-- [ ] ⬜ T-014 — Migration `product_prices` (immutable — tanpa `updated_at`, effective_from/to)
-- [ ] ⬜ T-015 — Migration `product_images` (multi-gambar) + hapus kolom `products.image`
-- [ ] ⬜ T-016 — Kolom storefront: `is_visible_public`, `slug`, `description_public`, `public_order`
-- [ ] ⬜ T-017 — `ProductService` + halaman CRUD produk (DataTable + form, HPP hidden via permission)
-- [ ] ⬜ T-018 — Seeder produk & kategori contoh
+- [x] ✅ 🔑 [T-012](T-012-migration-products.md) — Migration products + kategori + konversi satuan
+- [x] ✅ T-013 — Migration `product_barcodes` (multi-barcode per produk)
+- [x] ✅ T-014 — Migration `product_prices` (immutable — tanpa `updated_at`, effective_from/to)
+- [x] ✅ T-015 — Migration `product_images` (multi-gambar) + hapus kolom `products.image`
+- [x] ✅ T-016 — Kolom storefront: `is_visible_public`, `slug`, `description_public`, `public_order`
+- [x] ✅ T-017 — `ProductService` + halaman CRUD produk (DataTable + form, HPP hidden via permission)
+- [x] ✅ T-018 — Seeder produk & kategori contoh
 
 **Blocking:** Fase 1 selesai (butuh role `warehouse`/`admin`).
 

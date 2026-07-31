@@ -1,7 +1,14 @@
 <?php
 
 use App\Http\Controllers\Admin\ActivityLogController;
+use App\Http\Controllers\Admin\BrandController;
+use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\OutletController;
+use App\Http\Controllers\Admin\PaymentMethodController;
+use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\SupplierController;
+use App\Http\Controllers\Admin\UnitController;
 use App\Http\Controllers\Admin\UserController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -26,4 +33,51 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
 
     Route::get('/activity-logs', [ActivityLogController::class, 'index'])
         ->name('activity-logs.index');
+
+    // Master Data (Fase 2)
+    Route::middleware('can:product.view')->group(function () {
+        Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+    });
+    Route::post('/products', [ProductController::class, 'store'])->name('products.store')->middleware('can:product.create');
+    Route::put('/products/{product}', [ProductController::class, 'update'])->name('products.update')->middleware('can:product.update');
+    Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy')->middleware('can:product.delete');
+
+    Route::middleware('can:category.view')->group(function () {
+        Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
+    });
+    Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store')->middleware('can:category.create');
+    Route::put('/categories/{category}', [CategoryController::class, 'update'])->name('categories.update')->middleware('can:category.update');
+    Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy')->middleware('can:category.delete');
+
+    Route::middleware('can:brand.view')->group(function () {
+        Route::get('/brands', [BrandController::class, 'index'])->name('brands.index');
+    });
+    Route::post('/brands', [BrandController::class, 'store'])->name('brands.store')->middleware('can:brand.create');
+    Route::put('/brands/{brand}', [BrandController::class, 'update'])->name('brands.update')->middleware('can:brand.update');
+    Route::delete('/brands/{brand}', [BrandController::class, 'destroy'])->name('brands.destroy')->middleware('can:brand.delete');
+
+    Route::middleware('can:unit.view')->group(function () {
+        Route::get('/units', [UnitController::class, 'index'])->name('units.index');
+    });
+    Route::post('/units', [UnitController::class, 'store'])->name('units.store')->middleware('can:unit.create');
+    Route::put('/units/{unit}', [UnitController::class, 'update'])->name('units.update')->middleware('can:unit.update');
+    Route::delete('/units/{unit}', [UnitController::class, 'destroy'])->name('units.destroy')->middleware('can:unit.delete');
+
+    Route::middleware('can:supplier.view')->group(function () {
+        Route::get('/suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
+    });
+    Route::post('/suppliers', [SupplierController::class, 'store'])->name('suppliers.store')->middleware('can:supplier.create');
+    Route::put('/suppliers/{supplier}', [SupplierController::class, 'update'])->name('suppliers.update')->middleware('can:supplier.update');
+    Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy'])->name('suppliers.destroy')->middleware('can:supplier.delete');
+
+    Route::middleware('can:setting.view')->group(function () {
+        Route::get('/payment-methods', [PaymentMethodController::class, 'index'])->name('payment-methods.index');
+        Route::get('/outlets', [OutletController::class, 'index'])->name('outlets.index');
+    });
+    Route::post('/payment-methods', [PaymentMethodController::class, 'store'])->name('payment-methods.store')->middleware('can:setting.create');
+    Route::put('/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'update'])->name('payment-methods.update')->middleware('can:setting.update');
+    Route::delete('/payment-methods/{paymentMethod}', [PaymentMethodController::class, 'destroy'])->name('payment-methods.destroy')->middleware('can:setting.delete');
+    Route::post('/outlets', [OutletController::class, 'store'])->name('outlets.store')->middleware('can:outlet.create');
+    Route::put('/outlets/{outlet}', [OutletController::class, 'update'])->name('outlets.update')->middleware('can:outlet.update');
+    Route::delete('/outlets/{outlet}', [OutletController::class, 'destroy'])->name('outlets.destroy')->middleware('can:outlet.delete');
 });
