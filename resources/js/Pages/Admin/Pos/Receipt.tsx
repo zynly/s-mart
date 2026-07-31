@@ -16,7 +16,7 @@ type SaleDetail = {
   change_amount: number
   items: { id: number; product: { name: string }; qty: string; unit_price: number; subtotal: number }[]
   member: { name: string; class_name: string | null; balance_cache: number } | null
-  payment_method: { name: string; type: string } | null
+  payments: { id: number; amount: number; payment_method: { name: string; type: string } }[]
   user: { name: string };
 }
 
@@ -42,17 +42,19 @@ export default function Receipt({ sale }: { sale: SaleDetail }) {
           <span>TOTAL</span>
           <Money amount={sale.grand_total} size="lg" />
         </div>
-        <div className="flex justify-between text-sm text-content-muted">
-          <span>Bayar ({sale.payment_method?.name ?? '-'})</span>
-          <Money amount={sale.paid_amount} size="sm" />
-        </div>
+        {sale.payments.map((payment) => (
+          <div key={payment.id} className="flex justify-between text-sm text-content-muted">
+            <span>Bayar ({payment.payment_method.name})</span>
+            <Money amount={payment.amount} size="sm" />
+          </div>
+        ))}
         {sale.change_amount > 0 && (
           <div className="flex justify-between text-sm text-content-muted">
             <span>Kembalian</span>
             <Money amount={sale.change_amount} size="sm" />
           </div>
         )}
-        {sale.member && sale.payment_method?.type === 'deposit' && (
+        {sale.member && sale.payments.some((p) => p.payment_method.type === 'deposit') && (
           <div className="mt-2 flex justify-between border-t border-border pt-2 text-sm">
             <span>Saldo Akhir {sale.member.name}</span>
             <Money amount={sale.member.balance_cache} />

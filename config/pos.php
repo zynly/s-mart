@@ -20,4 +20,5 @@ return [
     'point_ratio' => 10000, // Rp 10.000 = 1 poin
     'point_value' => 100, // 1 poin = Rp 100
     'point_expiry_months' => 12,
+    'receivable_due_days' => 30, // default tempo piutang anggota (metode Kredit)
 ];

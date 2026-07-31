@@ -104,7 +104,9 @@ class RolePermissionSeeder extends Seeder
 
         $treasurer = Role::firstOrCreate(['name' => 'treasurer']);
         $treasurer->syncPermissions([
-            ...$this->permissionsFor(['cash', 'debt', 'receivable', 'journal', 'ledger'], self::ACTIONS),
+            ...$this->permissionsFor(['cash', 'debt', 'journal', 'ledger'], self::ACTIONS),
+            // receivable.delete ("Hapus Piutang") eksklusif owner — ADR-0005.
+            ...$this->permissionsFor(['receivable'], ['view', 'create', 'update', 'approve', 'export', 'print']),
             ...$this->permissionsFor(['stock', 'member', 'sale', 'purchase'], ['view']),
             ...$this->permissionsFor(['report'], self::ACTIONS),
         ]);

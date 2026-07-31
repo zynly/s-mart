@@ -28,6 +28,7 @@ const NAV_ITEMS = [
   { label: 'Purchase Order', href: '/admin/purchase-orders' },
   { label: 'Pembelian', href: '/admin/purchases' },
   { label: 'Hutang', href: '/admin/debts' },
+  { label: 'Piutang', href: '/admin/receivables' },
   { label: 'Konsinyasi', href: '/admin/consignment' },
   { label: 'Sesi Kasir', href: '/admin/cashier-session' },
   { label: 'Kas', href: '/admin/cash' },

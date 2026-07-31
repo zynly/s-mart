@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\PurchaseController;
 use App\Http\Controllers\Admin\PurchaseOrderController;
+use App\Http\Controllers\Admin\ReceivableController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\StockController;
 use App\Http\Controllers\Admin\SupplierController;
@@ -155,4 +156,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::post('/cash/in', [CashController::class, 'storeIn'])->name('cash.in')->middleware('can:cash.create');
     Route::post('/cash/out', [CashController::class, 'storeOut'])->name('cash.out')->middleware('can:cash.create');
     Route::post('/cash/transfer', [CashController::class, 'transfer'])->name('cash.transfer')->middleware('can:cash.create');
+
+    // Piutang Anggota (Fase 9 — T-060)
+    Route::middleware('can:receivable.view')->group(function () {
+        Route::get('/receivables', [ReceivableController::class, 'index'])->name('receivables.index');
+    });
+    Route::post('/receivables/{receivable}/pay', [ReceivableController::class, 'pay'])->name('receivables.pay')->middleware('can:receivable.update');
+    Route::delete('/receivables/{receivable}', [ReceivableController::class, 'writeOff'])->name('receivables.write-off')->middleware('can:receivable.delete');
 });

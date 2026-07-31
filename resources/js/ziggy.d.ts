@@ -290,9 +290,25 @@ declare module 'ziggy-js' {
     "admin.cash.in": [],
     "admin.cash.out": [],
     "admin.cash.transfer": [],
+    "admin.receivables.index": [],
+    "admin.receivables.pay": [
+        {
+            "name": "receivable",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.receivables.write-off": [
+        {
+            "name": "receivable",
+            "required": true,
+            "binding": "id"
+        }
+    ],
     "pos.index": [],
     "pos.scan": [],
     "pos.search-member": [],
+    "pos.credit-check": [],
     "pos.sales.store": [],
     "pos.holds.store": [],
     "pos.holds.recall": [

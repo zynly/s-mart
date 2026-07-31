@@ -41,10 +41,12 @@
         <tr><td>Subtotal</td><td class="right">Rp {{ number_format($sale->subtotal, 0, ',', '.') }}</td></tr>
         <tr><td>Diskon</td><td class="right">Rp {{ number_format($sale->total_discount, 0, ',', '.') }}</td></tr>
         <tr class="bold"><td>TOTAL</td><td class="right">Rp {{ number_format($sale->grand_total, 0, ',', '.') }}</td></tr>
-        <tr>
-            <td>BAYAR ({{ $sale->paymentMethod->name ?? '-' }})</td>
-            <td class="right">Rp {{ number_format($sale->paid_amount, 0, ',', '.') }}</td>
-        </tr>
+        @foreach ($sale->payments as $payment)
+            <tr>
+                <td>BAYAR ({{ $payment->paymentMethod->name }})</td>
+                <td class="right">Rp {{ number_format($payment->amount, 0, ',', '.') }}</td>
+            </tr>
+        @endforeach
         @if ($sale->change_amount > 0)
             <tr><td>KEMBALI</td><td class="right">Rp {{ number_format($sale->change_amount, 0, ',', '.') }}</td></tr>
         @endif
@@ -52,7 +54,7 @@
     @if ($sale->member)
         <div class="line"></div>
         <div>{{ $sale->member->name }} / {{ $sale->member->class_name ?? '-' }} {{ $sale->member->major ?? '' }}</div>
-        @if ($sale->paymentMethod?->type === 'deposit')
+        @if ($sale->payments->contains(fn ($p) => $p->paymentMethod->type === 'deposit'))
             <table class="bold">
                 <tr><td>Saldo Akhir</td><td class="right">Rp {{ number_format($sale->member->fresh()->balance_cache, 0, ',', '.') }}</td></tr>
             </table>

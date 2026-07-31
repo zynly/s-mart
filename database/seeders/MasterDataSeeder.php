@@ -46,25 +46,6 @@ class MasterDataSeeder extends Seeder
             );
         }
 
-        $paymentMethods = [
-            ['code' => 'CASH', 'name' => 'Tunai', 'type' => 'cash', 'allows_change' => true],
-            ['code' => 'DEPOSIT', 'name' => 'Saldo Deposit', 'type' => 'deposit'],
-            ['code' => 'QRIS', 'name' => 'QRIS', 'type' => 'qris', 'requires_reference' => true],
-            ['code' => 'TRANSFER', 'name' => 'Transfer', 'type' => 'transfer', 'requires_reference' => true],
-            ['code' => 'DEBIT', 'name' => 'Kartu Debit', 'type' => 'card', 'requires_reference' => true],
-            ['code' => 'VOUCHER', 'name' => 'Voucher', 'type' => 'voucher'],
-            ['code' => 'POINT', 'name' => 'Poin', 'type' => 'point'],
-            ['code' => 'CREDIT', 'name' => 'Kredit/Tempo', 'type' => 'credit'],
-            ['code' => 'PAYROLL', 'name' => 'Potong Gaji', 'type' => 'payroll'],
-        ];
-
-        foreach ($paymentMethods as $sort => $method) {
-            PaymentMethod::firstOrCreate(
-                ['code' => $method['code']],
-                [...$method, 'sort_order' => $sort],
-            );
-        }
-
         $suppliers = [
             ['code' => 'SUP-01', 'name' => 'Toko Grosir Jaya', 'contact_person' => 'Pak Hendra', 'phone' => '081234567001', 'payment_term_days' => 30, 'is_consignor' => false],
             ['code' => 'SUP-02', 'name' => 'CV Sumber Rejeki', 'contact_person' => 'Bu Sri', 'phone' => '081234567002', 'payment_term_days' => 14, 'is_consignor' => false],
@@ -112,6 +93,28 @@ class MasterDataSeeder extends Seeder
             CashCategory::firstOrCreate(
                 ['code' => $category['code']],
                 [...$category, 'is_system' => $category['is_system'] ?? false, 'is_active' => true],
+            );
+        }
+
+        $bankAccountId = CashAccount::where('code', 'BANK-BCA')->value('id');
+
+        $paymentMethods = [
+            ['code' => 'CASH', 'name' => 'Tunai', 'type' => 'cash', 'allows_change' => true],
+            ['code' => 'DEPOSIT', 'name' => 'Saldo Deposit', 'type' => 'deposit'],
+            ['code' => 'QRIS', 'name' => 'QRIS', 'type' => 'qris', 'requires_reference' => true, 'cash_account_id' => $bankAccountId, 'mdr_percent' => 0.7],
+            ['code' => 'EWALLET', 'name' => 'E-Wallet', 'type' => 'ewallet', 'requires_reference' => true, 'cash_account_id' => $bankAccountId, 'mdr_percent' => 1.5],
+            ['code' => 'TRANSFER', 'name' => 'Transfer', 'type' => 'transfer', 'requires_reference' => true, 'cash_account_id' => $bankAccountId],
+            ['code' => 'DEBIT', 'name' => 'Kartu Debit', 'type' => 'card', 'requires_reference' => true, 'cash_account_id' => $bankAccountId, 'mdr_percent' => 0.15],
+            ['code' => 'VOUCHER', 'name' => 'Voucher', 'type' => 'voucher'],
+            ['code' => 'POINT', 'name' => 'Poin', 'type' => 'point'],
+            ['code' => 'CREDIT', 'name' => 'Kredit/Tempo', 'type' => 'credit'],
+            ['code' => 'PAYROLL', 'name' => 'Potong Gaji', 'type' => 'payroll'],
+        ];
+
+        foreach ($paymentMethods as $sort => $method) {
+            PaymentMethod::firstOrCreate(
+                ['code' => $method['code']],
+                [...$method, 'sort_order' => $sort],
             );
         }
     }

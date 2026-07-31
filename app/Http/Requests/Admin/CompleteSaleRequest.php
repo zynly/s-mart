@@ -21,8 +21,6 @@ class CompleteSaleRequest extends FormRequest
             'cashier_session_id' => ['required', 'exists:cashier_sessions,id'],
             'member_id' => ['nullable', 'exists:members,id'],
             'member_card_id' => ['nullable', 'exists:member_cards,id'],
-            'payment_method_id' => ['required', 'exists:payment_methods,id'],
-            'paid_amount' => ['nullable', 'integer', 'min:0'],
             'bill_discount' => ['nullable', 'integer', 'min:0'],
 
             'items' => ['required', 'array', 'min:1'],
@@ -30,6 +28,14 @@ class CompleteSaleRequest extends FormRequest
             'items.*.unit_id' => ['required', 'exists:units,id'],
             'items.*.qty' => ['required', 'numeric', 'min:0.001'],
             'items.*.price_override' => ['nullable', 'integer', 'min:0'],
+
+            'payments' => ['required', 'array', 'min:1'],
+            'payments.*.payment_method_id' => ['required', 'exists:payment_methods,id'],
+            'payments.*.amount' => ['required', 'integer', 'min:1'],
+            'payments.*.received_amount' => ['nullable', 'integer', 'min:0'],
+            'payments.*.reference_no' => ['nullable', 'string', 'max:100'],
+            'payments.*.pin' => ['nullable', 'string'],
+            'payments.*.point_used' => ['nullable', 'integer', 'min:1'],
         ];
     }
 }

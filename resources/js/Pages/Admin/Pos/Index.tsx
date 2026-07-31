@@ -5,6 +5,7 @@ import { Minus, Plus, Trash2, User, X } from 'lucide-react'
 import PosLayout from '@/Layouts/PosLayout'
 import { Money } from '@/Components/common/Money'
 import { MoneyInput } from '@/Components/common/MoneyInput'
+import { PinInput } from '@/Components/common/PinInput'
 import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
@@ -13,7 +14,15 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import type { PageProps } from '@/Types'
 
-type PaymentMethodRow = { id: number; code: string; name: string; type: string; allows_change: boolean }
+type PaymentMethodRow = {
+  id: number
+  code: string
+  name: string
+  type: string
+  allows_change: boolean
+  requires_reference: boolean
+  mdr_percent: number
+}
 type FavoriteProduct = {
   id: number
   name: string
@@ -30,10 +39,13 @@ type MemberResult = {
   id: number
   member_number: string
   name: string
+  type: string
   class_name: string | null
   major: string | null
   balance_cache: number
+  point_balance: number
   receivable_limit: number
+  has_pin: boolean
   level: { name: string; color: string | null } | null
   status: string
 }
@@ -48,15 +60,30 @@ type CartLine = {
   unit_price: number
 }
 
+type PaymentLine = {
+  key: string
+  payment_method_id: number
+  code: string
+  name: string
+  type: string
+  amount: number
+  received_amount?: number
+  reference_no?: string
+  pin?: string
+  point_used?: number
+}
+
 type PosIndexProps = {
   session: SessionInfo
   outlet: OutletInfo
   paymentMethods: PaymentMethodRow[]
   favoriteProducts: FavoriteProduct[]
   holds: HoldRow[]
+  noPinThreshold: number
+  pointValue: number
 }
 
-export default function Index({ session, outlet, paymentMethods, favoriteProducts, holds }: PosIndexProps) {
+export default function Index({ session, outlet, paymentMethods, favoriteProducts, holds, noPinThreshold, pointValue }: PosIndexProps) {
   const [cart, setCart] = useState<CartLine[]>([])
   const [member, setMember] = useState<MemberResult | null>(null)
   const [barcode, setBarcode] = useState('')
@@ -65,8 +92,9 @@ export default function Index({ session, outlet, paymentMethods, favoriteProduct
   const [memberResults, setMemberResults] = useState<MemberResult[]>([])
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [holdsOpen, setHoldsOpen] = useState(false)
-  const [paymentMethodId, setPaymentMethodId] = useState('')
-  const [paidAmount, setPaidAmount] = useState(0)
+  const [paymentLines, setPaymentLines] = useState<PaymentLine[]>([])
+  const [selectedMethodId, setSelectedMethodId] = useState('')
+  const [creditWarning, setCreditWarning] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [paymentError, setPaymentError] = useState<string | null>(null)
   const [holdError, setHoldError] = useState<string | null>(null)
@@ -200,15 +228,85 @@ export default function Index({ session, outlet, paymentMethods, favoriteProduct
       })
   }
 
+  const paidTotal = useMemo(() => paymentLines.reduce((sum, l) => sum + l.amount, 0), [paymentLines])
+  const remaining = Math.max(0, subtotal - paidTotal)
+  const change = paymentLines
+    .filter((l) => l.type === 'cash')
+    .reduce((sum, l) => sum + Math.max(0, (l.received_amount ?? l.amount) - l.amount), 0)
+
   function openPayment() {
     if (cart.length === 0) return
-    setPaidAmount(subtotal)
+    setPaymentLines([])
+    setSelectedMethodId('')
+    setCreditWarning(null)
     setPaymentError(null)
     setPaymentOpen(true)
   }
 
+  function methodEligible(pm: PaymentMethodRow): boolean {
+    if (pm.type === 'deposit' || pm.type === 'credit') return member !== null
+    if (pm.type === 'point') return member !== null && member.point_balance > 0
+    if (pm.type === 'payroll') return member !== null && (member.type === 'fasilitator' || member.type === 'staff')
+
+    return true
+  }
+
+  async function addPaymentLine() {
+    const pm = paymentMethods.find((p) => String(p.id) === selectedMethodId)
+    if (!pm || remaining <= 0) return
+
+    const amount = pm.type === 'point' ? Math.min(remaining, member ? member.point_balance * pointValue : remaining) : remaining
+
+    const line: PaymentLine = {
+      key: `${pm.id}-${Date.now()}`,
+      payment_method_id: pm.id,
+      code: pm.code,
+      name: pm.name,
+      type: pm.type,
+      amount,
+      received_amount: pm.allows_change ? amount : undefined,
+      point_used: pm.type === 'point' ? Math.floor(amount / pointValue) : undefined,
+    }
+
+    setPaymentLines((prev) => [...prev, line])
+    setSelectedMethodId('')
+
+    if (pm.type === 'credit' && member) {
+      setCreditWarning(null)
+      const res = await fetch(`${route('pos.credit-check')}?member_id=${member.id}&amount=${amount}`)
+      const data = await res.json()
+      if (!data.allowed) {
+        setCreditWarning(`Limit piutang terlampaui: aktif Rp ${data.active.toLocaleString('id-ID')} dari limit Rp ${data.limit.toLocaleString('id-ID')}.`)
+      }
+    }
+  }
+
+  function updatePaymentLine(key: string, patch: Partial<PaymentLine>) {
+    setPaymentLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)))
+  }
+
+  function setLineAmount(line: PaymentLine, rawAmount: number) {
+    const max = remaining + line.amount
+    const amount = Math.max(1, Math.min(rawAmount, max))
+    const patch: Partial<PaymentLine> = { amount }
+
+    if (line.type === 'cash' && line.received_amount === line.amount) {
+      patch.received_amount = amount
+    }
+    if (line.type === 'point') {
+      patch.point_used = Math.floor(amount / pointValue)
+    }
+
+    updatePaymentLine(line.key, patch)
+  }
+
+  function removePaymentLine(key: string) {
+    setPaymentLines((prev) => prev.filter((l) => l.key !== key))
+    setCreditWarning(null)
+  }
+
   function submitPayment() {
-    if (!session || !outlet || !paymentMethodId) return
+    if (!session || !outlet || paymentLines.length === 0 || remaining > 0) return
 
     setSubmitting(true)
     setPaymentError(null)
@@ -219,9 +317,15 @@ export default function Index({ session, outlet, paymentMethods, favoriteProduct
         outlet_id: outlet.id,
         cashier_session_id: session.id,
         member_id: member?.id ?? null,
-        payment_method_id: Number(paymentMethodId),
-        paid_amount: paidAmount,
         items: cart.map((l) => ({ product_id: l.product_id, unit_id: l.unit_id, qty: l.qty, unit_price: l.unit_price, product_name: l.product_name, unit_code: l.unit_code })),
+        payments: paymentLines.map((l) => ({
+          payment_method_id: l.payment_method_id,
+          amount: l.amount,
+          received_amount: l.received_amount,
+          reference_no: l.reference_no,
+          pin: l.pin,
+          point_used: l.point_used,
+        })),
       },
       {
         headers: { 'X-Idempotency-Key': newIdempotencyKey() },
@@ -241,9 +345,6 @@ export default function Index({ session, outlet, paymentMethods, favoriteProduct
   useHotkeys('f5', (e) => { e.preventDefault(); setHoldsOpen(true) })
   useHotkeys('f9', (e) => { e.preventDefault(); openPayment() })
   useHotkeys('esc', () => { setPaymentOpen(false); setHoldsOpen(false) })
-
-  const selectedPaymentMethod = paymentMethods.find((p) => String(p.id) === paymentMethodId)
-  const change = selectedPaymentMethod?.allows_change ? Math.max(0, paidAmount - subtotal) : 0
 
   if (!session) {
     return (
@@ -406,45 +507,123 @@ export default function Index({ session, outlet, paymentMethods, favoriteProduct
               <p className="text-xs text-content-muted">Total Tagihan</p>
               <Money amount={subtotal} size="lg" />
             </div>
-            <div className="space-y-1.5">
-              <Label>Metode Bayar</Label>
-              <Select value={paymentMethodId} onValueChange={setPaymentMethodId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih metode" />
-                </SelectTrigger>
-                <SelectContent>
-                  {paymentMethods.map((pm) => (
-                    <SelectItem key={pm.id} value={String(pm.id)} disabled={pm.type === 'deposit' && !member}>
-                      {pm.name}{pm.type === 'deposit' && !member ? ' (pilih anggota dulu)' : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {selectedPaymentMethod?.allows_change && (
+            {paymentLines.length > 0 && (
+              <div className="flex flex-col divide-y divide-border rounded-md border border-border">
+                {paymentLines.map((line) => (
+                  <div key={line.key} className="flex flex-col gap-2 p-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium">{line.name}</span>
+                      <Button type="button" size="icon-sm" variant="ghost" onClick={() => removePaymentLine(line.key)}>
+                        <X className="size-3.5" />
+                      </Button>
+                    </div>
+                    {line.type !== 'point' && (
+                      <div className="flex flex-col gap-1.5">
+                        <Label className="text-xs">Nominal</Label>
+                        <MoneyInput value={line.amount} onChange={(v) => setLineAmount(line, v)} />
+                      </div>
+                    )}
+                    {line.type === 'cash' && (
+                      <div className="flex flex-col gap-1.5">
+                        <Label className="text-xs">Uang Diterima</Label>
+                        <MoneyInput value={line.received_amount ?? 0} onChange={(v) => updatePaymentLine(line.key, { received_amount: v })} />
+                        <div className="flex flex-wrap gap-1.5">
+                          {[20000, 50000, 100000].map((amt) => (
+                            <Button key={amt} type="button" variant="outline" size="sm" onClick={() => updatePaymentLine(line.key, { received_amount: line.amount + amt })}>
+                              +Rp {amt.toLocaleString('id-ID')}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {line.type === 'deposit' && member && (
+                      <div className="flex flex-col gap-1.5">
+                        <p className="text-xs text-content-muted">Saldo anggota: <Money amount={member.balance_cache} size="sm" /></p>
+                        {line.amount >= noPinThreshold && (
+                          <>
+                            <Label className="text-xs">PIN Anggota {!member.has_pin && '(belum dibuat)'}</Label>
+                            <PinInput value={line.pin ?? ''} onChange={(v) => updatePaymentLine(line.key, { pin: v })} />
+                          </>
+                        )}
+                      </div>
+                    )}
+                    {line.type === 'credit' && creditWarning && (
+                      <p className="text-xs text-danger">{creditWarning}</p>
+                    )}
+                    {(line.type === 'card' || line.type === 'qris' || line.type === 'ewallet' || line.type === 'transfer') && (
+                      <div className="flex flex-col gap-1.5">
+                        <Label className="text-xs">No. Referensi / Approval</Label>
+                        <Input
+                          value={line.reference_no ?? ''}
+                          onChange={(e) => updatePaymentLine(line.key, { reference_no: e.target.value })}
+                          placeholder="Wajib diisi"
+                        />
+                      </div>
+                    )}
+                    {line.type === 'point' && member && (
+                      <div className="flex flex-col gap-1.5">
+                        <Label className="text-xs">Poin Dipakai (maks {member.point_balance}, {pointValue.toLocaleString('id-ID')}/poin)</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={member.point_balance}
+                          value={line.point_used ?? 0}
+                          onChange={(e) => {
+                            const maxPoints = Math.min(member.point_balance, Math.floor((remaining + line.amount) / pointValue))
+                            const pointUsed = Math.max(0, Math.min(Number(e.target.value) || 0, maxPoints))
+                            updatePaymentLine(line.key, { point_used: pointUsed, amount: pointUsed * pointValue })
+                          }}
+                        />
+                        <p className="text-xs text-content-muted">Setara <Money amount={line.amount} size="sm" /></p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {remaining > 0 && (
               <div className="space-y-1.5">
-                <Label>Uang Diterima</Label>
-                <MoneyInput value={paidAmount} onChange={setPaidAmount} />
-                <div className="flex flex-wrap gap-2">
-                  {[20000, 50000, 100000].map((amt) => (
-                    <Button key={amt} type="button" variant="outline" size="sm" onClick={() => setPaidAmount(subtotal + amt)}>
-                      +Rp {amt.toLocaleString('id-ID')}
-                    </Button>
-                  ))}
-                </div>
-                <div className="flex justify-between rounded-md bg-bg p-2 text-sm">
-                  <span>Kembalian</span>
-                  <Money amount={change} />
+                <Label>Tambah Metode Bayar</Label>
+                <div className="flex gap-2">
+                  <Select value={selectedMethodId} onValueChange={setSelectedMethodId}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Pilih metode" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {paymentMethods.map((pm) => (
+                        <SelectItem key={pm.id} value={String(pm.id)} disabled={!methodEligible(pm)}>
+                          {pm.name}{!methodEligible(pm) ? ' (pilih anggota dulu)' : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button type="button" onClick={() => void addPaymentLine()} disabled={!selectedMethodId}>Tambah</Button>
                 </div>
               </div>
             )}
-            {selectedPaymentMethod?.type === 'deposit' && member && (
-              <p className="text-sm text-content-muted">Saldo anggota: <Money amount={member.balance_cache} size="sm" /></p>
-            )}
+
+            <div className="flex flex-col gap-1 rounded-md bg-bg p-2 text-sm">
+              <div className="flex justify-between">
+                <span>Total Dibayar</span>
+                <Money amount={paidTotal} size="sm" />
+              </div>
+              <div className="flex justify-between">
+                <span>Kurang</span>
+                <Money amount={remaining} size="sm" />
+              </div>
+              {change > 0 && (
+                <div className="flex justify-between font-medium">
+                  <span>Kembalian</span>
+                  <Money amount={change} size="sm" />
+                </div>
+              )}
+            </div>
+
             {paymentError && <p className="text-sm text-danger">{paymentError}</p>}
           </div>
           <DialogFooter>
-            <Button onClick={submitPayment} disabled={submitting || !paymentMethodId}>Selesaikan Transaksi</Button>
+            <Button onClick={submitPayment} disabled={submitting || paymentLines.length === 0 || remaining > 0}>Selesaikan Transaksi</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

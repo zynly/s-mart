@@ -2,9 +2,14 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exceptions\CreditLimitExceededException;
 use App\Exceptions\InsufficientBalanceException;
+use App\Exceptions\InsufficientPointBalanceException;
 use App\Exceptions\InsufficientStockException;
+use App\Exceptions\InvalidPinException;
 use App\Exceptions\MaxHoldExceededException;
+use App\Exceptions\MemberPinNotSetException;
+use App\Exceptions\PaymentMismatchException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CompleteSaleRequest;
 use App\Models\Member;
@@ -16,6 +21,7 @@ use App\Models\SaleHold;
 use App\Services\BarcodeResolverService;
 use App\Services\CardService;
 use App\Services\CashierSessionService;
+use App\Services\PaymentService;
 use App\Services\PriceService;
 use App\Services\SaleService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -37,6 +43,7 @@ class SaleController extends Controller
         private readonly BarcodeResolverService $barcodeResolver,
         private readonly CardService $cardService,
         private readonly PriceService $priceService,
+        private readonly PaymentService $paymentService,
     ) {}
 
     public function index(Request $request): Response
@@ -47,7 +54,8 @@ class SaleController extends Controller
         return Inertia::render('Admin/Pos/Index', [
             'session' => $session,
             'outlet' => $outlet,
-            'paymentMethods' => PaymentMethod::where('is_active', true)->orderBy('sort_order')->get(['id', 'code', 'name', 'type', 'allows_change']),
+            'paymentMethods' => PaymentMethod::where('is_active', true)->orderBy('sort_order')
+                ->get(['id', 'code', 'name', 'type', 'allows_change', 'requires_reference', 'mdr_percent']),
             'favoriteProducts' => Product::where('is_active', true)->where('is_favorite', true)
                 ->with(['baseUnit:id,code,name', 'barcodes'])
                 ->orderBy('name')
@@ -56,6 +64,8 @@ class SaleController extends Controller
             'holds' => $session !== null
                 ? SaleHold::where('cashier_session_id', $session->id)->orderByDesc('held_at')->get(['id', 'reference', 'item_count', 'total', 'held_at', 'member_id'])
                 : [],
+            'noPinThreshold' => (int) config('pos.no_pin_threshold', 0),
+            'pointValue' => (int) config('pos.point_value', 100),
         ]);
     }
 
@@ -116,13 +126,28 @@ class SaleController extends Controller
             'id' => $member->id,
             'member_number' => $member->member_number,
             'name' => $member->name,
+            'type' => $member->type,
             'class_name' => $member->class_name,
             'major' => $member->major,
             'balance_cache' => $member->balance_cache,
+            'point_balance' => $member->point_balance,
             'receivable_limit' => $member->receivable_limit,
+            'has_pin' => $member->pin !== null,
             'level' => $member->level ? ['name' => $member->level->name, 'color' => $member->level->color] : null,
             'status' => $member->status,
         ];
+    }
+
+    public function creditCheck(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'member_id' => ['required', 'exists:members,id'],
+            'amount' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $member = Member::findOrFail($data['member_id']);
+
+        return response()->json($this->paymentService->canUseCredit($member, $data['amount']));
     }
 
     public function store(CompleteSaleRequest $request): RedirectResponse
@@ -131,12 +156,15 @@ class SaleController extends Controller
 
         try {
             $sale = $this->saleService->complete([
-                ...$request->safe()->except('items'),
+                ...$request->safe()->except(['items', 'payments']),
                 'items' => $request->validated('items'),
+                'payments' => $request->validated('payments'),
                 'idempotency_key' => $idempotencyKey,
             ]);
-        } catch (InsufficientStockException|InsufficientBalanceException $e) {
+        } catch (InsufficientStockException|InsufficientBalanceException|InsufficientPointBalanceException $e) {
             throw ValidationException::withMessages(['items' => $e->getMessage()]);
+        } catch (PaymentMismatchException|CreditLimitExceededException|MemberPinNotSetException|InvalidPinException $e) {
+            throw ValidationException::withMessages(['payments' => $e->getMessage()]);
         } catch (DomainException|RuntimeException $e) {
             throw ValidationException::withMessages(['items' => $e->getMessage()]);
         }
@@ -176,13 +204,13 @@ class SaleController extends Controller
     public function receipt(Sale $sale): Response
     {
         return Inertia::render('Admin/Pos/Receipt', [
-            'sale' => $sale->load(['items.product:id,name', 'member', 'paymentMethod', 'user:id,name']),
+            'sale' => $sale->load(['items.product:id,name', 'member', 'payments.paymentMethod', 'user:id,name']),
         ]);
     }
 
     public function receiptPdf(Sale $sale): HttpResponse
     {
-        $sale->load(['items.product:id,name', 'member', 'paymentMethod', 'user:id,name', 'outlet']);
+        $sale->load(['items.product:id,name', 'member', 'payments.paymentMethod', 'user:id,name', 'outlet']);
         $width = (int) config('pos.receipt_width', 58);
 
         $pdf = Pdf::loadView('pdf.receipt', ['sale' => $sale, 'width' => $width])

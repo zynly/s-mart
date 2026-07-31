@@ -57,4 +57,9 @@ class Member extends Model
     {
         return $this->hasOne(MemberCard::class)->where('status', 'active');
     }
+
+    public function receivables(): HasMany
+    {
+        return $this->hasMany(Receivable::class);
+    }
 }

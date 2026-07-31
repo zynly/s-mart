@@ -119,14 +119,14 @@ di index ini; detail penuh ditulis saat fase tersebut mulai dikerjakan
 
 **Blocking:** Fase 7 selesai.
 
-## Fase 9 — Pembayaran Multi-Metode
+## Fase 9 — Pembayaran Multi-Metode `[SELESAI]`
 
-- [ ] ⬜ T-055 — Migration `payments` + `receivables` (metode Kredit, `receivable_limit`)
-- [ ] ⬜ 🔑 [T-056](T-056-paymentservice-credit-split.md) — `PaymentService::canUseCredit()` + split payment (voucher→poin→saldo→tunai)
-- [ ] ⬜ T-057 — Integrasi QRIS + MDR (merchant discount rate)
-- [ ] ⬜ T-058 — Modal pembayaran PIN deposit di layar kasir
-- [ ] ⬜ T-059 — Potong gaji sederhana (fasilitator/staf)
-- [ ] ⬜ T-060 — Halaman pelunasan piutang (`receivable.delete` eksklusif owner, >90 hari)
+- [x] ✅ T-055 — Migration `sale_payments` + `receivables` + `receivable_payments` + `payroll_deductions` (metode Kredit, `receivable_limit`)
+- [x] ✅ 🔑 [T-056](T-056-paymentservice-credit-split.md) — `PaymentService::canUseCredit()` + split payment (pola `PaymentHandler` per metode: cash/deposit/card/qris/ewallet/transfer/voucher/point/credit/payroll)
+- [x] ✅ T-057 — Integrasi kartu/QRIS/e-wallet + MDR (merchant discount rate, `mdr_percent` per metode, wajib `reference_no`)
+- [x] ✅ T-058 — Modal pembayaran PIN deposit di layar kasir (bebas PIN di bawah `no_pin_threshold`, wajib PIN + buat-PIN-dulu di atasnya)
+- [x] ✅ T-059 — Potong gaji sederhana (fasilitator/staf — `PayrollDeduction` status `pending`, ditolak untuk santri)
+- [x] ✅ T-060 — Halaman Piutang Anggota: daftar + aging + bayar cicil + `receivable.delete` eksklusif owner (>90 hari, ADR-0005)
 
 **Blocking:** Fase 8 selesai.
 

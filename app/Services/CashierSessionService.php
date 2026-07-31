@@ -142,18 +142,26 @@ class CashierSessionService
     public function addSaleCash(CashierSession $session, int $amount): void
     {
         $session->increment('total_sales_cash', $amount);
-        $session->increment('transaction_count');
     }
 
     public function addSaleDeposit(CashierSession $session, int $amount): void
     {
         $session->increment('total_sales_deposit', $amount);
-        $session->increment('transaction_count');
     }
 
     public function addSaleNoncash(CashierSession $session, int $amount): void
     {
         $session->increment('total_sales_noncash', $amount);
+    }
+
+    /**
+     * Satu nota bisa split ke beberapa metode (addSaleCash/Deposit/Noncash
+     * dipanggil beberapa kali) — transaction_count wajib bertambah tepat
+     * satu kali per nota, jadi dipisah dari method per-metode di atas
+     * dan dipanggil eksplisit sekali oleh SaleService::complete().
+     */
+    public function recordSaleCompleted(CashierSession $session): void
+    {
         $session->increment('transaction_count');
     }
 

@@ -6,7 +6,6 @@ use App\Exceptions\MaxHoldExceededException;
 use App\Models\CashierSession;
 use App\Models\Member;
 use App\Models\Outlet;
-use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleHold;
@@ -24,19 +23,14 @@ class SaleService
     public function __construct(
         private readonly StockService $stockService,
         private readonly PriceService $priceService,
-        private readonly DepositService $depositService,
         private readonly CashierSessionService $sessionService,
+        private readonly PaymentService $paymentService,
     ) {}
 
     /**
-     * Fase 8: pembayaran satu-metode sederhana (tunai/deposit). Split
-     * payment multi-metode, QRIS, kredit, dst menyusul PaymentService
-     * di Fase 9 — struktur $cart['items']/idempotency_key sudah
-     * dirancang supaya PaymentService bisa menggantikan langkah
-     * pembayaran ini tanpa mengubah langkah 1-4/6/8.
-     *
      * @param  array{outlet_id:int, cashier_session_id:int, member_id?:int, member_card_id?:int,
-     *     payment_method_id:int, paid_amount?:int, bill_discount?:int, idempotency_key:string,
+     *     bill_discount?:int, idempotency_key:string,
+     *     payments: array<int, array<string, mixed>>,
      *     items: array<int, array{product_id:int, unit_id:int, qty:float, price_override?:int}>}  $cart
      */
     public function complete(array $cart): Sale
@@ -83,6 +77,7 @@ class SaleService
 
             $billDiscount = $cart['bill_discount'] ?? 0;
             $grandTotal = max(0, $subtotal - $billDiscount);
+            $member = $memberId !== null ? Member::findOrFail($memberId) : null;
 
             $sale = Sale::create([
                 'reference' => ReferenceGenerator::generate('INV', $outlet->id),
@@ -91,7 +86,10 @@ class SaleService
                 'user_id' => auth()->id(),
                 'member_id' => $memberId,
                 'member_card_id' => $cart['member_card_id'] ?? null,
-                'payment_method_id' => $cart['payment_method_id'],
+                // Nota split-payment tidak punya satu metode tunggal — kolom ini
+                // hanya terisi untuk kemudahan tampilan bila persis satu metode
+                // dipakai. Rincian lengkap selalu ada di sale_payments (T-055).
+                'payment_method_id' => count($cart['payments']) === 1 ? $cart['payments'][0]['payment_method_id'] : null,
                 'sale_date' => now(),
                 'type' => 'regular',
                 'subtotal' => $subtotal,
@@ -141,7 +139,11 @@ class SaleService
             }
 
             $grossProfit = $grandTotal - $totalCost;
-            [$paidAmount, $changeAmount] = $this->processPayment($sale, $session, $outlet, $cart, $grandTotal, $memberId);
+            $payments = $this->paymentService->process($sale, $cart['payments'], $member, $session, $outlet);
+            $this->sessionService->recordSaleCompleted($session);
+
+            $paidAmount = (int) $payments->sum(fn ($p) => $p->received_amount ?? $p->amount);
+            $changeAmount = (int) $payments->sum('change_amount');
 
             $sale->update([
                 'total_cost' => $totalCost,
@@ -150,38 +152,8 @@ class SaleService
                 'change_amount' => $changeAmount,
             ]);
 
-            return $sale->fresh(['items.product', 'member', 'paymentMethod']);
+            return $sale->fresh(['items.product', 'member', 'paymentMethod', 'payments.paymentMethod']);
         });
-    }
-
-    /**
-     * @return array{0: int, 1: int} [paid_amount, change_amount]
-     */
-    private function processPayment(Sale $sale, CashierSession $session, Outlet $outlet, array $cart, int $grandTotal, ?int $memberId): array
-    {
-        $paymentMethod = PaymentMethod::findOrFail($cart['payment_method_id']);
-
-        if ($paymentMethod->type === 'deposit') {
-            if ($memberId === null) {
-                throw new DomainException('Metode Saldo Deposit membutuhkan anggota yang terpilih.');
-            }
-
-            $member = Member::findOrFail($memberId);
-            $this->depositService->charge($member, $grandTotal, $sale, "{$cart['idempotency_key']}-deposit", $outlet->id, $session->id);
-            $this->sessionService->addSaleDeposit($session, $grandTotal);
-
-            return [$grandTotal, 0];
-        }
-
-        if ($paymentMethod->type === 'cash') {
-            $paidAmount = $cart['paid_amount'] ?? $grandTotal;
-            $changeAmount = max(0, $paidAmount - $grandTotal);
-            $this->sessionService->addSaleCash($session, $grandTotal);
-
-            return [$paidAmount, $changeAmount];
-        }
-
-        throw new DomainException("Metode bayar \"{$paymentMethod->name}\" belum didukung — split payment/QRIS/kredit menyusul Fase 9.");
     }
 
     /**
@@ -260,14 +232,12 @@ class SaleService
                 );
             }
 
-            $paymentMethod = $locked->paymentMethod;
+            foreach ($locked->payments as $payment) {
+                if ($payment->status === 'refunded') {
+                    continue;
+                }
 
-            if ($paymentMethod?->type === 'deposit' && $locked->member_id) {
-                $member = Member::findOrFail($locked->member_id);
-                $this->depositService->refund($member, $locked->grand_total, $locked, "{$locked->idempotency_key}-void");
-                $session->decrement('total_sales_deposit', $locked->grand_total);
-            } elseif ($paymentMethod?->type === 'cash') {
-                $session->decrement('total_sales_cash', $locked->grand_total);
+                $this->paymentService->refund($payment, $session);
             }
 
             $this->sessionService->addVoid($session);
