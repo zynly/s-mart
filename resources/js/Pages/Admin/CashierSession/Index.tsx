@@ -1,5 +1,6 @@
 import { useState, type FormEventHandler, type ReactElement } from 'react'
-import { useForm } from '@inertiajs/react'
+import { router, useForm } from '@inertiajs/react'
+import { toast } from 'sonner'
 import type { ColumnDef } from '@tanstack/react-table'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
@@ -12,6 +13,7 @@ import { Label } from '@/Components/ui/label'
 import { Textarea } from '@/Components/ui/textarea'
 import { Badge } from '@/Components/ui/badge'
 import { Card, CardContent } from '@/Components/ui/card'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import type { Paginated } from '@/Types'
 
@@ -46,10 +48,20 @@ type SessionRow = {
   status: string
 }
 
+type ActiveSaleRow = {
+  id: number
+  reference: string
+  sale_date: string
+  grand_total: number
+  status: string
+  voided_at: string | null
+}
+
 type CashierSessionIndexProps = {
   active: ActiveSession | null
   expected: number | null
   cashAccounts: Ref[]
+  activeSales: ActiveSaleRow[]
   recentSessions: SessionRow[] | Paginated<SessionRow>
 }
 
@@ -60,12 +72,48 @@ const STATUS_BADGE: Record<string, string> = {
   force_closed: 'bg-danger text-white',
 }
 
-export default function Index({ active, expected, cashAccounts, recentSessions }: CashierSessionIndexProps) {
+const SALE_STATUS_LABELS: Record<string, string> = { completed: 'Selesai', void: 'Dibatalkan' }
+const SALE_STATUS_BADGE: Record<string, string> = {
+  completed: 'bg-success text-white',
+  void: 'bg-danger text-white',
+}
+
+export default function Index({ active, expected, cashAccounts, activeSales, recentSessions }: CashierSessionIndexProps) {
   const [pinOpen, setPinOpen] = useState(false)
   const openForm = useForm({ cash_account_id: cashAccounts[0] ? String(cashAccounts[0].id) : '', opening_cash: 0 })
   // Sengaja default ke 0, bukan expected — kasir wajib menghitung fisik
   // uang di laci sungguhan, bukan sekadar menerima angka sistem.
   const closeForm = useForm({ actual_cash: 0, reason: '', approver_id: null as number | null })
+
+  const [voidTarget, setVoidTarget] = useState<ActiveSaleRow | null>(null)
+  const [voidReason, setVoidReason] = useState('')
+  const [voidPinOpen, setVoidPinOpen] = useState(false)
+  const [voiding, setVoiding] = useState(false)
+
+  function submitVoid(approverId: number) {
+    if (!voidTarget) return
+
+    setVoiding(true)
+
+    router.put(
+      route('pos.sales.void', voidTarget.id),
+      { reason: voidReason, approver_id: approverId },
+      {
+        preserveScroll: true,
+        onSuccess: () => {
+          setVoidTarget(null)
+          setVoidReason('')
+        },
+        onError: (errors) => toast.error(Object.values(errors)[0] ?? 'Gagal membatalkan nota.'),
+        onFinish: () => setVoiding(false),
+      },
+    )
+  }
+
+  function confirmVoidReason() {
+    if (!voidTarget || voidReason.trim().length < 5) return
+    setVoidPinOpen(true)
+  }
 
   const submitOpen: FormEventHandler = (e) => {
     e.preventDefault()
@@ -95,6 +143,28 @@ export default function Index({ active, expected, cashAccounts, recentSessions }
   }
 
   const sessions = Array.isArray(recentSessions) ? recentSessions : recentSessions.data
+
+  const saleColumns: ColumnDef<ActiveSaleRow, unknown>[] = [
+    { accessorKey: 'reference', header: 'Referensi' },
+    { id: 'date', header: 'Waktu', cell: ({ row }) => new Date(row.original.sale_date).toLocaleString('id-ID') },
+    { id: 'total', header: 'Total', cell: ({ row }) => <Money amount={row.original.grand_total} size="sm" /> },
+    {
+      id: 'status',
+      header: 'Status',
+      cell: ({ row }) => <Badge className={SALE_STATUS_BADGE[row.original.status] ?? ''}>{SALE_STATUS_LABELS[row.original.status] ?? row.original.status}</Badge>,
+    },
+    {
+      id: 'actions',
+      header: '',
+      cell: ({ row }) => (
+        row.original.status === 'completed' ? (
+          <Button size="sm" variant="outline" className="text-danger" onClick={() => { setVoidTarget(row.original); setVoidReason('') }}>
+            Void
+          </Button>
+        ) : null
+      ),
+    },
+  ]
 
   const columns: ColumnDef<SessionRow, unknown>[] = [
     { accessorKey: 'reference', header: 'Referensi' },
@@ -205,6 +275,13 @@ export default function Index({ active, expected, cashAccounts, recentSessions }
         </div>
       )}
 
+      {active && (
+        <div>
+          <p className="mb-2 font-medium">Nota Sesi Ini</p>
+          <DataTable columns={saleColumns} data={activeSales} getRowId={(row) => String(row.id)} emptyDescription="Belum ada nota pada sesi ini." />
+        </div>
+      )}
+
       <div>
         <p className="mb-2 font-medium">Riwayat Sesi</p>
         <DataTable columns={columns} data={sessions} getRowId={(row) => String(row.id)} emptyDescription="Belum ada riwayat sesi." />
@@ -220,6 +297,39 @@ export default function Index({ active, expected, cashAccounts, recentSessions }
           closeForm.setData('approver_id', approverId)
           setPinOpen(false)
           doSubmitClose(approverId)
+        }}
+      />
+
+      <Dialog open={voidTarget !== null} onOpenChange={(open) => !open && setVoidTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Batalkan Nota — {voidTarget?.reference}</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 px-1">
+            <div className="space-y-1.5">
+              <Label>Alasan Pembatalan (wajib, min. 5 karakter)</Label>
+              <Textarea value={voidReason} onChange={(e) => setVoidReason(e.target.value)} />
+            </div>
+            <p className="text-xs text-content-muted">Pembatalan nota memerlukan otorisasi PIN supervisor.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVoidTarget(null)}>Batal</Button>
+            <Button className="bg-danger text-white hover:bg-danger/90" onClick={confirmVoidReason} disabled={voidReason.trim().length < 5 || voiding}>
+              Lanjutkan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <SupervisorPinDialog
+        open={voidPinOpen}
+        onOpenChange={setVoidPinOpen}
+        permission="sale.void"
+        title="Otorisasi Void Nota"
+        description="Masukkan PIN supervisor untuk membatalkan nota ini."
+        onApproved={(approverId) => {
+          setVoidPinOpen(false)
+          submitVoid(approverId)
         }}
       />
     </div>

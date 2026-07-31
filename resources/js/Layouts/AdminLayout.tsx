@@ -33,6 +33,8 @@ const NAV_ITEMS = [
   { label: 'Promo', href: '/admin/promos' },
   { label: 'Kupon', href: '/admin/coupons' },
   { label: 'Poin', href: '/admin/points' },
+  { label: 'Retur Penjualan', href: '/admin/sale-returns' },
+  { label: 'Write-Off', href: '/admin/write-offs' },
   { label: 'Sesi Kasir', href: '/admin/cashier-session' },
   { label: 'Kas', href: '/admin/cash' },
   { label: 'Layar Kasir', href: '/pos' },

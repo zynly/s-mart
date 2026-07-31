@@ -142,13 +142,25 @@ di index ini; detail penuh ditulis saat fase tersebut mulai dikerjakan
 
 **Blocking:** Fase 9 selesai.
 
-## Fase 11 — Retur, Void & Koreksi
+## Fase 11 — Retur, Void & Koreksi `[SELESAI]`
 
-- [ ] ⬜ T-068 — Migration `sale_returns` + tukar barang (exchange)
-- [ ] ⬜ T-069 — `SaleReturnService::calculateRefundOptions()` (cek sesi asal — ADR-0007)
-- [ ] ⬜ T-070 — `VoidService` (pembalikan penuh: stok, saldo, kupon, poin, jurnal)
-- [ ] ⬜ T-071 — `revertCoupon()` (status kupon kembali `active` saat void)
-- [ ] ⬜ T-072 — Halaman retur/void/tukar barang + PIN supervisor
+- [x] ✅ T-068 — Migration `sale_returns` + `sale_return_items` + `sale_return_refunds` (di luar spec asli, wajib — tanpa ini tidak ada cara membatasi retur-kedua atau menyimpan status refund non-tunai yang pending) + `exchanges` + `stock_write_offs` + `stock_layer_consumptions.qty_returned` (kolom baru, wajib untuk retur SEBAGIAN — `is_returned` saja tidak cukup mencegah retur stok dobel) + `receivables.status` tambah enum `cancelled`
+- [x] ✅ T-069 — `SaleReturnService`: `getReturnableItems()`, `assertReturnable()` (status `completed` + dalam `pos.return_max_days`), `calculateRefundOptions()` (ADR-0007 — cash hanya ditawarkan bila sesi asal masih `open`, kalau sudah `closed` dialihkan ke deposit/transfer), `createAndProcess()` (alokasi FEFO ke layer asal, retur rusak → write-off otomatis dalam transaksi yang sama, refund proporsional largest-remainder). `PaymentService::refundPartial()` baru menangani refund per metode (cash lewat `CashierSessionService::addRefundCash()`, non-tunai lain tidak menyentuh counter sesi manapun — hanya sesi asal yang pernah mencatat penjualan itu secara sah)
+- [x] ✅ T-070 — `VoidService` diekstrak dari `SaleService::void()` (pola sama seperti `PaymentService::canUseCredit()` → `CreditHandler`; `SaleService::void()` sekarang delegasi 1 baris) — pembalikan stok, refund per metode asal, poin, kupon (T-071), dan piutang (`ReceivableService::cancelFromVoid()`, status `cancelled` bukan `paid` supaya laporan tidak menyesatkan). **Jurnal pembalik ditunda ke Fase 13** — modul akuntansi belum ada; semua data yang dibutuhkan (total, total_cost, refund per metode) sudah tersimpan di `sale_returns`/`sale_return_refunds`/`sales` sehingga Fase 13 bisa membangun jurnal void/retur/write-off tanpa migrasi ulang.
+- [x] ✅ T-071 — `VoucherService::revertCoupon()` — `used_count` dikembalikan, status kupon balik ke `active` HANYA dari `used` (bukan dari `cancelled` — deviasi sengaja dari contoh kode di CATATAN-PERBAIKAN.md: kupon yang sengaja dibatalkan admin tidak boleh hidup lagi walau nota yang memakainya di-void)
+- [x] ✅ T-072 — `Admin/SaleReturns/Create.tsx` (cari nota → tabel item qty/kondisi/restock → preview refund live dengan catatan ADR-0007 → `SupervisorPinDialog` → submit ber-idempotency-key), `Admin/SaleReturns/Index.tsx`, blok void ditambahkan ke `Admin/CashierSession/Index.tsx` yang sudah ada (bukan halaman baru — tabel nota sesi aktif + tombol Void), `Admin/WriteOffs/Index.tsx` (ajukan/setujui/proses/tolak). Tukar barang (exchange) diekspos lewat `ExchangeService`/`pos.exchanges.store` tanpa layar 2-panel khusus (item pengganti diproses sebagai `SaleService::complete()` biasa) — UI dua-panel penuh ditunda ke Fase UI-01.
+
+**Bug nyata ditemukan & diperbaiki (bukan cuma fitur baru):**
+- `SaleController::void()`: rute `PUT /pos/sales/{sale}/void` di-gate `can:sale.void`, izin yang TIDAK PERNAH dimiliki kasir manapun (hanya owner/admin/supervisor) — membuat fitur void secara arsitektural tidak bisa dicapai lewat alur PIN-override kasir yang dimaksud sejak awal. Diperbaiki: middleware rute diganti `can:sale.view` (izin yang kasir punya), `VoidSaleRequest` mewajibkan `approver_id` eksplisit, dan `VoidService::void()` sendiri yang memvalidasi `approver_id` benar-benar punya `sale.void` (defense-in-depth, pola sama seperti `CashierSessionController::close()`/`CashierSessionService::close()` yang sudah ada sejak Fase 7).
+- **`HandleInertiaRequests::share()` tidak pernah mengekspos `approverId`** — `AuthorizationOverrideController` men-flash `approverId` ke session via `->with()`, tapi middleware share tidak pernah membacanya ke props. Akibatnya `SupervisorPinDialog`'s `onApproved(page.props.approverId)` SELALU menerima `undefined` di SETIAP alur PIN supervisor di seluruh aplikasi (tutup sesi dengan selisih kas, ubah harga, diskon di atas batas — bukan cuma fitur baru Fase 11), bug lama yang lolos karena verifikasi sebelumnya selalu lewat tinker (memanggil service langsung, melewati layer flash-session Inertia). Ditemukan HANYA lewat verifikasi Playwright browser sungguhan (klik PIN dialog asli) — persis kelas bug yang tidak akan pernah ketahuan dari tinker atau unit test service. Diperbaiki: `HandleInertiaRequests::share()` menambahkan `'approverId' => fn () => $request->session()->get('approverId')`.
+- `SaleReturns/Create.tsx`'s `refreshPreview()` memakai `fetch()` mentah (bukan `router.post` Inertia) untuk `POST /pos/returns/refund-preview`, awalnya mengambil CSRF token dari `<meta name="csrf-token">` yang TIDAK PERNAH ada di `app.blade.php` aplikasi ini (selalu 419). Diperbaiki: baca cookie `XSRF-TOKEN` langsung dan kirim sebagai header `X-XSRF-TOKEN` (pola yang dipakai axios/Inertia secara default, tidak otomatis untuk `fetch()` polos).
+
+**Ditunda (didokumentasikan, pola sama seperti T-067):**
+- Laporan Retur & Laporan Void → Fase 16 (read-model murni, tidak ada yang terblokir).
+- Layar Tukar Barang 2-panel penuh → Fase UI-01.
+- PDF nota retur → belum dibuat, bisa disusulkan kapan saja (kloning `receipt.blade.php`).
+
+**Verifikasi:** tinker penuh per service (StockService partial-return guard, VoidService dengan kupon+poin+kredit+deposit split, SaleReturnService dengan ADR-0007 sesi tertutup, WriteOffService retur rusak net-stock-zero, ExchangeService kedua arah `price_difference`) + `pint --test`/`tsc --noEmit`/`eslint`/`build` bersih + **verifikasi Playwright browser sungguhan** (login kasir → void nota via PIN supervisor dengan `voided_by` = approver bukan kasir → retur atas nota dengan sesi asal tertutup, cash hilang dari opsi dengan catatan ADR-0007 tampil → submit dengan PIN → redirect ke daftar retur) yang menemukan 2 bug nyata di atas.
 
 **Blocking:** Fase 10 selesai.
 

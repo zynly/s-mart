@@ -10,6 +10,7 @@ use App\Http\Requests\Admin\CloseCashierSessionRequest;
 use App\Http\Requests\Admin\OpenCashierSessionRequest;
 use App\Models\CashAccount;
 use App\Models\CashierSession;
+use App\Models\Sale;
 use App\Models\User;
 use App\Services\CashierSessionService;
 use Illuminate\Http\RedirectResponse;
@@ -30,6 +31,11 @@ class CashierSessionController extends Controller
             'active' => $active?->load('cashAccount:id,name'),
             'expected' => $active !== null ? $this->sessionService->calculateExpected($active) : null,
             'cashAccounts' => CashAccount::where('is_drawer', true)->where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'activeSales' => $active !== null
+                ? Sale::where('cashier_session_id', $active->id)
+                    ->orderByDesc('id')
+                    ->get(['id', 'reference', 'sale_date', 'grand_total', 'status', 'voided_at'])
+                : [],
             'recentSessions' => CashierSession::where('user_id', $request->user()->id)
                 ->where('status', '!=', 'open')
                 ->orderByDesc('closed_at')

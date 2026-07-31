@@ -338,6 +338,31 @@ declare module 'ziggy-js' {
         }
     ],
     "admin.points.index": [],
+    "admin.sale-returns.index": [],
+    "admin.sale-returns.create": [],
+    "admin.write-offs.index": [],
+    "admin.write-offs.store": [],
+    "admin.write-offs.approve": [
+        {
+            "name": "writeOff",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.write-offs.process": [
+        {
+            "name": "writeOff",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.write-offs.reject": [
+        {
+            "name": "writeOff",
+            "required": true,
+            "binding": "id"
+        }
+    ],
     "pos.index": [],
     "pos.scan": [],
     "pos.search-member": [],
@@ -372,6 +397,10 @@ declare module 'ziggy-js' {
             "binding": "id"
         }
     ],
+    "pos.returns.lookup": [],
+    "pos.returns.refund-preview": [],
+    "pos.returns.store": [],
+    "pos.exchanges.store": [],
     "storage.local": [
         {
             "name": "path",

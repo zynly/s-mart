@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 class StockLayerConsumption extends Model
 {
     protected $fillable = [
-        'stock_layer_id', 'qty', 'unit_cost', 'total_cost',
+        'stock_layer_id', 'qty', 'qty_returned', 'unit_cost', 'total_cost',
         'consumableable_type', 'consumableable_id', 'is_returned',
     ];
 
@@ -17,6 +17,7 @@ class StockLayerConsumption extends Model
     {
         return [
             'qty' => 'decimal:3',
+            'qty_returned' => 'decimal:3',
             'unit_cost' => 'integer',
             'total_cost' => 'integer',
             'is_returned' => 'boolean',

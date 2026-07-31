@@ -11,7 +11,6 @@ use App\Models\Promo;
 use App\Models\Sale;
 use App\Models\SaleHold;
 use App\Models\SaleItem;
-use App\Models\StockLayerConsumption;
 use App\Models\Unit;
 use App\Models\UnitConversion;
 use App\Models\User;
@@ -29,6 +28,7 @@ class SaleService
         private readonly PromoEngine $promoEngine,
         private readonly VoucherService $voucherService,
         private readonly PointService $pointService,
+        private readonly VoidService $voidService,
     ) {}
 
     /**
@@ -262,73 +262,13 @@ class SaleService
         return $cart;
     }
 
+    /**
+     * Delegasi ke VoidService (Fase 11 / T-070) — dipertahankan di sini
+     * supaya pemanggil lama (SaleController, dst.) tidak perlu berubah.
+     */
     public function void(Sale $sale, string $reason, ?User $approver = null): Sale
     {
-        return DB::transaction(function () use ($sale, $reason, $approver) {
-            $locked = Sale::lockForUpdate()->findOrFail($sale->id);
-
-            if ($locked->status !== 'completed') {
-                throw new DomainException('Hanya nota berstatus selesai yang bisa dibatalkan.');
-            }
-
-            $session = CashierSession::findOrFail($locked->cashier_session_id);
-
-            if ($session->status !== 'open') {
-                throw new DomainException('Sesi kasir nota ini sudah tutup — void tidak diperbolehkan (gunakan retur).');
-            }
-
-            foreach ($locked->items as $item) {
-                $consumptions = StockLayerConsumption::where('consumableable_type', SaleItem::class)
-                    ->where('consumableable_id', $item->id)
-                    ->where('is_returned', false)
-                    ->get();
-
-                foreach ($consumptions as $consumption) {
-                    $this->stockService->returnToLayer($consumption, (float) $consumption->qty);
-                }
-
-                $qtyBefore = $this->stockService->getAvailable($item->product, $locked->outlet);
-                $this->stockService->recordMovement(
-                    $item->product,
-                    $locked->outlet,
-                    'sale_return',
-                    (float) $item->qty_base,
-                    $qtyBefore,
-                    $item->unit_cost,
-                    $locked,
-                    "Void: {$reason}",
-                );
-            }
-
-            foreach ($locked->payments as $payment) {
-                if ($payment->status === 'refunded') {
-                    continue;
-                }
-
-                $this->paymentService->refund($payment, $session);
-            }
-
-            if ($locked->member_id !== null && $locked->points_earned > 0) {
-                $this->pointService->voidEarn(Member::findOrFail($locked->member_id), $locked->points_earned, $locked);
-            }
-
-            $promoIds = $locked->items()->whereNotNull('promo_id')->pluck('promo_id')->unique();
-
-            foreach ($promoIds as $promoId) {
-                Promo::whereKey($promoId)->where('used_count', '>', 0)->decrement('used_count');
-            }
-
-            $this->sessionService->addVoid($session);
-
-            $locked->update([
-                'status' => 'void',
-                'void_reason' => $reason,
-                'voided_by' => $approver?->id,
-                'voided_at' => now(),
-            ]);
-
-            return $locked;
-        });
+        return $this->voidService->void($sale, $reason, $approver);
     }
 
     private function convertToBaseQty(Product $product, Unit $unit, float $qty): float

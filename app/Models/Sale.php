@@ -103,4 +103,9 @@ class Sale extends Model
     {
         return $this->belongsTo(User::class, 'voided_by');
     }
+
+    public function returns(): HasMany
+    {
+        return $this->hasMany(SaleReturn::class);
+    }
 }

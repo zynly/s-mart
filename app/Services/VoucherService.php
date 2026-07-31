@@ -18,8 +18,9 @@ use Illuminate\Support\Facades\DB;
  *   - Tidak ada kembalian — sisa nilai kupon hangus (potongan dibatasi
  *     sampai total tagihan, tidak pernah negatif).
  *   - Satu kupon per nota (tidak ditumpuk dengan kupon lain).
- *   - Saat void: revertCoupon() adalah tanggung jawab Fase 11/VoidService
- *     (CATATAN-PERBAIKAN.md §Fase 11) — tidak diimplementasikan di sini.
+ *   - Saat void: revertCoupon() (T-071) membalikkan used_count dan
+ *     mengembalikan status ke 'active' bila belum expired
+ *     (CATATAN-PERBAIKAN.md §Fase 11).
  */
 class VoucherService
 {
@@ -103,6 +104,39 @@ class VoucherService
             ]);
 
             return $redemption;
+        });
+    }
+
+    /**
+     * T-071. Dipanggil VoidService saat sebuah nota dibatalkan. Contoh
+     * kode di CATATAN-PERBAIKAN.md §Fase 11 selalu mengembalikan status
+     * ke 'active' bila belum expired — sengaja DIBEDAKAN di sini: kupon
+     * yang sudah sengaja dibatalkan admin lewat CouponController::cancel()
+     * (status 'cancelled') tidak boleh hidup lagi hanya karena sebuah
+     * nota lamanya di-void.
+     */
+    public function revertCoupon(CouponRedemption $redemption): void
+    {
+        if ($redemption->is_reverted) {
+            return;
+        }
+
+        DB::transaction(function () use ($redemption) {
+            $locked = CouponRedemption::lockForUpdate()->findOrFail($redemption->id);
+
+            if ($locked->is_reverted) {
+                return;
+            }
+
+            $coupon = Coupon::lockForUpdate()->findOrFail($locked->coupon_id);
+
+            $locked->update(['is_reverted' => true]);
+            Coupon::whereKey($coupon->id)->where('used_count', '>', 0)->decrement('used_count');
+            $coupon->refresh();
+
+            if ($coupon->status === 'used' && $coupon->valid_until >= now()) {
+                $coupon->update(['status' => 'active']);
+            }
         });
     }
 }

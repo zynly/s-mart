@@ -54,6 +54,10 @@ class HandleInertiaRequests extends Middleware
                 'info' => fn () => $request->session()->get('info'),
             ],
             'status' => fn () => $request->session()->get('status'),
+            // AuthorizationOverrideController men-flash ini via ->with()
+            // setelah PIN supervisor tervalidasi — SupervisorPinDialog
+            // membacanya dari page.props untuk resolve approver_id.
+            'approverId' => fn () => $request->session()->get('approverId'),
             'ziggy' => fn () => [
                 ...(new Ziggy)->toArray(),
                 'location' => $request->url(),

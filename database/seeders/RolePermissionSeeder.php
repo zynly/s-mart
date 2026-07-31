@@ -77,6 +77,11 @@ class RolePermissionSeeder extends Seeder
             ...$this->permissionsFor(['pos', 'sale'], self::ACTIONS),
             ...$this->permissionsFor(['product', 'member', 'card', 'cash'], ['view']),
             ...$this->permissionsFor(['stock', 'opname', 'adjustment'], ['view', 'approve']),
+            // sale_return.approve dipakai SupervisorPinDialog saat memproses
+            // retur (Fase 11) — sebelumnya supervisor tidak punya modul ini
+            // sama sekali padahal sale.void dan adjustment.approve (otorisasi
+            // sejenis) sudah ada di baris di atas.
+            ...$this->permissionsFor(['sale_return'], ['view', 'create', 'approve']),
             ...$this->permissionsFor(['report'], ['view', 'export', 'print']),
             'sale.void',
             'sale.change_price',

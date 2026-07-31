@@ -12,12 +12,14 @@ use App\Exceptions\MemberPinNotSetException;
 use App\Exceptions\PaymentMismatchException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CompleteSaleRequest;
+use App\Http\Requests\Admin\VoidSaleRequest;
 use App\Models\Member;
 use App\Models\Outlet;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleHold;
+use App\Models\User;
 use App\Services\BarcodeResolverService;
 use App\Services\CardService;
 use App\Services\CashierSessionService;
@@ -188,12 +190,12 @@ class SaleController extends Controller
         return response()->json(['cart' => $this->saleService->recall($saleHold)]);
     }
 
-    public function void(Request $request, Sale $sale): RedirectResponse
+    public function void(VoidSaleRequest $request, Sale $sale): RedirectResponse
     {
-        $data = $request->validate(['reason' => ['required', 'string', 'max:255']]);
+        $approver = User::findOrFail($request->validated('approver_id'));
 
         try {
-            $this->saleService->void($sale, $data['reason'], $request->user());
+            $this->saleService->void($sale, $request->validated('reason'), $approver);
         } catch (DomainException $e) {
             throw ValidationException::withMessages(['reason' => $e->getMessage()]);
         }

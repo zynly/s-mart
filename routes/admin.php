@@ -19,10 +19,12 @@ use App\Http\Controllers\Admin\PurchaseController;
 use App\Http\Controllers\Admin\PurchaseOrderController;
 use App\Http\Controllers\Admin\ReceivableController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\SaleReturnController;
 use App\Http\Controllers\Admin\StockController;
 use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\UnitController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\WriteOffController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -183,4 +185,18 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::put('/coupons/{coupon}/cancel', [CouponController::class, 'cancel'])->name('coupons.cancel')->middleware('can:coupon.update');
 
     Route::get('/points', [PointController::class, 'index'])->name('points.index')->middleware('can:member.view');
+
+    // Retur, Void & Koreksi (Fase 11)
+    Route::middleware('can:sale_return.view')->group(function () {
+        Route::get('/sale-returns', [SaleReturnController::class, 'index'])->name('sale-returns.index');
+    });
+    Route::get('/sale-returns/create', [SaleReturnController::class, 'create'])->name('sale-returns.create')->middleware('can:sale_return.create');
+
+    Route::middleware('can:adjustment.view')->group(function () {
+        Route::get('/write-offs', [WriteOffController::class, 'index'])->name('write-offs.index');
+    });
+    Route::post('/write-offs', [WriteOffController::class, 'store'])->name('write-offs.store')->middleware('can:adjustment.create');
+    Route::put('/write-offs/{writeOff}/approve', [WriteOffController::class, 'approve'])->name('write-offs.approve')->middleware('can:adjustment.approve');
+    Route::put('/write-offs/{writeOff}/process', [WriteOffController::class, 'process'])->name('write-offs.process')->middleware('can:adjustment.approve');
+    Route::put('/write-offs/{writeOff}/reject', [WriteOffController::class, 'reject'])->name('write-offs.reject')->middleware('can:adjustment.approve');
 });

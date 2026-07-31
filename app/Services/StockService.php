@@ -10,6 +10,7 @@ use App\Models\StockLayer;
 use App\Models\StockLayerConsumption;
 use App\Models\StockMovement;
 use App\Support\ReferenceGenerator;
+use DomainException;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -113,17 +114,29 @@ class StockService
     }
 
     /**
-     * Kembalikan qty ke layer asal (bukan bikin layer baru).
+     * Kembalikan qty ke layer asal (bukan bikin layer baru). Aman
+     * dipanggil berkali-kali dengan qty parsial atas consumption yang
+     * sama (retur sebagian) — qty_returned kumulatif dijaga tidak
+     * pernah menembus qty konsumsi asal (Fase 11 / T-069).
      */
     public function returnToLayer(StockLayerConsumption $consumption, float $qty): void
     {
         DB::transaction(function () use ($consumption, $qty) {
-            $layer = StockLayer::lockForUpdate()->findOrFail($consumption->stock_layer_id);
+            $lockedConsumption = StockLayerConsumption::lockForUpdate()->findOrFail($consumption->id);
+            $layer = StockLayer::lockForUpdate()->findOrFail($lockedConsumption->stock_layer_id);
+
+            $newQtyReturned = (float) $lockedConsumption->qty_returned + $qty;
+
+            if ($newQtyReturned > (float) $lockedConsumption->qty) {
+                throw new DomainException('Qty retur melebihi qty yang pernah dikonsumsi dari layer ini.');
+            }
+
             $layer->increment('qty_remaining', $qty);
 
-            if ($qty >= (float) $consumption->qty) {
-                $consumption->update(['is_returned' => true]);
-            }
+            $lockedConsumption->update([
+                'qty_returned' => $newQtyReturned,
+                'is_returned' => $newQtyReturned >= (float) $lockedConsumption->qty,
+            ]);
 
             $this->recalculateCache($layer->product, $layer->outlet);
         });
