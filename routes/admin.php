@@ -25,6 +25,7 @@ use App\Http\Controllers\Admin\PromoController;
 use App\Http\Controllers\Admin\PurchaseController;
 use App\Http\Controllers\Admin\PurchaseOrderController;
 use App\Http\Controllers\Admin\ReceivableController;
+use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SaleReturnController;
 use App\Http\Controllers\Admin\StockAdjustmentController;
@@ -266,4 +267,15 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     });
     Route::put('/accounting-periods/close', [AccountingPeriodController::class, 'close'])->name('accounting-periods.close')->middleware('can:period.close');
     Route::put('/accounting-periods/reopen', [AccountingPeriodController::class, 'reopen'])->name('accounting-periods.reopen')->middleware('can:period.close');
+
+    // Laporan (Fase 14) — gating akses per laporan dilakukan di dalam
+    // ReportController::visibleTo() (kategori vs role, T-090), bukan
+    // middleware can: di sini (report.view dipegang semua role termasuk
+    // kasir, tidak cukup untuk membedakan cakupannya).
+    Route::middleware('can:report.view')->group(function () {
+        Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('/reports/{key}', [ReportController::class, 'show'])->name('reports.show');
+        Route::post('/reports/{key}/export', [ReportController::class, 'export'])->name('reports.export');
+    });
+    Route::get('/reports-download/{filename}', [ReportController::class, 'download'])->name('reports.download')->middleware('signed');
 });

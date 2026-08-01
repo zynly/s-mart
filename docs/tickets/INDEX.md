@@ -212,15 +212,154 @@ di index ini; detail penuh ditulis saat fase tersebut mulai dikerjakan
 
 **Blocking:** Fase 12 selesai.
 
-## Fase 14 — Laporan
+## Fase 14 — Laporan `[SELESAI]`
 
-- [ ] ⬜ T-084 — `BaseReport` (arsitektur reuse dengan dashboard Fase 15)
-- [ ] ⬜ T-085 — Laporan penjualan (per kasir, per produk, per metode bayar)
-- [ ] ⬜ T-086 — Laporan stok (kartu stok, stok kritis, kadaluwarsa)
-- [ ] ⬜ T-087 — Laporan keuangan (L/R, neraca, arus kas)
-- [ ] ⬜ T-088 — Laporan piutang/hutang (aging 0–30/31–60/61–90/>90 hari)
-- [ ] ⬜ T-089 — Ekspor Excel via antrian cron (>5000 baris, shared hosting)
-- [ ] ⬜ T-090 — Akses laporan berdasarkan role (cashier: sesi sendiri saja, dst)
+- [x] ✅ T-084 — `app/Reports/BaseReport.php` (abstract: `key()`, `title()`,
+      `category()`, `requiredPermission()`, `filters()`, `query()`,
+      `columns()`, `summary()`, `scopeForCashier()`, + 2 helper `final`
+      dipakai ulang semua laporan: `visibleColumns()` dan
+      `visibleSummary()` — satu implementasi filter kolom/ringkasan
+      cost-sensitif, bukan diduplikasi tiap laporan, lihat Temuan D).
+      `app/Reports/ReportRegistry.php` — satu peta `key => class` dipakai
+      ulang `ReportController` (halaman) dan `GenerateReportExportJob`
+      (antrian) supaya tidak ada 2 salinan array yang bisa tidak sinkron.
+      **`toPdf()` di interface spec sengaja didrop** — konsisten pola PDF
+      di luar nota yang ditunda di semua fase lain (Temuan F).
+- [x] ✅ T-085 — 4 laporan penjualan: `SalesSummaryReport` (rekap
+      harian), `SalesByProductReport` (qty/omzet/HPP/margin),
+      `SalesByCashierReport`, `SalesByPaymentMethodReport` (+beban MDR).
+      Semua kategori `penjualan`, auto-scope ke kasir sendiri lewat
+      `scopeForCashier()` (Temuan D).
+- [x] ✅ T-086 — 3 laporan stok: `StockSummaryReport` (qty+nilai
+      persediaan), `StockCardReport` (kartu stok per produk — filter
+      `product_id` diperlakukan sebagai filter biasa bertipe `product`,
+      bukan parameter route terpisah; kosong → query sengaja
+      `whereRaw('1=0')`, frontend tampilkan pesan "pilih produk dulu"),
+      `StockCriticalExpiryReport` (gabung stok kritis `qty<=min_stock`
+      + kadaluwarsa `<=N hari` jadi SATU laporan lewat SQL `UNION ALL`
+      dua SELECT dengan bentuk kolom sama — bukan digabung di PHP,
+      supaya tetap satu result-set yang bisa dipaginasi `BaseReport`
+      generik).
+- [x] ✅ T-087 — `CashLedgerReport` (Buku Kas — mutasi `cash_transactions`
+      semua akun kas, beda dari Buku Besar Fase 13 yang sumbernya
+      `journal_entries`/akuntansi double-entry). **Laba Rugi & Neraca
+      Fase 13 TIDAK dibangun ulang sebagai `BaseReport` generik** —
+      keduanya sudah punya tata letak laporan keuangan terstruktur +
+      perbandingan periode yang sudah teruji browser sungguhan;
+      memaksanya ke bentuk kolom/baris generik adalah kemunduran
+      presentasi tanpa manfaat. Cukup di-link dari Reports hub sebagai
+      "Laporan Keuangan Lengkap" (Temuan B).
+- [x] ✅ T-088 — `ReceivableAgingReport`/`DebtAgingReport` — wrapper
+      tipis di atas aturan bucket yang SAMA PERSIS dengan
+      `ReceivableService::getAging()`/`DebtService::getAging()` (Fase
+      6/9) — method itu sendiri TIDAK dipanggil langsung karena
+      mengembalikan `Collection` eager (peta+`diffInDays()` per baris),
+      tidak cocok dipaginasi `BaseReport` yang butuh `Builder`. Aturan
+      bucket (current/0-30/31-60/61-90/90+) diekspresikan ulang sebagai
+      SQL `CASE WHEN DATEDIFF(...)` yang identik — bukan aturan baru
+      (Temuan C).
+- [x] ✅ T-089 — `app/Exports/ReportExport.php` (satu class generik
+      `FromQuery`+`WithHeadings`+`WithMapping` dipakai SEMUA laporan,
+      kolom persis `visibleColumns()` — user tanpa `product.view_cost`
+      juga tidak dapat kolom HPP/margin di file Excel, bukan cuma
+      disembunyikan di layar). Ambang **5000 baris** (dihitung lewat
+      `paginate(1)->total()`, BUKAN `Builder::count()` polos — `count()`
+      gagal untuk query ber-`groupBy` karena alias `SELECT` hilang di
+      query count yang disederhanakan Laravel, bug nyata ditemukan saat
+      tinker, `paginate()->total()` sudah menangani ini dengan benar):
+      ≤5000 baris ditulis ke `storage/app/private/exports/` lalu
+      dikembalikan **signed URL** (`URL::temporarySignedRoute`, 24 jam)
+      langsung; >5000 baris `GenerateReportExportJob` (ShouldQueue) di
+      antrian `database` (shared hosting tanpa Supervisor — cron
+      `schedule:run` per menit yang memicu `queue:work --stop-when-
+      empty`, BUKAN daemon terus-menerus, sesuai CATATAN-PERBAIKAN.md),
+      selesai kirim `ReportExportReadyNotification` (channel
+      `database`+`mail`, `mail` log-only lewat `MAIL_MAILER=log` di dev
+      — SMTP sungguhan concern deploy Fase 18). **Route unduh dijaga
+      Laravel signed-URL middleware `signed`** (menolak link ditempel/
+      kedaluwarsa otomatis), BUKAN pengecekan kepemilikan notifikasi
+      ad-hoc yang lebih rapuh — desain awal sempat lewat situ, diganti
+      ke pola signed-URL standar Laravel sebelum selesai. Riwayat ekspor
+      tampil sebagai panel "Ekspor Saya" di Reports hub (query
+      `$user->notifications()`, tabel `notifications` SUDAH ada sejak
+      Fase 0 + `User` sudah `Notifiable` — tidak perlu migration baru).
+      **Bel notifikasi in-app global SENGAJA tidak dibangun di sini**
+      — itu tiket Fase 15 (T-094), supaya tidak mendahului/duplikasi.
+      Ekspor sinkron (≤5000 baris) TIDAK membuat baris notifikasi
+      (didownload langsung lewat popup saat itu juga, tidak perlu
+      "diberitahu" — panel "Ekspor Saya" jadi murni riwayat ekspor
+      ANTRIAN, bukan riwayat semua ekspor; didokumentasikan di sini
+      supaya jelas ini keputusan sadar, bukan bug).
+- [x] ✅ T-090 — Akses per role BUKAN sekadar permission `report.view`
+      (dipegang SEMUA role termasuk kasir) — tiap `BaseReport`
+      mendeklarasikan `category()` + `requiredPermission()` modul yang
+      benar-benar relevan (mis. `stock.view` utk laporan stok,
+      `debt.view`/`receivable.view` utk aging). Role `cashier`
+      (`hasRole('cashier')`, satu-satunya pengecekan nama-role eksplisit
+      di seluruh fitur ini — sengaja, karena aturan spec memang per
+      nama role literal "Kasir: hanya laporan sesinya sendiri") HANYA
+      melihat kategori `penjualan` di Reports hub, TERLEPAS dari
+      permission modul lain yang kebetulan dipegang untuk keperluan
+      lain (kasir sudah lama punya `stock.view`/`cash.view` sejak
+      fase-fase awal, bukan untuk laporan) — laporan penjualan itu
+      sendiri di-scope `where('user_id', auth()->id())` lewat
+      `scopeForCashier()`, pola sama persis
+      `CashierSessionController::index()`. Kolom & baris ringkasan
+      HPP/margin disembunyikan lewat `product.view_cost` (pola sudah
+      ada sejak `ProductController`/`StockController`, dipakai ulang
+      apa adanya) — **bug nyata ditemukan & diperbaiki saat verifikasi
+      Playwright**: baris ringkasan (`summary()`) awalnya BOCOR
+      menampilkan angka HPP/Laba Kotor ke kasir meski kolom tabelnya
+      sendiri sudah benar disembunyikan (`visibleColumns()` sudah ada,
+      tapi belum ada versi `summary()`-nya) — diperbaiki dengan
+      `visibleSummary()` yang memfilter key ringkasan memakai sumber
+      kebenaran yang SAMA (`hideWithoutCost` di `columns()`).
+
+**Bug nyata ditemukan & diperbaiki (di luar cakupan tiket, ditemukan
+saat verifikasi tinker/Playwright):**
+- `Builder::count()` gagal untuk semua laporan ber-`groupBy` (4 laporan
+  penjualan + `StockCriticalExpiryReport`) — dipakai buat memutuskan
+  ambang ekspor sinkron/antrian (T-089). Diperbaiki: `paginate(1)->
+  total()` (mekanisme yang sama sudah dipakai `show()`/paginasi
+  laporan, sudah pasti benar untuk query ber-`groupBy`).
+- Baris ringkasan bocor kolom cost-sensitif ke role tanpa
+  `product.view_cost` (lihat T-090 di atas) — diperbaiki
+  `visibleSummary()`.
+
+**Ditunda (didokumentasikan, pola sama seperti fase-fase sebelumnya):**
+- 32 laporan lengkap di spec (§Fase 14 bagian 2) — cakupan fase ini
+  ikut 7 tiket INDEX.md (9 laporan `BaseReport` baru + Laba Rugi/Neraca
+  Fase 13 di-link), bukan wishlist spec penuh. Arsitektur `BaseReport`
+  yang dibangun trivially extensible untuk menambah sisanya kapan saja
+  (Penjualan per Kategori, Produk Terlaris, Analisis Jam Ramai, Laporan
+  Deposit, Laporan Anggota, Efektivitas Promo, Laporan Konsinyasi per
+  Supplier, dst) tanpa perubahan arsitektur.
+- Cetak PDF laporan (`toPdf()` di spec) → ditunda, pola sama semua PDF
+  di luar nota di seluruh fase lain.
+- Laporan Terjadwal (kirim otomatis ke email owner harian/mingguan/
+  bulanan), Perbandingan Antar-Outlet, cetak kop surat sekolah (spec
+  §4 Fitur Tambahan) → di luar 7 tiket INDEX.md, bisa disusulkan kapan
+  saja di atas arsitektur `BaseReport` yang sudah ada.
+- Bel notifikasi in-app global → tiket Fase 15 T-094, sengaja tidak
+  didahului (lihat T-089 di atas).
+
+**Verifikasi:** tinker penuh per laporan (query manual dicocokkan
+angka mentah dari DB, termasuk skenario scope kasir pada
+`SalesSummaryReport`/`SalesByProductReport`) + ekspor sinkron & antrian
+(`dispatchSync`) + `pint --test`/`tsc --noEmit`/`eslint`/`build` bersih
++ **verifikasi Playwright browser sungguhan** lintas 4 role (owner/
+treasurer/warehouse/kasir1) — kategori Reports hub persis sesuai role
+(kasir1 HANYA lihat Penjualan, warehouse Penjualan+Stok, treasurer &
+owner semua), laporan penjualan kasir1 ter-scope ke transaksi sendiri
+saja (3 dari 4 total) dengan kolom HPP tersembunyi di tabel MAUPUN
+ringkasan, `StockCriticalExpiryReport` (UNION query) dan `StockCardReport`
+(filter produk + empty-state) tampil benar, `ReceivableAgingReport`/
+`DebtAgingReport` bucket cocok (diuji dengan piutang/hutang sengaja
+dimundurkan jatuh temponya ke 100/45 hari), ekspor Excel sinkron via
+tombol UI (toast sukses + file terunduh via popup) dan ekspor antrian
+via job (notifikasi database muncul di panel "Ekspor Saya", tautan
+unduh signed-URL berhasil diklik dan file benar-benar terunduh) —
+console browser bersih tanpa error di semua langkah.
 
 **Blocking:** Fase 13 selesai.
 

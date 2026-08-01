@@ -47,6 +47,7 @@ const NAV_ITEMS = [
   { label: 'Laba Rugi', href: '/admin/profit-loss' },
   { label: 'Neraca', href: '/admin/balance-sheet' },
   { label: 'Periode Akuntansi', href: '/admin/accounting-periods' },
+  { label: 'Laporan', href: '/admin/reports' },
   { label: 'Layar Kasir', href: '/pos' },
   { label: 'Pengguna', href: '/admin/users' },
   { label: 'Role & Izin', href: '/admin/roles' },
