@@ -16,6 +16,7 @@ use App\Models\UnitConversion;
 use App\Models\User;
 use App\Support\ReferenceGenerator;
 use DomainException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class SaleService
@@ -69,15 +70,44 @@ class SaleService
             $memberId = $cart['member_id'] ?? null;
             $member = $memberId !== null ? Member::findOrFail($memberId) : null;
 
+            // Temuan audit performa (Phase C, CRITICAL): sebelumnya
+            // Product::findOrFail()/Unit::findOrFail()/UnitConversion
+            // query per BARIS keranjang (3 query/baris di luar harga) —
+            // keranjang 10 item = 30+ query cuma untuk resolusi
+            // produk/satuan. Batch sekali di sini, bukan per-iterasi.
+            // PriceService::getActivePrice() TIDAK ikut di-batch (dipakai
+            // luas di banyak service lain, batching-nya perlu perubahan
+            // API bersama yang di luar skop perbaikan checkout ini —
+            // dicatat sebagai lanjutan Phase C di INDEX.md).
+            $productIds = array_values(array_unique(array_column($cart['items'], 'product_id')));
+            $unitIds = array_values(array_unique(array_column($cart['items'], 'unit_id')));
+            $products = Product::findOrFail($productIds)->keyBy('id');
+            $units = Unit::findOrFail($unitIds)->keyBy('id');
+
+            $itemsNeedingConversion = array_filter(
+                $cart['items'],
+                fn (array $item) => (int) $item['unit_id'] !== $products[$item['product_id']]->base_unit_id,
+            );
+            $conversionUnitIds = array_values(array_unique(array_map(
+                fn (array $item) => (int) $item['unit_id'],
+                $itemsNeedingConversion,
+            )));
+            $conversions = $conversionUnitIds === []
+                ? collect()
+                : UnitConversion::whereIn('product_id', $productIds)
+                    ->whereIn('from_unit_id', $conversionUnitIds)
+                    ->get()
+                    ->keyBy(fn (UnitConversion $c) => "{$c->product_id}:{$c->from_unit_id}:{$c->to_unit_id}");
+
             $lines = [];
             $subtotal = 0;
 
             foreach ($cart['items'] as $index => $item) {
-                $product = Product::findOrFail($item['product_id']);
-                $unit = Unit::findOrFail($item['unit_id']);
+                $product = $products[$item['product_id']];
+                $unit = $units[$item['unit_id']];
                 $activePrice = $this->priceService->getActivePrice($product, $outlet, $unit, $memberId);
                 $unitPrice = $item['price_override'] ?? $activePrice;
-                $qtyBase = $this->convertToBaseQty($product, $unit, (float) $item['qty']);
+                $qtyBase = $this->convertToBaseQty($product, $unit, (float) $item['qty'], $conversions);
                 $lineSubtotal = (int) round($unitPrice * (float) $item['qty']);
 
                 $lines[] = [
@@ -349,16 +379,24 @@ class SaleService
         return $approver;
     }
 
-    private function convertToBaseQty(Product $product, Unit $unit, float $qty): float
+    /**
+     * @param  Collection<string, UnitConversion>|null  $prefetched  Hasil batch-load
+     *                                                               dari complete() — kalau null, query langsung (dipakai pemanggil lain/standalone).
+     */
+    private function convertToBaseQty(Product $product, Unit $unit, float $qty, ?Collection $prefetched = null): float
     {
         if ($unit->id === $product->base_unit_id) {
             return $qty;
         }
 
-        $conversion = UnitConversion::where('product_id', $product->id)
-            ->where('from_unit_id', $unit->id)
-            ->where('to_unit_id', $product->base_unit_id)
-            ->first();
+        $key = "{$product->id}:{$unit->id}:{$product->base_unit_id}";
+
+        $conversion = $prefetched !== null
+            ? $prefetched->get($key)
+            : UnitConversion::where('product_id', $product->id)
+                ->where('from_unit_id', $unit->id)
+                ->where('to_unit_id', $product->base_unit_id)
+                ->first();
 
         if ($conversion === null) {
             throw new DomainException("Konversi satuan dari \"{$unit->name}\" ke satuan dasar produk \"{$product->name}\" belum diatur.");

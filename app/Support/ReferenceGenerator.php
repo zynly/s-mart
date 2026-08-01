@@ -62,41 +62,50 @@ class ReferenceGenerator
             : sprintf('%s%d%04d', $letter, $entryYear, $lastNumber);
     }
 
+    /**
+     * Temuan audit performa (Phase C, CRITICAL): sebelumnya
+     * `DB::transaction()` di sini SELALU nested di dalam transaksi
+     * pemanggil (mis. `SaleService::complete()`) — Laravel cuma bikin
+     * SAVEPOINT, row lock `reference_counters` tertahan sampai
+     * SELURUH transaksi checkout selesai (bisa ratusan ms). Karena
+     * counter dibuat global (outlet_id=0, lihat komentar `generate()`),
+     * SEMUA kasir antre satu per satu di titik ini — SATU-SATUNYA
+     * temuan yang membuat "30 concurrent user" (ADR-0008) tidak
+     * tercapai berapa pun cepatnya query lain.
+     *
+     * Fix: koneksi `reference_counters` yang TERPISAH (PDO independen,
+     * lihat config/database.php) + `INSERT ... ON DUPLICATE KEY UPDATE`
+     * atomik (pola standar MySQL untuk counter bersaing tinggi), lalu
+     * `SELECT` nilai barunya DALAM transaksi yang sama. Aman dari race
+     * kondisi — InnoDB menjamin "read your own writes": SELECT biasa
+     * (tanpa FOR UPDATE) di transaksi yang sama SELALU melihat
+     * perubahan sendiri yang belum di-commit, dan transaksi lain yang
+     * mencoba UPDATE baris yang sama otomatis diblokir sampai baris
+     * ini commit — tidak mungkin dua transaksi membaca nilai counter
+     * yang sama. (Catatan: sengaja TIDAK pakai `LAST_INSERT_ID(expr)`
+     * untuk membaca nilai baru — tabel ini juga punya `id` auto-
+     * increment sendiri yang selalu "menang" mengisi
+     * `LAST_INSERT_ID()` untuk baris yang benar-benar baru, membuat
+     * trik itu mengembalikan nilai yang salah.) Transaksi counter jadi
+     * top-level SENDIRI — commit dalam hitungan milidetik, tidak ikut
+     * menunggu transaksi checkout.
+     */
     private static function increment(string $prefix, int $outletId, string $dateKey): int
     {
-        return DB::transaction(function () use ($prefix, $outletId, $dateKey) {
-            $counter = DB::table('reference_counters')
-                ->where('prefix', $prefix)
-                ->where('outlet_id', $outletId)
-                ->where('date', $dateKey)
-                ->lockForUpdate()
-                ->first();
+        $connection = DB::connection('reference_counters');
 
-            if ($counter === null) {
-                DB::table('reference_counters')->insert([
-                    'prefix' => $prefix,
-                    'outlet_id' => $outletId,
-                    'date' => $dateKey,
-                    'last_number' => 1,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+        return $connection->transaction(function () use ($connection, $prefix, $outletId, $dateKey) {
+            $connection->statement(
+                'INSERT INTO reference_counters (prefix, outlet_id, date, last_number, created_at, updated_at)
+                 VALUES (?, ?, ?, 1, NOW(), NOW())
+                 ON DUPLICATE KEY UPDATE last_number = last_number + 1, updated_at = NOW()',
+                [$prefix, $outletId, $dateKey]
+            );
 
-                return 1;
-            }
-
-            $next = $counter->last_number + 1;
-
-            DB::table('reference_counters')
-                ->where('prefix', $prefix)
-                ->where('outlet_id', $outletId)
-                ->where('date', $dateKey)
-                ->update([
-                    'last_number' => $next,
-                    'updated_at' => now(),
-                ]);
-
-            return $next;
+            return (int) $connection->selectOne(
+                'SELECT last_number FROM reference_counters WHERE prefix = ? AND outlet_id = ? AND date = ?',
+                [$prefix, $outletId, $dateKey]
+            )->last_number;
         });
     }
 }

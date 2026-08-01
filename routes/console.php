@@ -34,3 +34,14 @@ Schedule::command('notify:weekly-summary')->weeklyOn(0, '19:00');
 Schedule::command('backup:run')->dailyAt('02:00');
 Schedule::command('backup:clean')->dailyAt('02:30');
 Schedule::command('backup:monitor')->dailyAt('03:00');
+
+// Temuan audit performa (Phase C, CRITICAL): docblock
+// GenerateReportExportJob (T-089, ekspor laporan >5000 baris — SATU-
+// SATUNYA jalur yang ADR-0008 izinkan untuk ekspor besar) sudah lama
+// menyebut cron ini, tapi baris jadwalnya TIDAK PERNAH benar-benar
+// ditulis — job cuma menumpuk di tabel `jobs`, tidak pernah dikonsumsi
+// siapa pun, fitur ekspor besar rusak total secara diam-diam.
+// `--stop-when-empty` wajib (bukan daemon terus-menerus) — shared
+// hosting (ADR-0008) tanpa Supervisor, proses queue:work yang jalan
+// selamanya akan langsung kena kill oleh hosting provider.
+Schedule::command('queue:work --stop-when-empty --max-time=50')->everyMinute()->withoutOverlapping();

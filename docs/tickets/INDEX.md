@@ -931,21 +931,22 @@ tracking):
 
 - **Phase B (security, MEDIUM)** — lihat bagian tersendiri di bawah,
   **SUDAH DIKERJAKAN**.
-- **Phase C (performa)** — urutan rekomendasi: lock contention
-  `ReferenceGenerator::increment()` (SATU-SATUNYA temuan yang bikin
-  "30 concurrent user" ADR-0008 tidak tercapai berapa pun cepatnya
-  query lain) → N+1 checkout `SaleService::complete()` (~120-180
-  query/transaksi) → cache `PromoEngine`/`JournalService` (9+6-10
-  query/baris tanpa cache) → jadwalkan queue worker cron (fitur ekspor
-  laporan besar rusak diam-diam, `jobs` table menumpuk tak pernah
-  dikonsumsi) → index & sargability tanggal (26 pemakaian `whereDate()`
-  non-sargable + index `sales`/`activity_log`/`sale_items.promo_id`
-  hilang) → agregasi laporan di SQL (semua `app/Reports/*.php`
-  `summary()` tarik SEMUA baris ke PHP) → caching read-heavy
+- **Phase C (performa)** — 4 temuan CRITICAL pertama **SUDAH
+  DIKERJAKAN**, lihat bagian tersendiri di bawah. Sisa backlog
+  performa (Phase C-lanjutan, belum dikerjakan): cache `PromoEngine`
+  (9 query/baris tanpa cache) & batch lookup akun `JournalService`
+  (6-10 query/nota); index & sargability tanggal (26 pemakaian
+  `whereDate()` non-sargable di report/dashboard — index sudah
+  ditambah, tapi query-nya sendiri belum diubah ke bentuk sargable);
+  agregasi laporan di SQL (semua `app/Reports/*.php` `summary()`
+  tarik SEMUA baris ke PHP, bukan `SUM`/`GROUP BY`); caching read-heavy
   (Category/Brand/Unit/Account/Navigation nyaris 0 caching di seluruh
-  app) → bundle frontend (`Dashboard.js` 417KB, Recharts tidak
-  lazy-load). Refactor besar `SaleService::complete()` — SENGAJA
-  dipisah dari Phase A.
+  app, termasuk shared props `HandleInertiaRequests` tiap response);
+  bundle frontend (`Dashboard.js` 417KB, Recharts tidak lazy-load,
+  tidak ada `manualChunks` vendor splitting). `StockService::consume()`
+  (8-14 query/baris, konsumsi FEFO layer-by-layer) SENGAJA tidak
+  disentuh di Phase C — kode paling sensitif untuk integritas stok,
+  butuh pass tersendiri dengan kehati-hatian ekstra.
 - **Phase D (code quality/arsitektur)** — pisah `JournalService`
   (mesin posting vs mesin laporan keuangan, 532 baris jadi satu);
   ekstrak `DashboardService` (326 baris, satu-satunya controller yang
@@ -1031,6 +1032,82 @@ permission yang sama; B4 — `NotificationLog` berisi baris
 `template=password_reset status=sent`, `activity_log` berisi baris
 `log_name=security` dengan nama admin & wali. DB dibersihkan dari
 data uji setelah verifikasi.
+
+## Audit Performa Menyeluruh Lintas-Fase — Phase C `[SELESAI, sebagian]`
+
+Lanjutan Phase A/B, mengambil 4 temuan performa CRITICAL (urutan
+rekomendasi agent performa) — semua di jalur checkout POS, titik yang
+paling menentukan apakah target ADR-0008 (p95 <800ms @ 30 concurrent
+user) bisa tercapai.
+
+**C1 — Lock contention `ReferenceGenerator::increment()`.**
+`DB::transaction()` di dalamnya SELALU nested di dalam transaksi
+pemanggil (mis. `SaleService::complete()`) — Laravel cuma bikin
+SAVEPOINT, row lock `reference_counters` (counter GLOBAL, `outlet_id=0`)
+tertahan sampai SELURUH transaksi checkout selesai. Ini SATU-SATUNYA
+temuan yang membuat "30 concurrent user" tidak tercapai berapa pun
+cepatnya query lain — semua kasir antre satu per satu di titik ini.
+Ditambal: koneksi PDO **terpisah** (`config/database.php` →
+`reference_counters`, sama persis ke DB yang sama tapi transaksi
+independen) + `INSERT ... ON DUPLICATE KEY UPDATE` atomik, transaksi
+counter jadi top-level sendiri — commit dalam hitungan milidetik.
+**Dibuktikan lewat 2 proses PHP paralel sungguhan** (bukan cuma baca
+kode): proses 1 buka transaksi luar, generate reference, `sleep(3)`
+(simulasi checkout lambat) sebelum commit; proses 2 (start konkuren)
+minta reference di tengah-tengah — sebelumnya proses 2 akan tertahan
+sampai proses 1 commit (~3 detik), SEKARANG proses 2 selesai dalam
+**0.04 detik**, dengan nomor urut tetap benar (0001, 0002, 0003 —
+tidak ada duplikat/lompat).
+
+**C2 — N+1 checkout `SaleService::complete()`.**
+Sebelumnya `Product::findOrFail()`/`Unit::findOrFail()`/
+`UnitConversion::where()->first()` dipanggil per BARIS keranjang (3
+query/baris di luar harga) — keranjang 10 item = 30+ query cuma untuk
+resolusi produk/satuan. Ditambal: batch sekali sebelum loop
+(`Product::findOrFail($ids)`, `Unit::findOrFail($ids)`, satu query
+`UnitConversion::whereIn()` untuk semua kombinasi yang butuh konversi),
+`findOrFail()` semantics (lempar `ModelNotFoundException` kalau ada ID
+tidak valid) tetap terjaga karena Eloquent mendukungnya native untuk
+array. `PriceService::getActivePrice()` **TIDAK** ikut di-batch —
+dipakai luas di banyak service lain, batching-nya butuh perubahan API
+bersama yang di luar skop perbaikan checkout ini (dicatat di backlog
+Phase C-lanjutan). Diverifikasi: keranjang 2 produk (1 butuh konversi
+satuan factor 12, 1 satuan dasar) → `qty_base` & `grand_total` benar
+persis, `findOrFail()` tetap melempar `ModelNotFoundException` untuk
+product_id tidak valid.
+
+**C3 — Index database hilang.** `sales` (dashboard & semua Report
+filter `status='completed'` + rentang tanggal TANPA `outlet_id` —
+index `status` tunggal kardinalitas rendah diganti komposit
+`['status','sale_date']`), `activity_log` (`created_at`, tabel audit
+tercepat tumbuh, sebelumnya cuma index `log_name`), `sale_items`
+(`promo_id`, dipakai `PromoEngine::checkQuota()` & laporan penjualan
+per produk — ternyata SUDAH punya FK ke `promos` tapi tanpa index
+pendukung untuk query WHERE/JOIN biasa). Migration diuji idempoten
+penuh (`migrate` → `rollback` → `migrate` lagi, dua kali, bersih).
+
+**C4 — Queue worker tidak pernah dijadwalkan.** Docblock
+`GenerateReportExportJob` (T-089, ekspor laporan >5000 baris — SATU-
+SATUNYA jalur ekspor besar yang ADR-0008 izinkan) sudah lama menyebut
+cron `queue:work --stop-when-empty` per menit, tapi baris jadwalnya
+tidak pernah ditulis — job menumpuk di tabel `jobs`, tidak pernah
+dikonsumsi, fitur ekspor besar rusak total secara diam-diam. Ditambal:
+`Schedule::command('queue:work --stop-when-empty --max-time=50')->
+everyMinute()->withoutOverlapping()` di `routes/console.php` (flag
+`--stop-when-empty` wajib — shared hosting ADR-0008 tanpa Supervisor,
+daemon yang jalan selamanya akan langsung di-kill hosting provider).
+Diverifikasi: dispatch job uji → `queue:work --stop-when-empty` →
+job diproses (RUNNING → DONE, 766ms) → keluar bersih (exit 0) → tabel
+`jobs` kosong, `failed_jobs` kosong.
+
+**Verifikasi:** `pint --test` bersih (frontend tidak disentuh Phase
+C, jadi `tsc`/`eslint`/`build` tidak perlu diulang). `php artisan test`
+tetap hijau (T-105 belum digarap, baseline tidak berubah). Playwright
+end-to-end sungguhan: login kasir → buka sesi → scan barcode produk
+nyata → bayar tunai → `Sale` tercipta di DB dengan status `completed`
+dan reference urut benar (`INV-20260801-0002`) — membuktikan C1+C2
+tidak merusak alur checkout normal. DB direset (`migrate:fresh --seed`)
+setelah verifikasi.
 
 ## Fase 18 — Pengujian, Keamanan & Penyiapan
 
