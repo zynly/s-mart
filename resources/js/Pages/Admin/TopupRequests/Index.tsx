@@ -9,6 +9,8 @@ import { Money } from '@/Components/common/Money'
 import { Button } from '@/Components/ui/button'
 import { Badge } from '@/Components/ui/badge'
 import { Textarea } from '@/Components/ui/textarea'
+import { Checkbox } from '@/Components/ui/checkbox'
+import { Label } from '@/Components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
 import type { Paginated } from '@/Types'
@@ -45,14 +47,25 @@ export default function Index({ tab, topupRequests, filters }: TopupRequestsInde
   const [statusFilter, setStatusFilter] = useState(filters.status ?? '')
   const [rejectTarget, setRejectTarget] = useState<TopupRequestRow | null>(null)
   const [rejectReason, setRejectReason] = useState('')
+  const [approveTarget, setApproveTarget] = useState<TopupRequestRow | null>(null)
+  const [bankVerified, setBankVerified] = useState(false)
+  const [approveNote, setApproveNote] = useState('')
 
   function applyFilter(status: string) {
     setStatusFilter(status)
     router.get(route('admin.topup-requests.index'), { status }, { preserveState: true, replace: true })
   }
 
-  function approve(row: TopupRequestRow) {
-    router.put(route('admin.topup-requests.approve', row.id))
+  function submitApprove() {
+    if (!approveTarget || !bankVerified) return
+
+    router.put(route('admin.topup-requests.approve', approveTarget.id), { bank_verified: bankVerified, note: approveNote }, {
+      onSuccess: () => {
+        setApproveTarget(null)
+        setBankVerified(false)
+        setApproveNote('')
+      },
+    })
   }
 
   function submitReject() {
@@ -89,7 +102,7 @@ export default function Index({ tab, topupRequests, filters }: TopupRequestsInde
       header: '',
       cell: ({ row }) => row.original.status === 'pending' ? (
         <div className="flex gap-2">
-          <Button size="sm" onClick={() => approve(row.original)}>Setujui</Button>
+          <Button size="sm" onClick={() => setApproveTarget(row.original)}>Setujui</Button>
           <Button size="sm" variant="outline" onClick={() => setRejectTarget(row.original)}>Tolak</Button>
         </div>
       ) : (
@@ -132,6 +145,38 @@ export default function Index({ tab, topupRequests, filters }: TopupRequestsInde
           onPageChange: (page) => router.get(route('admin.topup-requests.index'), { status: statusFilter, page }, { preserveState: true }),
         }}
       />
+
+      <Dialog
+        open={approveTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setApproveTarget(null)
+            setBankVerified(false)
+            setApproveNote('')
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Setujui Top-Up — {approveTarget?.reference}</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-start gap-2">
+              <Checkbox id="bank_verified" checked={bankVerified} onCheckedChange={(v) => setBankVerified(v === true)} className="mt-0.5" />
+              <Label htmlFor="bank_verified" className="font-normal text-content-muted">
+                Saya sudah mencocokkan pengajuan ini dengan mutasi rekening koran sekolah — bukan hanya melihat foto bukti transfer.
+              </Label>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="approve_note">Catatan (opsional)</Label>
+              <Textarea id="approve_note" value={approveNote} onChange={(e) => setApproveNote(e.target.value)} placeholder="Mis. dicocokkan dengan mutasi BCA 01/08" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={submitApprove} disabled={!bankVerified}>Setujui &amp; Tambah Saldo</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={rejectTarget !== null} onOpenChange={(open) => !open && setRejectTarget(null)}>
         <DialogContent>

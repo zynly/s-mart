@@ -43,8 +43,13 @@ class TopupRequestController extends Controller
 
     public function approve(TopupRequest $topupRequest, Request $request): RedirectResponse
     {
+        $data = $request->validate([
+            'bank_verified' => ['required', 'accepted'],
+            'note' => ['nullable', 'string', 'max:255'],
+        ]);
+
         try {
-            $approved = $this->topupRequestService->approve($topupRequest, $request->user());
+            $approved = $this->topupRequestService->approve($topupRequest, $request->user(), $request->boolean('bank_verified'), $data['note'] ?? null);
         } catch (DomainException $e) {
             throw ValidationException::withMessages(['status' => $e->getMessage()]);
         }

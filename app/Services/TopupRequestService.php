@@ -46,9 +46,23 @@ class TopupRequestService
         ]);
     }
 
-    public function approve(TopupRequest $topupRequest, User $approver): TopupRequest
+    /**
+     * Fase 17-Darurat (temuan audit): sebelumnya approve() murni
+     * "percaya foto" — tidak ada langkah yang memaksa admin
+     * mencocokkan dengan mutasi rekening koran sungguhan sebelum saldo
+     * bertambah permanen. `$bankVerified` WAJIB true (dipaksa dari
+     * controller via checkbox eksplisit di UI) — bukan penundaan
+     * proses, cuma satu langkah sadar yang mencegah klik-cepat
+     * berdasar foto semata. `$note` opsional (beda dari `reject()`
+     * yang mewajibkan alasan) supaya kasus normal tetap cepat.
+     */
+    public function approve(TopupRequest $topupRequest, User $approver, bool $bankVerified, ?string $note = null): TopupRequest
     {
-        return DB::transaction(function () use ($topupRequest, $approver) {
+        if (! $bankVerified) {
+            throw new DomainException('Verifikasi rekening koran wajib dicentang sebelum top-up disetujui.');
+        }
+
+        return DB::transaction(function () use ($topupRequest, $approver, $note) {
             $locked = TopupRequest::lockForUpdate()->findOrFail($topupRequest->id);
 
             if ($locked->status !== 'pending') {
@@ -58,13 +72,15 @@ class TopupRequestService
             $this->depositService->record($locked->member, 'topup', abs($locked->amount), $locked, [
                 'idempotency_key' => "topup-request-{$locked->id}",
                 'approved_by' => $approver->id,
-                'note' => "Top-up wali {$locked->reference} diverifikasi",
+                'note' => $note ?: "Top-up wali {$locked->reference} diverifikasi",
             ]);
 
             $locked->update([
                 'status' => 'approved',
                 'verified_by' => $approver->id,
                 'verified_at' => now(),
+                'bank_verified_by' => $approver->id,
+                'bank_verified_at' => now(),
             ]);
 
             return $locked->fresh();

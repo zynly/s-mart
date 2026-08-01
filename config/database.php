@@ -62,6 +62,14 @@ return [
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
+            // Fase 17-Darurat: dipakai spatie/laravel-backup (db-dumper)
+            // untuk cari mysqldump. Kosong (null) di produksi Linux
+            // biasa (mysqldump ada di PATH standar) — cuma perlu diisi
+            // di Windows/Laragon dev yang PATH-nya tidak otomatis
+            // memuat bin MySQL.
+            'dump' => [
+                'dump_binary_path' => env('MYSQLDUMP_BINARY_PATH'),
+            ],
         ],
 
         'mariadb' => [

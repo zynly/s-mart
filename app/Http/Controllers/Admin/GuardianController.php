@@ -47,7 +47,16 @@ class GuardianController extends Controller
             return back()->with('error', 'Wali dengan nomor HP ini sudah terhubung ke anggota ini.');
         }
 
-        $member->guardians()->attach($guardian->id, ['is_primary' => $request->boolean('is_primary')]);
+        // Fase 17-Darurat (UU PDP 27/2022): representasi consent
+        // terdokumentasi — akun wali dibuat ADMIN (bukan self-
+        // registrasi wali), jadi ini timestamp linking oleh admin,
+        // bukan tanda tangan digital consent eksplisit dari wali
+        // sendiri. Dicatat apa adanya, bukan dipalsukan sebagai
+        // consent penuh secara hukum.
+        $member->guardians()->attach($guardian->id, [
+            'is_primary' => $request->boolean('is_primary'),
+            'consent_given_at' => now(),
+        ]);
 
         // Bug nyata: tanpa ini admin tidak pernah tahu password awal yang
         // digenerate untuk akun wali baru — tidak ada jalan lain untuk

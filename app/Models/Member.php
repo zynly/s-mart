@@ -41,6 +41,16 @@ class Member extends Model
             'pin_locked_until' => 'datetime',
             'joined_at' => 'date',
             'graduated_at' => 'date',
+            // Fase 17-Darurat (UU PDP 27/2022): enkripsi at-rest untuk
+            // data kontak anak. SENGAJA TIDAK termasuk `nis` (dicari
+            // via LIKE di MemberController::index()) atau `birth_date`
+            // (dipakai whereMonth/whereDay di command bonus/notifikasi
+            // ulang tahun) — cast 'encrypted' Laravel pakai IV acak per
+            // panggilan (non-deterministik), kolom yang perlu WHERE/
+            // LIKE/lookup akan rusak total kalau dienkripsi.
+            'phone' => 'encrypted',
+            'address' => 'encrypted',
+            'guardian_phone' => 'encrypted',
         ];
     }
 
@@ -71,6 +81,6 @@ class Member extends Model
      */
     public function guardians(): BelongsToMany
     {
-        return $this->belongsToMany(Guardian::class, 'guardian_member')->withPivot('is_primary')->withTimestamps();
+        return $this->belongsToMany(Guardian::class, 'guardian_member')->withPivot('is_primary', 'consent_given_at')->withTimestamps();
     }
 }

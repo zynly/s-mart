@@ -2,15 +2,19 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivityCustom;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TopupRequest extends Model
 {
+    use LogsActivityCustom;
+
     protected $fillable = [
         'reference', 'member_id', 'guardian_id', 'amount', 'proof_image', 'bank_name',
         'sender_name', 'transfer_date', 'status', 'verified_by',
         'verified_at', 'reject_reason', 'payment_provider', 'payment_reference',
+        'bank_verified_by', 'bank_verified_at',
     ];
 
     protected function casts(): array
@@ -19,6 +23,7 @@ class TopupRequest extends Model
             'amount' => 'integer',
             'transfer_date' => 'date',
             'verified_at' => 'datetime',
+            'bank_verified_at' => 'datetime',
         ];
     }
 
@@ -35,5 +40,10 @@ class TopupRequest extends Model
     public function verifier(): BelongsTo
     {
         return $this->belongsTo(User::class, 'verified_by');
+    }
+
+    public function bankVerifier(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'bank_verified_by');
     }
 }

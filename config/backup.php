@@ -23,10 +23,19 @@ return [
         'source' => [
             'files' => [
                 /*
-                 * The list of directories and files that will be included in the backup.
+                 * Fase 17-Darurat: HANYA storage/app (file upload
+                 * pengguna — bukti transfer top-up wali, avatar), BUKAN
+                 * base_path() penuh. Kode sumber sudah ada di git,
+                 * backup harian seluruh codebase (termasuk vendor/
+                 * node_modules yang di-exclude di bawah) di shared
+                 * hosting cuma buang waktu & disk tanpa manfaat
+                 * disaster-recovery tambahan — yang benar-benar perlu
+                 * dicadangkan tiap hari adalah data yang TIDAK ada di
+                 * git: database (lihat 'databases' di bawah) dan file
+                 * upload pengguna.
                  */
                 'include' => [
-                    base_path(),
+                    storage_path('app/public'),
                 ],
 
                 /*
@@ -222,7 +231,11 @@ return [
         'notifiable' => Notifiable::class,
 
         'mail' => [
-            'to' => 'your@example.com',
+            // Fase 17-Darurat: env-driven, bukan hardcode placeholder
+            // — WAJIB diisi BACKUP_NOTIFICATION_EMAIL di .env produksi
+            // (email owner/admin) supaya kegagalan backup benar-benar
+            // diketahui, bukan diam-diam gagal tanpa siapa pun tahu.
+            'to' => env('BACKUP_NOTIFICATION_EMAIL', 'owner@skillagemart.test'),
 
             'from' => [
                 'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
@@ -299,9 +312,11 @@ return [
 
         'default_strategy' => [
             /*
-             * The number of days for which backups must be kept.
+             * Fase 17-Darurat: 30 hari sesuai ADR-0008 (retensi lokal
+             * 30 hari / offsite 90 hari — offsite menyusul saat
+             * kredensial Backblaze B2 tersedia).
              */
-            'keep_all_backups_for_days' => 7,
+            'keep_all_backups_for_days' => 30,
 
             /*
              * After the "keep_all_backups_for_days" period is over, the most recent backup

@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivityCustom;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -20,7 +22,7 @@ use Illuminate\Notifications\Notifiable;
  */
 class Guardian extends Authenticatable
 {
-    use Notifiable;
+    use LogsActivityCustom, Notifiable, SoftDeletes;
 
     protected $fillable = [
         'name', 'phone', 'email', 'password', 'relation', 'is_active', 'last_login_at',
@@ -41,7 +43,7 @@ class Guardian extends Authenticatable
 
     public function members(): BelongsToMany
     {
-        return $this->belongsToMany(Member::class, 'guardian_member')->withPivot('is_primary')->withTimestamps();
+        return $this->belongsToMany(Member::class, 'guardian_member')->withPivot('is_primary', 'consent_given_at')->withTimestamps();
     }
 
     public function notificationSetting(): HasOne

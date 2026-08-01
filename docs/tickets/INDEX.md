@@ -596,10 +596,126 @@ seed bersih (`migrate:fresh --seed`) setelah verifikasi.
 
 **Blocking:** Fase 4 selesai (independen dari Fase 5–15, bisa paralel).
 
+## Fase 17-Darurat — Pengerasan Finansial & Kepatuhan `[SELESAI]`
+
+**Disisipkan di luar urutan backlog**, atas permintaan eksplisit user
+untuk membaca seluruh modul sisa (Fase 17-19 + ADR + CATATAN-
+PERBAIKAN.md) dan mengaudit kondisi NYATA proyek terhadap pengalaman
+lapangan/kaidah keilmuan (akuntansi, keamanan, privasi data) — bukan
+sekadar mengikuti urutan T-xxx apa adanya. Dua riset paralel baca-saja
+menemukan 4 gap yang lebih mendesak daripada menyelesaikan seluruh
+scope Fase 17 (yang mencampur hal MENDESAK seperti backup dengan hal
+administratif biasa seperti modul karyawan/shift/absensi yang sama
+sekali tidak menyentuh risiko finansial). Sistem sudah memegang UANG
+SUNGGUHAN (saldo deposit santri) sejak Fase 4, dan baru menambah jalur
+top-up jarak jauh oleh wali di Fase 16 — empat gap berikut ditambal
+sebelum lanjut ke sisa Fase 17 yang bersifat administratif:
+
+- [x] ✅ **Backup nyata diaktifkan (irisan T-101/T-102 — bukan
+      seluruhnya).** `spatie/laravel-backup` sudah ter-install &
+      ter-publish sejak awal proyek tapi **0% aktif** — `routes/
+      console.php` tidak pernah menjadwalkannya. Kalau server crash
+      hari ini, seluruh saldo deposit + jurnal seluruh anggota bisa
+      hilang permanen tanpa cadangan. Diaktifkan: `backup:run`
+      (02:00), `backup:clean` (02:30, retensi 30 hari sesuai
+      ADR-0008), `backup:monitor` (03:00). `config/backup.php`
+      disempitkan dari `base_path()` penuh (kode sudah di git, backup
+      harian seluruh codebase di shared hosting cuma buang disk) jadi
+      HANYA `storage/app/public` (file upload pengguna — bukti
+      transfer top-up wali, avatar) + database. Ditemukan &
+      diperbaiki sekalian: `mysqldump` tidak ada di PATH Windows/
+      Laragon dev (`config/database.php` tambah `dump.dump_binary_path`
+      env-driven, kosong di Linux produksi). **Diverifikasi end-to-
+      end sungguhan**: `backup:run` manual → zip berisi dump SQL valid
+      → di-restore ke DB terpisah → 87 tabel + data utuh dikonfirmasi.
+      **Belum dikerjakan** (sisa T-101/T-102 asli, disusulkan bareng
+      sisa Fase 17): upload offsite Backblaze B2 (kredensial belum
+      ada), tombol "Uji Restore" di UI, notifikasi kegagalan diuji
+      dengan skenario gagal sungguhan (baru konfigurasi mail target).
+- [x] ✅ **Rekonsiliasi bank top-up wali** (perbaikan atas T-098 Fase
+      16). `TopupRequestService::approve()` sebelumnya murni "percaya
+      foto" — admin klik setuju, saldo bertambah, tanpa satu pun
+      langkah yang memaksa mencocokkan dengan mutasi rekening koran
+      sungguhan. Vektor fraud klasik koperasi/kantin sekolah (foto
+      direkayasa, atau transfer ke rekening pribadi bukan resmi).
+      Ditambahkan kolom `bank_verified_by`/`bank_verified_at` +
+      parameter wajib `bool $bankVerified` di `approve()` (menolak
+      dengan `DomainException` kalau `false`) + checkbox eksplisit di
+      `Admin/TopupRequests/Index.tsx` ("Saya sudah mencocokkan
+      pengajuan ini dengan mutasi rekening koran sekolah") yang
+      mengunci tombol submit sampai dicentang, plus field catatan
+      opsional. Bukan penundaan proses — satu langkah sadar yang
+      mencegah klik-cepat berdasar foto semata.
+- [x] ✅ **Kepatuhan data pribadi anak minimum** (UU PDP 27/2022 —
+      bukan audit hukum penuh). Tiga gap: (1) `guardians` belum pakai
+      `SoftDeletes` sama sekali (beda dari `Member` sejak Fase 3) —
+      ditambahkan, supaya riwayat approval top-up tidak kehilangan
+      integritas referensial kalau akun wali dihapus; (2) tidak ada
+      jejak consent — `guardian_member.consent_given_at` diisi
+      otomatis saat admin menghubungkan wali (representasi consent
+      TERDOKUMENTASI, bukan tanda tangan digital consent eksplisit
+      dari wali sendiri, karena akun dibuat admin bukan self-
+      registrasi — dicatat apa adanya, tidak dipalsukan sebagai
+      consent hukum penuh); (3) field sensitif tersimpan plaintext —
+      `Member.phone`/`address`/`guardian_phone` diberi cast
+      `'encrypted'` Laravel (kolom diperlebar ke TEXT via SQL mentah,
+      bukan `Blueprint::change()` yang butuh doctrine/dbal belum
+      ter-install). **Keputusan penting**: `nis` (dicari via LIKE di
+      `MemberController::index()`), `guardians.phone` (dipakai
+      `Auth::attempt()` untuk login), dan `birth_date` (dipakai
+      `whereMonth`/`whereDay` di command bonus & notifikasi ulang
+      tahun) **SENGAJA TIDAK dienkripsi** — cast `encrypted` Laravel
+      pakai IV acak per panggilan (non-deterministik), kolom yang
+      butuh WHERE/LIKE/lookup akan RUSAK TOTAL bila dienkripsi
+      (ditemukan &dikoreksi sebelum sempat merusak login/pencarian,
+      lewat audit pemakaian kolom di seluruh `app/` sebelum menulis
+      migration). Diverifikasi lewat tinker: nilai di DB mentah
+      berupa ciphertext, terbaca otomatis via Eloquent, login &
+      pencarian nama/nis tetap jalan normal.
+- [x] ✅ **Audit trail finansial dasar.** `spatie/activitylog` sudah
+      ter-install sejak awal proyek tapi cuma dipakai di 1 model
+      (`Member`) — `TopupRequest`, `Guardian`, `DepositTransaction`
+      (tiga model paling langsung terkait uang wali) tidak ter-log
+      sama sekali. Ditambahkan `LogsActivityCustom` (trait yang sudah
+      ada) ke ketiganya. `TopupRequestController::approve()` juga
+      menerima field `note` opsional (beda dari `reject()` yang sudah
+      mewajibkan `reject_reason`) supaya admin bisa menulis konteks
+      tambahan tanpa memperlambat kasus normal. Diverifikasi: tabel
+      `activity_log` terisi untuk create/update ketiga model.
+
+**Catatan non-temuan** (sengaja dicek saat audit, ternyata SUDAH baik,
+tidak disentuh): skema kolom uang seluruh proyek konsisten
+`bigInteger` (bukan float/decimal, standar industri). Jurnal otomatis
+top-up wali tetap terbit benar meski lewat `DepositService::record()`
+langsung (bukan wrapper `topup()`) — observer bekerja berdasar kolom
+`type` data, bukan call-path service, jadi desainnya sudah tahan
+terhadap jalur masuk yang berbeda.
+
+**Verifikasi:** `php artisan backup:run` manual → restore ke DB
+terpisah → 87 tabel & data utuh. Tinker: enkripsi dikonfirmasi
+(ciphertext di DB mentah, plaintext via Eloquent), login guardian
+tetap jalan, `approve()` menolak tanpa `bank_verified`, `activity_log`
+terisi untuk 3 model baru. Playwright: dialog approve top-up menampilkan
+checkbox wajib, tombol submit terkunci sampai dicentang, approve
+berhasil dengan catatan opsional, status berubah ke "Disetujui",
+console bersih. `pint --test`/`tsc --noEmit`/`eslint`/`build` bersih.
+DB direset ke seed bersih setelah verifikasi.
+
+**Lanjut ke:** sisa Fase 17 (T-103 halaman pengaturan bertab, T-104
+danger zone ketik ulang nama toko+password owner, modul karyawan/
+shift/absensi/checklist toko dari spec asli — semua administratif,
+tidak mendesak) → Fase 18 (testing, hardening keamanan lanjutan
+termasuk temuan riset ini yang belum ditambal: rate-limit reset
+password Fortify kosong, `APP_DEBUG` default `true` tanpa
+`.env.production.example`, `SESSION_SECURE_COOKIE` tidak pernah
+di-set, header keamanan CSP/X-Frame-Options/HSTS belum ada, deploy) →
+Fase 19 (storefront publik, prioritas terendah karena tidak ada risiko
+finansial/keamanan).
+
 ## Fase 17 — Pengaturan Sistem
 
-- [ ] ⬜ T-101 — `spatie/laravel-backup` nyata: mysqldump + gzip + upload Backblaze B2
-- [ ] ⬜ T-102 — Cron backup harian 02:00 + notifikasi gagal + tombol uji restore
+- [ ] ⬜ T-101 — `spatie/laravel-backup` nyata: mysqldump + gzip + upload Backblaze B2 *(irisan kritis sudah aktif — lihat Fase 17-Darurat; sisa: upload offsite B2, tombol Uji Restore)*
+- [ ] ⬜ T-102 — Cron backup harian 02:00 + notifikasi gagal + tombol uji restore *(jadwal sudah aktif — lihat Fase 17-Darurat; sisa: uji skenario gagal sungguhan)*
 - [ ] ⬜ T-103 — Halaman pengaturan bertab (`config/pos.php` — rounding, threshold, dst)
 - [ ] ⬜ T-104 — Konfirmasi bahaya ketat (reset data: ketik nama toko + password owner)
 

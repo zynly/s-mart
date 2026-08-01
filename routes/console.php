@@ -24,3 +24,13 @@ Schedule::command('notify:birthday')->dailyAt('06:05');
 Schedule::command('notify:low-balance')->dailyAt('07:00');
 Schedule::command('notify:receivable-due')->dailyAt('08:00');
 Schedule::command('notify:weekly-summary')->weeklyOn(0, '19:00');
+
+// Fase 17-Darurat (temuan audit lintas-fase): sistem sudah memegang
+// saldo deposit riil sejak Fase 4, tapi backup database TIDAK PERNAH
+// dijadwalkan sampai sekarang — spatie/laravel-backup sudah ter-install
+// & ter-publish (config/backup.php) tapi 0% aktif. ADR-0008: harian
+// 02:00, retention lokal 30 hari (offsite Backblaze B2 menyusul saat
+// kredensial tersedia — TIDAK menunda aktivasi backup lokal).
+Schedule::command('backup:run')->dailyAt('02:00');
+Schedule::command('backup:clean')->dailyAt('02:30');
+Schedule::command('backup:monitor')->dailyAt('03:00');
