@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, router, usePage } from '@inertiajs/react'
 import {
-  Menu, ChevronDown, ChevronRight, Search, Bell, PanelLeftClose, PanelLeftOpen, Circle,
+  Menu, ChevronDown, ChevronRight, Search, PanelLeftClose, PanelLeftOpen, Circle,
   LayoutDashboard, ShoppingCart, Wallet, CreditCard, Undo2, Package, Boxes, Truck,
   Users, Tag, HandCoins, BookOpen, FileBarChart, Building2, UserCog,
   type LucideIcon,
@@ -14,6 +14,7 @@ import { Badge } from '@/Components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/Components/ui/tooltip'
 import { CommandDialog, CommandInput, CommandList, CommandEmpty } from '@/Components/ui/command'
 import { ThemeToggle } from '@/Components/common/ThemeToggle'
+import { NotificationBell } from '@/Components/common/NotificationBell'
 import { useSidebarStore } from '@/Store/useSidebarStore'
 import { cn } from '@/Lib/utils'
 import type { NavigationGroup, NavigationItem, PageProps } from '@/Types'
@@ -210,9 +211,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             <Button variant="ghost" size="icon-sm" className="text-navy-50 hover:bg-navy-500 sm:hidden" onClick={() => setSearchOpen(true)} aria-label="Cari">
               <Search className="size-4" />
             </Button>
-            <Button variant="ghost" size="icon-sm" className="text-navy-50 hover:bg-navy-500" aria-label="Notifikasi">
-              <Bell className="size-4" />
-            </Button>
+            <NotificationBell className="text-navy-50 hover:bg-navy-500" />
             <ThemeToggle className="text-navy-50 hover:bg-navy-500" />
 
             <DropdownMenu>

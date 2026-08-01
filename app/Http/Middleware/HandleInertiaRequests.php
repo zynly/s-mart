@@ -62,6 +62,10 @@ class HandleInertiaRequests extends Middleware
             // T-116 (Fase UI-01): sidebar admin dibangun dari sini, bukan
             // hardcoded di React — lihat NavigationService.
             'navigation' => fn () => $user ? app(NavigationService::class)->forUser($user) : [],
+            // T-094 (Fase 15): badge count bel notifikasi di header —
+            // dihitung ringan (COUNT saja), isi lengkap di-fetch lazy
+            // oleh dropdown lewat NotificationController::index().
+            'unreadNotificationsCount' => fn () => $user ? $user->unreadNotifications()->count() : 0,
             'ziggy' => fn () => [
                 ...(new Ziggy)->toArray(),
                 'location' => $request->url(),

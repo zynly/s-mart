@@ -42,6 +42,7 @@ export type PageProps<T extends Record<string, unknown> = Record<string, unknown
     info: string | null
   }
   navigation: NavigationGroup[]
+  unreadNotificationsCount: number
   appName: string
   status?: string
 }

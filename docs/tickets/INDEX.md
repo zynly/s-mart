@@ -363,12 +363,107 @@ console browser bersih tanpa error di semua langkah.
 
 **Blocking:** Fase 13 selesai.
 
-## Fase 15 — Dashboard & Analitik
+## Fase 15 — Dashboard & Analitik `[SELESAI]`
 
-- [ ] ⬜ T-091 — Dashboard Owner/Admin (stat card, tren 30 hari, panel perhatian)
-- [ ] ⬜ T-092 — Dashboard Kasir (ringkasan sesi berjalan)
-- [ ] ⬜ T-093 — Chart recharts dark-mode aware (`axisColor` dari theme token)
-- [ ] ⬜ T-094 — Notifikasi dalam aplikasi (stok kritis, hutang jatuh tempo, dll)
+Backlog resmi (bagian ini) hanya punya 2 tiket dashboard (Owner/Admin,
+Kasir) — spec Livewire asli (`skillage-mart/prompts/fase-15.md`)
+membayangkan **4 dashboard terpisah** per role (+ Gudang, Bendahara).
+**Keputusan:** satu halaman dashboard dengan widget PERMISSION-GATED,
+bukan 4 halaman/controller terpisah — kasir (`hasRole('cashier')`,
+pola PERSIS sama dengan `ReportController::visibleTo()`/
+`scopedQuery()` Fase 14) dapat widget sesi berjalan; role lain dapat
+widget analitik yang masing-masing baru muncul kalau user punya
+permission modul terkait (`stock.view` → panel stok, `debt.view` →
+panel hutang, dst). Supervisor/warehouse/treasurer otomatis dapat
+subset relevan lewat mekanisme ini tanpa perlu halaman/tiket
+tambahan — sekaligus memenuhi semangat spec asli (Gudang lihat
+stok, Bendahara lihat hutang/piutang/deposit) tanpa duplikasi kode.
+
+- [x] ✅ T-091 — `app/Http/Controllers/Admin/DashboardController.php`
+      (baru, menggantikan closure inline route lama) — cabang manager:
+      stat card (Penjualan Hari Ini +tren vs kemarin, Laba Kotor Hari
+      Ini [hanya jika `product.view_cost`], Jumlah Transaksi,
+      Rata-rata per Transaksi), 4 chart (lihat T-093), panel perhatian
+      (stok kritis/kadaluwarsa, hutang jatuh tempo ≤7 hari, piutang
+      menunggak, saldo deposit beredar, ulang tahun anggota 7 hari,
+      selisih rekonsiliasi belum selesai), transaksi terakhir (10),
+      produk terlaris minggu ini, peringkat kasir. **Semua query REUSE
+      langsung** dari `BaseReport` Fase 14 (`SalesSummaryReport`,
+      `SalesByPaymentMethodReport`, `SalesByCashierReport`) via
+      `scopedQuery()` — tidak ada logika agregasi penjualan yang
+      ditulis dua kali. Bug nyata ditemukan &amp; diperbaiki saat verifikasi
+      tinker lintas role: query panel stok kritis (`GROUP BY
+      products.id` tanpa `SELECT` eksplisit, fallback ke `SELECT *`)
+      gagal di MySQL `ONLY_FULL_GROUP_BY` — diperbaiki dengan
+      `selectRaw('products.id')` eksplisit sebelum `groupBy()`,
+      sama seperti pola `StockCriticalExpiryReport` yang sudah benar.
+- [x] ✅ T-092 — Cabang kasir di controller yang sama: status sesi aktif
+      via `CashierSessionService::getActive()` (modal awal, transaksi,
+      durasi), penjualan &amp; transaksi milik sendiri hari ini, tombol
+      besar Buka Kasir/Lanjut Kasir ke `/pos`, tombol cepat Sesi &amp;
+      Kas/Top-Up/Cek Saldo/Retur.
+- [x] ✅ T-093 — `resources/js/Lib/chartTheme.ts` (`useChartColors()`) —
+      baca `.dark` di `<html>` (sumber kebenaran yang sudah diterapkan
+      `applyTheme()` sejak Fase 0) + subscribe ke `useThemeStore.theme`
+      supaya re-render saat `ThemeToggle` diklik. `axisColor` persis
+      sesuai `CATATAN-PERBAIKAN.md` §Fase15 (`#94A3B8` gelap /
+      `#2E5490` terang, dikonfirmasi lewat Playwright — baca atribut
+      `stroke` SVG langsung, bukan cuma visual). Palet 6 warna diambil
+      dari token proyek yang sudah ada (`navy-500`/`gold`/`teal`/
+      `danger`/`warning`/`success` di `app.css`), bukan hex baru.
+      4 chart recharts: tren 30 hari (`LineChart`, reuse
+      `SalesSummaryReport`), kategori hari ini (`PieChart`), metode
+      bayar hari ini (`BarChart`, reuse `SalesByPaymentMethodReport`),
+      jam ramai hari ini (`BarChart`).
+- [x] ✅ T-094 — `app/Notifications/AlertNotification.php` (satu class
+      generik, bukan satu class per jenis alert — bentuknya sama:
+      judul+pesan+tautan+kunci dedup) + `app/Console/Commands/
+      GenerateAlertNotifications.php` (`notifications:generate-alerts`,
+      dijadwalkan `dailyAt('23:15')` di `routes/console.php` — setelah
+      `deposit:reconcile` yang jadi sumber data rekonsiliasi, mengikuti
+      pola 5 command harian yang sudah ada sejak fase-fase awal).
+      Idempotent lewat `dedupe_key` — skip kalau notifikasi UNREAD
+      dengan key yang sama untuk user itu sudah ada, supaya tidak spam
+      di tiap run harian selama kondisinya belum berubah/dibaca
+      (diverifikasi: run kedua menghasilkan 0 notifikasi baru).
+      **Dilingkupi ke 4 ambang batas eksplisit** (stok kritis/
+      kadaluwarsa, hutang jatuh tempo ≤7 hari, piutang menunggak,
+      selisih rekonsiliasi deposit `DepositReconciliation.is_resolved`
+      — model ini sudah ada sejak Fase 4, dipakai APA ADANYA) —
+      **notifikasi "PO/opname/top-up menunggu approval" SENGAJA
+      di-skip**: kata "dll" di judul tiket asli bukan daftar wajib
+      eksplisit, dan item approval-pending itu sudah terlihat lewat
+      filter status di halaman masing-masing (bukan kondisi tersembunyi
+      yang mendekat diam-diam seperti ambang batas — itu alasan asli
+      kenapa notifikasi proaktif dibutuhkan). `NotificationController`
+      (baru, endpoint JSON kecil `index`/`markAsRead`/`markAllAsRead`
+      — bukan `Inertia::render`, karena ini panel dropdown bukan
+      halaman) + `unreadNotificationsCount` ditambahkan ke shared props
+      Inertia (`HandleInertiaRequests`) untuk badge. `NotificationBell.tsx`
+      (baru) menggantikan ikon lonceng statis placeholder dari Fase
+      UI-01 (T-119) — dropdown lazy-fetch (`fetch()`, pola yang sama
+      dipakai `Opnames/Show.tsx`/`Pos/Index.tsx`, bukan `router.visit`
+      penuh karena ini panel kecil bukan halaman), tandai dibaca per
+      item &amp; tandai semua dibaca.
+
+**Verifikasi:** tinker `DashboardController::index()` lintas 6 role
+(owner/admin/supervisor/kasir1/warehouse/treasurer) — panel yang
+tampil cocok persis dengan permission masing-masing role di
+`RolePermissionSeeder` (mis. admin kehilangan panel rekonsiliasi
+karena tidak punya `deposit.adjust`, warehouse hanya dapat panel
+stok, treasurer dapat hutang/piutang/ulang-tahun tapi bukan deposit).
+`notifications:generate-alerts` diuji jalan dua kali — run kedua 0
+notifikasi baru (idempotent lewat `dedupe_key`) — plus
+`deposit:reconcile` dijalankan lebih dulu untuk memastikan sumber
+data rekonsiliasi ada. `pint --test`/`tsc --noEmit`/`eslint`/`build`
+bersih (chunk `Dashboard` 417KB — wajar untuk recharts, tidak memicu
+peringatan ukuran Vite, terisolasi ke satu halaman). Playwright lintas
+6 role: kasir1 dapat widget sesi (bukan stat card/chart), role lain
+dapat stat card+chart, dropdown notifikasi terbuka tanpa error di
+semua role, warna axis chart dikonfirmasi persis via atribut SVG
+`stroke` (`#2E5490` terang → `#94A3B8` gelap saat `ThemeToggle`
+diklik), console browser bersih di semua langkah. DB direset ke seed
+bersih (`migrate:fresh --seed`) setelah verifikasi.
 
 **Blocking:** Fase 14 selesai (reuse query `BaseReport`).
 
