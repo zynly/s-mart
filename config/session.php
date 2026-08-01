@@ -169,7 +169,17 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    // Fase 18 (temuan audit lintas-fase, T-106): SESSION_SECURE_COOKIE
+    // tidak pernah di-set di .env manapun sebelumnya — env('...') tanpa
+    // default berarti null, cookie sesi TIDAK dipaksa HTTPS-only kalau
+    // env var ini lupa diisi saat deploy. Safety net: auto-true kalau
+    // APP_ENV=production, terlepas env var ini diisi atau tidak. Baca
+    // env('APP_ENV') langsung (BUKAN app()->environment()) — config
+    // files dimuat sebelum container sepenuhnya siap, memanggil app()
+    // di sini terbukti error "Target class [env] does not exist" saat
+    // artisan boot. Guard 'web' DAN 'guardian' (Portal Wali) sama-sama
+    // pegang data finansial — bukan cuma satu guard.
+    'secure' => env('SESSION_SECURE_COOKIE', env('APP_ENV') === 'production'),
 
     /*
     |--------------------------------------------------------------------------

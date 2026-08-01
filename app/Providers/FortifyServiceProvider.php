@@ -66,5 +66,14 @@ class FortifyServiceProvider extends ServiceProvider
         RateLimiter::for('wali-login', function (Request $request) {
             return Limit::perMinute(5)->by(Str::transliterate(Str::lower((string) $request->input('phone'))));
         });
+
+        // Rate limit route password.email/password.update (Fortify TIDAK
+        // mendaftarkan throttle untuk keduanya sama sekali, beda dari
+        // login/two-factor/passkeys di atas) ada di
+        // App\Http\Middleware\ThrottlePasswordReset — bukan lewat
+        // RateLimiter::for() seperti limiter lain di sini, karena Fortify
+        // tidak menyediakan hook config('fortify.limiters.*') untuk
+        // password reset. Middleware itu dipasang global (bootstrap/
+        // app.php), memeriksa nama route sendiri di handle().
     }
 }

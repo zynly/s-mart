@@ -723,11 +723,53 @@ finansial/keamanan).
 
 ## Fase 18 — Pengujian, Keamanan & Penyiapan
 
+**Catatan:** beberapa gap keamanan konkret di T-106/T-109 sudah
+ditambal lebih awal (di luar urutan, sama seperti Fase 17-Darurat),
+karena berupa perbaikan kecil-terisolasi (config/middleware) yang
+tidak perlu menunggu Fase 17 selesai — BUKAN scope T-105/T-107/T-108/
+T-110 penuh (test suite, optimasi index, uji beban, seeder demo tetap
+menunggu gilirannya):
+
+- Rate limit `password.email`/`password.update` Fortify — sebelumnya
+  TIDAK ADA sama sekali (beda dari `login`/`two-factor`/`passkeys`
+  yang sudah dilindungi sejak awal; dicek langsung di `vendor/laravel/
+  fortify/routes/routes.php`, Fortify tidak menyediakan hook
+  `config('fortify.limiters.*')` untuk 2 route ini). Ditambal lewat
+  `App\Http\Middleware\ThrottlePasswordReset` (global, memeriksa nama
+  route sendiri) — sempat dicoba lewat `Route::getRoutes()->
+  getByName(...)->middleware()` di `FortifyServiceProvider::boot()`,
+  terbukti rapuh (cuma bekerja kalau `boot()` dipanggil dua kali,
+  bergantung urutan boot provider paket vs provider app yang tidak
+  konsisten) — middleware global jauh lebih pasti. Diverifikasi:
+  5 percobaan lolos, percobaan ke-6 ditolak.
+- `App\Http\Middleware\SecurityHeaders` (global) — `X-Frame-Options`,
+  `X-Content-Type-Options`, `Referrer-Policy`, `Strict-Transport-
+  Security` (hanya saat HTTPS). **Content-Security-Policy SENGAJA
+  TIDAK disertakan** — CSP yang salah konfigurasi bisa mematikan
+  seluruh app (skrip anti-FOUC inline di `app.blade.php`, Vite dev
+  assets), risikonya lebih besar daripada manfaat buru-buru pasang
+  tanpa pengujian lintas-halaman menyeluruh — ditunda ke T-106 penuh.
+- `.env.production.example` (baru, sebelumnya tidak ada sama sekali)
+  — `.env.example` biasa masih `APP_DEBUG=true` sebagai default,
+  risiko nyata kalau deploy produksi menyalinnya apa adanya (stack
+  trace bocor ke publik). Template baru ini eksplisit menandai field
+  WAJIB DIISI (kredensial DB/SMTP/domain) dan aman secara default
+  (`APP_DEBUG=false`, `SESSION_SECURE_COOKIE=true`, `LOG_LEVEL=error`).
+- `config/session.php`: kolom `'secure'` diberi *safety net* — otomatis
+  `true` kalau `APP_ENV=production` meski `SESSION_SECURE_COOKIE` lupa
+  di-set di `.env` (sebelumnya `env('SESSION_SECURE_COOKIE')` tanpa
+  default berarti `null`/cookie tidak dipaksa HTTPS-only). Guard `web`
+  DAN `guardian` (Portal Wali) sama-sama pegang data finansial. Bug
+  ditemukan saat implementasi: sempat ditulis pakai
+  `app()->environment('production')` di dalam file config, meledak
+  ("Target class [env] does not exist") karena config dimuat sebelum
+  container sepenuhnya siap — diperbaiki baca `env('APP_ENV')` langsung.
+
 - [ ] ⬜ T-105 — Test suite Pest: aturan bisnis kritis (revert kupon, konsinyasi no-jurnal, retur non-tunai, `receivable_limit`, floor HPP, ISO days_of_week)
-- [ ] ⬜ T-106 — Hardening keamanan (CSP, rate limit, 2FA Fortify, audit log)
+- [ ] ⬜ T-106 — Hardening keamanan (CSP, 2FA Fortify, audit log lengkap semua model) *(rate limit reset password + security headers dasar + audit log Topup/Guardian/DepositTransaction sudah — lihat catatan di atas & Fase 17-Darurat)*
 - [ ] ⬜ T-107 — Optimasi query + index MySQL (lihat `CATATAN-PERBAIKAN.md` § Field Indexing)
 - [ ] ⬜ T-108 — Uji beban k6/wrk (30 concurrent user, target <800ms p95 — ADR-0008)
-- [ ] ⬜ T-109 — Deploy Hostinger (langkah shared hosting, cron scheduler)
+- [ ] ⬜ T-109 — Deploy Hostinger (langkah shared hosting, cron scheduler) *(`.env.production.example` sudah — lihat catatan di atas)*
 - [ ] ⬜ T-110 — Seeder demo lengkap untuk onboarding tim non-teknis
 
 **Blocking:** Fase 17 selesai (semua fase bisnis selesai).
