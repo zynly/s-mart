@@ -30,6 +30,7 @@ use App\Observers\SaleReturnObserver;
 use App\Observers\StockAdjustmentObserver;
 use App\Observers\StockOpnameObserver;
 use App\Observers\StockWriteOffObserver;
+use App\Services\SettingsOverrideService;
 use App\Services\WhatsApp\NullGateway;
 use App\Services\WhatsApp\WhatsAppGatewayInterface;
 use Illuminate\Support\ServiceProvider;
@@ -56,6 +57,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // T-103 (Fase 17): timpakan override tersimpan di tabel `settings`
+        // ke config('pos.*') sebelum request ditangani — lihat komentar
+        // di SettingsOverrideService untuk alasan pola ini dipilih.
+        SettingsOverrideService::apply();
+
         Sale::observe(SaleObserver::class);
         SaleReturn::observe(SaleReturnObserver::class);
         Purchase::observe(PurchaseObserver::class);

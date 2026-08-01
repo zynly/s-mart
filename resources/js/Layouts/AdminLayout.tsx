@@ -3,7 +3,7 @@ import { Link, router, usePage } from '@inertiajs/react'
 import {
   Menu, ChevronDown, ChevronRight, Search, PanelLeftClose, PanelLeftOpen, Circle,
   LayoutDashboard, ShoppingCart, Wallet, CreditCard, Undo2, Package, Boxes, Truck,
-  Users, Tag, HandCoins, BookOpen, FileBarChart, Building2, UserCog,
+  Users, Tag, HandCoins, BookOpen, FileBarChart, Building2, UserCog, Settings,
   type LucideIcon,
 } from 'lucide-react'
 import { Sheet, SheetContent } from '@/Components/ui/sheet'
@@ -34,7 +34,7 @@ const DEV_LINKS = [{ label: 'Uji Komponen', href: '/uji-komponen' }]
 // ratusan KB, ditemukan lewat `npm run build`).
 const ICON_MAP: Record<string, LucideIcon> = {
   LayoutDashboard, ShoppingCart, Wallet, CreditCard, Undo2, Package, Boxes, Truck,
-  Users, Tag, HandCoins, BookOpen, FileBarChart, Building2, UserCog,
+  Users, Tag, HandCoins, BookOpen, FileBarChart, Building2, UserCog, Settings,
 }
 
 function resolveIcon(name: string): LucideIcon {

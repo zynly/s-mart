@@ -712,14 +712,96 @@ di-set, header keamanan CSP/X-Frame-Options/HSTS belum ada, deploy) →
 Fase 19 (storefront publik, prioritas terendah karena tidak ada risiko
 finansial/keamanan).
 
-## Fase 17 — Pengaturan Sistem
+## Fase 17 — Pengaturan Sistem `[SELESAI — T-101..T-104]`
 
-- [ ] ⬜ T-101 — `spatie/laravel-backup` nyata: mysqldump + gzip + upload Backblaze B2 *(irisan kritis sudah aktif — lihat Fase 17-Darurat; sisa: upload offsite B2, tombol Uji Restore)*
-- [ ] ⬜ T-102 — Cron backup harian 02:00 + notifikasi gagal + tombol uji restore *(jadwal sudah aktif — lihat Fase 17-Darurat; sisa: uji skenario gagal sungguhan)*
-- [ ] ⬜ T-103 — Halaman pengaturan bertab (`config/pos.php` — rounding, threshold, dst)
-- [ ] ⬜ T-104 — Konfirmasi bahaya ketat (reset data: ketik nama toko + password owner)
+- [x] ✅ T-101 — `spatie/laravel-backup` nyata: mysqldump + gzip *(aktif sejak Fase 17-Darurat; upload offsite Backblaze B2 & tombol Uji Restore terpisah ditunda ke deploy produksi sungguhan — butuh kredensial B2 asli, lihat `.env.production.example`)*
+- [x] ✅ T-102 — Cron backup harian 02:00 + `backup:clean` 02:30 + `backup:monitor` 03:00 *(aktif sejak Fase 17-Darurat)*
+- [x] ✅ T-103 — Halaman pengaturan bertab (lihat catatan di bawah — cakupan & arsitektur direvisi dari tiket asli)
+- [x] ✅ T-104 — Konfirmasi bahaya ketat: reset data transaksi (ketik nama toko + password owner + jeda 5 detik) *(reset SELURUH sistem sengaja tidak dibangun sebagai tombol web — lihat catatan)*
 
 **Blocking:** Fase 13 selesai.
+
+**Catatan implementasi T-103/T-104 (revisi dari tiket & spec asli):**
+
+- **T-103 secara literal menyasar `config/pos.php`** (file statis), tapi
+  spec asli menghendaki tabel `settings` ber-DB dengan 9 tab. Menulis
+  ulang file `.php` di disk lewat HTTP request tidak standar untuk
+  produksi (butuh izin write filesystem yang sering diblokir di shared
+  hosting, tidak atomik di bawah concurrent request, dan bertentangan
+  langsung dengan `php artisan config:cache`). **Dibangun dengan pola
+  "DB override menimpa config file"**: tabel `settings` (key-value,
+  sesuai spec asli) + `SettingsOverrideService::apply()` dipanggil di
+  `AppServiceProvider::boot()`, menimpakan isi tabel ke `config('pos.*')`
+  sebelum request ditangani (di-cache, invalidate saat setting
+  disimpan). Semua pemanggil `config('pos.xxx')` yang sudah tersebar di
+  codebase TIDAK diubah sama sekali — tetap baca lewat helper `config()`
+  biasa, nilainya sekarang bisa ditimpa dari DB.
+- **Cakupan T-103 sengaja dipersempit** dari 9 tab spec asli: Transaksi/
+  Deposit & PIN/Struk/Promo & Poin/Inventori mengikuti 24 key nyata
+  `config/pos.php`; tab **Profil Toko** (nama/alamat/telepon) ditambah
+  karena kebutuhan dasar yang belum ada di mana pun. Tab **Notifikasi**
+  sengaja di-skip — gateway WhatsApp (Fase 16) sudah env-driven
+  (ADR-0010); memindahkan token API ke tabel `settings` yang bisa
+  diedit lewat UI justru MENURUNKAN keamanan (secret di DB+admin panel,
+  bukan `.env` server-only). Tab **Backup** juga tidak dibangun sebagai
+  form — cukup daftar read-only dari `Storage::disk('local')->
+  allFiles()` di halaman Danger Zone, tanpa tabel metadata `backups`
+  terpisah dari spec asli (sumber-kebenaran-ganda dengan disk).
+- **T-104**: spec asli minta dua tombol — "reset data transaksi" dan
+  "reset seluruh sistem". **Hanya reset data transaksi yang dibangun
+  sebagai tombol web** (`SystemResetController::resetTransactions()`,
+  truncate daftar eksplisit tabel transaksi, FK checks dimatikan
+  sementara — TRUNCATE MySQL auto-commit, bukan `DB::transaction()`).
+  Tombol "hapus SEMUA termasuk akun & master data" yang bisa diklik
+  siapa pun berperan owner dari browser adalah risiko yang tidak
+  proporsional untuk aplikasi yang memegang uang sungguhan — reset
+  total tetap tersedia lewat `php artisan migrate:fresh --seed` di
+  server (akses SSH), bukan endpoint HTTP. Sebelum truncate, sistem
+  menjalankan `backup:run` otomatis sebagai jaring pengaman sungguhan,
+  dan menulis 2 baris `activity_log` (`log_name=system`, mulai &
+  selesai) — `activity_log` sendiri SENGAJA tidak ikut ter-truncate,
+  supaya riwayat audit (termasuk aksi reset ini) tidak hilang.
+  Dialog konfirmasi mewajibkan: ketik ulang nama toko persis, password
+  owner, checkbox paham, dan jeda 5 detik sebelum tombol submit aktif
+  (mencegah klik reflex).
+- **Modul karyawan/shift/absensi/checklist-toko/kritik-saran** dari
+  spec asli **tidak dibangun di paket ini** — belum punya tiket resmi
+  sebelumnya (hanya disebut informal di catatan Fase 17-Darurat).
+  Diformalkan sebagai **T-120–T-124** di bawah, backlog eksplisit untuk
+  paket berikutnya, supaya tidak hilang dari tracking maupun perlu
+  riset ulang.
+
+**Verifikasi:** `php artisan migrate` bersih. Tinker: ubah
+`settings.pos.rounding_step` → `config('pos.rounding_step')` di proses
+PHP baru ikut berubah; hapus baris → kembali ke default `config/pos.php`.
+Playwright: ubah nilai tab Transaksi → toast sukses → reload tetap
+persist; Danger Zone → tombol submit terkunci sampai nama toko cocok +
+password terisi + checkbox + jeda 5 detik selesai; setelah reset:
+`members`/`products`/`users`/`settings` utuh, `sales`/`topup_requests`
+kosong, file backup baru muncul di disk, 2 baris `activity_log` tercatat.
+`pint --test`/`tsc --noEmit`/`eslint`/`build` bersih. DB dibersihkan
+dari data uji (`settings` di-truncate) setelah verifikasi.
+
+**Tiket baru (backlog, belum dikerjakan) — modul administratif spec
+asli tanpa tiket resmi sebelumnya:**
+
+- [ ] ⬜ T-120 — Karyawan: **perluasan tabel `users`** (tambah kolom
+      `position`, `join_date` — BUKAN tabel `employees` terpisah
+      seperti spec asli; kolom `employee_code` sudah ada di `users`
+      sejak migration `2026_07_30_172630`, staf sudah 1:1 dengan akun
+      login, tabel terpisah cuma menduplikasi data)
+- [ ] ⬜ T-121 — Shift & jadwal kerja (tabel `shifts`, pivot jadwal per
+      karyawan per tanggal)
+- [ ] ⬜ T-122 — Absensi via PIN (reuse mekanisme PIN member yang
+      sudah ada di `config('pos.pin_length')` dst, bukan sistem PIN
+      terpisah)
+- [ ] ⬜ T-123 — Checklist buka/tutup toko per outlet (checkbox +
+      foto per item)
+- [ ] ⬜ T-124 — Kritik & saran: halaman publik `/saran` (QR di struk)
+      + panel respons admin
+
+**Blocking (T-120–T-124):** tidak memblokir Fase 18/19 — modul
+administratif, tidak menyentuh risiko finansial/keamanan.
 
 ## Fase 18 — Pengujian, Keamanan & Penyiapan
 

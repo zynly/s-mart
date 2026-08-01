@@ -31,9 +31,11 @@ use App\Http\Controllers\Admin\ReceivableController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SaleReturnController;
+use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\StockAdjustmentController;
 use App\Http\Controllers\Admin\StockController;
 use App\Http\Controllers\Admin\SupplierController;
+use App\Http\Controllers\Admin\SystemResetController;
 use App\Http\Controllers\Admin\TopupRequestController;
 use App\Http\Controllers\Admin\TransferController;
 use App\Http\Controllers\Admin\TrialBalanceController;
@@ -307,4 +309,15 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::post('/reports/{key}/export', [ReportController::class, 'export'])->name('reports.export');
     });
     Route::get('/reports-download/{filename}', [ReportController::class, 'download'])->name('reports.download')->middleware('signed');
+
+    // Pengaturan & Danger Zone (Fase 17 — T-103/T-104)
+    Route::middleware('can:setting.view')->group(function () {
+        Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
+    });
+    Route::put('/settings/{section}', [SettingController::class, 'update'])->name('settings.update')->middleware('can:setting.update');
+
+    Route::middleware('can:system.reset')->group(function () {
+        Route::get('/settings-danger-zone', [SystemResetController::class, 'index'])->name('settings.danger-zone');
+        Route::post('/settings-danger-zone/reset-transactions', [SystemResetController::class, 'resetTransactions'])->name('settings.reset-transactions');
+    });
 });

@@ -154,6 +154,13 @@ return [
                     'icon' => 'UserCog',
                     'permissions' => ['user.view', 'role.view'],
                 ],
+                [
+                    'key' => 'settings',
+                    'label' => 'Pengaturan',
+                    'route' => 'admin.settings.index',
+                    'icon' => 'Settings',
+                    'permissions' => ['setting.view', 'system.reset'],
+                ],
             ],
         ],
     ],
