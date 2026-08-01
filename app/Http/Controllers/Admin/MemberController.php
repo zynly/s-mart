@@ -44,6 +44,7 @@ class MemberController extends Controller
             ->withQueryString();
 
         return Inertia::render('Admin/Members/Index', [
+            'tab' => 'members',
             'members' => $members,
             'levels' => MemberLevel::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'categories' => Category::orderBy('name')->get(['id', 'name']),

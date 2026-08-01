@@ -15,6 +15,7 @@ class SupplierController extends Controller
     public function index(): Response
     {
         return Inertia::render('Admin/Suppliers/Index', [
+            'tab' => 'suppliers',
             'suppliers' => Supplier::orderBy('name')->get(),
         ]);
     }

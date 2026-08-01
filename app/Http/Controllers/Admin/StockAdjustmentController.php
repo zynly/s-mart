@@ -31,6 +31,7 @@ class StockAdjustmentController extends Controller
             ->withQueryString();
 
         return Inertia::render('Admin/StockAdjustments/Index', [
+            'tab' => 'stock-adjustments',
             'adjustments' => $adjustments,
             'products' => Product::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'outlets' => Outlet::where('is_active', true)->orderBy('name')->get(['id', 'name']),

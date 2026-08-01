@@ -30,6 +30,7 @@ class TransferController extends Controller
             ->withQueryString();
 
         return Inertia::render('Admin/Transfers/Index', [
+            'tab' => 'transfers',
             'transfers' => $transfers,
             'products' => Product::where('is_active', true)->with('baseUnit:id,code')->orderBy('name')->get(['id', 'name', 'base_unit_id']),
             'outlets' => Outlet::where('is_active', true)->orderBy('name')->get(['id', 'name']),

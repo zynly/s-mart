@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import type { ColumnDef } from '@tanstack/react-table'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
+import { PageTabs } from '@/Components/common/PageTabs'
 import { DataTable } from '@/Components/common/DataTable'
 import { Money } from '@/Components/common/Money'
 import { Button } from '@/Components/ui/button'
@@ -36,6 +37,7 @@ type AdjustmentRow = {
 }
 
 type StockAdjustmentsIndexProps = {
+  tab: string
   adjustments: Paginated<AdjustmentRow>
   products: ProductRef[]
   outlets: Ref[]
@@ -52,7 +54,7 @@ const STATUS_BADGE: Record<string, string> = {
   posted: 'bg-success text-white',
 }
 
-export default function Index({ adjustments, products, outlets, filters }: StockAdjustmentsIndexProps) {
+export default function Index({ tab, adjustments, products, outlets, filters }: StockAdjustmentsIndexProps) {
   const [statusFilter, setStatusFilter] = useState(filters.status ?? '')
   const [formOpen, setFormOpen] = useState(false)
   const [lines, setLines] = useState<DraftLine[]>([])
@@ -172,6 +174,12 @@ export default function Index({ adjustments, products, outlets, filters }: Stock
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Penyesuaian Stok' }]}
         actions={<Button onClick={() => setFormOpen(true)}>Ajukan Penyesuaian</Button>}
       />
+      <PageTabs current={tab} tabs={[
+        { key: 'stock', label: 'Ringkasan', href: route('admin.stock.index'), permission: 'stock.view' },
+        { key: 'opnames', label: 'Opname', href: route('admin.opnames.index'), permission: 'opname.view' },
+        { key: 'transfers', label: 'Transfer', href: route('admin.transfers.index'), permission: 'transfer.view' },
+        { key: 'stock-adjustments', label: 'Penyesuaian', href: route('admin.stock-adjustments.index'), permission: 'adjustment.view' },
+      ]} />
 
       <div className="flex flex-wrap gap-2">
         <Select value={statusFilter || 'all'} onValueChange={(v) => applyFilter(v === 'all' ? '' : v)}>

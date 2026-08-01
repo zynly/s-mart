@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEventHandler, type ReactElement } from 'rea
 import { router, useForm } from '@inertiajs/react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
+import { PageTabs } from '@/Components/common/PageTabs'
 import { Button } from '@/Components/ui/button'
 import { Label } from '@/Components/ui/label'
 import { Input } from '@/Components/ui/input'
@@ -26,6 +27,7 @@ type AccountRow = {
 }
 
 type AccountsIndexProps = {
+  tab: string
   accounts: AccountRow[]
 }
 
@@ -40,7 +42,7 @@ const TYPE_BADGE: Record<AccountRow['type'], string> = {
   expense: 'bg-danger text-white',
 }
 
-export default function Index({ accounts }: AccountsIndexProps) {
+export default function Index({ tab, accounts }: AccountsIndexProps) {
   const [createOpen, setCreateOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<AccountRow | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<AccountRow | null>(null)
@@ -91,6 +93,15 @@ export default function Index({ accounts }: AccountsIndexProps) {
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Bagan Akun' }]}
         actions={<Button onClick={() => setCreateOpen(true)}>Tambah Akun</Button>}
       />
+      <PageTabs current={tab} tabs={[
+        { key: 'accounts', label: 'Bagan Akun', href: route('admin.accounts.index'), permission: 'setting.view' },
+        { key: 'journals', label: 'Jurnal', href: route('admin.journals.index'), permission: 'journal.view' },
+        { key: 'ledger', label: 'Buku Besar', href: route('admin.ledger.index'), permission: 'ledger.view' },
+        { key: 'trial-balance', label: 'Neraca Saldo', href: route('admin.trial-balance.index'), permission: 'ledger.view' },
+        { key: 'profit-loss', label: 'Laba Rugi', href: route('admin.profit-loss.index'), permission: 'ledger.view' },
+        { key: 'balance-sheet', label: 'Neraca', href: route('admin.balance-sheet.index'), permission: 'ledger.view' },
+        { key: 'accounting-periods', label: 'Periode', href: route('admin.accounting-periods.index'), permission: 'ledger.view' },
+      ]} />
 
       <div className="overflow-x-auto rounded-md border border-border">
         <table className="w-full text-sm">

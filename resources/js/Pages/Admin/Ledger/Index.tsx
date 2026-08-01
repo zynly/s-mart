@@ -2,6 +2,7 @@ import { type ReactElement } from 'react'
 import { router } from '@inertiajs/react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
+import { PageTabs } from '@/Components/common/PageTabs'
 import { Money } from '@/Components/common/Money'
 import { Label } from '@/Components/ui/label'
 import { Input } from '@/Components/ui/input'
@@ -23,6 +24,7 @@ type LedgerEntry = {
 type LedgerAccount = { id: number; code: string; name: string; normal_balance: 'debit' | 'credit' }
 
 type LedgerIndexProps = {
+  tab: string
   accounts: AccountOption[]
   account: LedgerAccount | null
   entries: LedgerEntry[]
@@ -30,7 +32,7 @@ type LedgerIndexProps = {
   filters: { account_id: number | null; from: string; to: string }
 }
 
-export default function Index({ accounts, account, entries, openingBalance, filters }: LedgerIndexProps) {
+export default function Index({ tab, accounts, account, entries, openingBalance, filters }: LedgerIndexProps) {
   function applyFilters(next: Partial<{ account_id: string; from: string; to: string }>) {
     router.get(route('admin.ledger.index'), {
       account_id: next.account_id ?? (filters.account_id ? String(filters.account_id) : ''),
@@ -49,6 +51,15 @@ export default function Index({ accounts, account, entries, openingBalance, filt
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title="Buku Besar" breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Buku Besar' }]} />
+      <PageTabs current={tab} tabs={[
+        { key: 'accounts', label: 'Bagan Akun', href: route('admin.accounts.index'), permission: 'setting.view' },
+        { key: 'journals', label: 'Jurnal', href: route('admin.journals.index'), permission: 'journal.view' },
+        { key: 'ledger', label: 'Buku Besar', href: route('admin.ledger.index'), permission: 'ledger.view' },
+        { key: 'trial-balance', label: 'Neraca Saldo', href: route('admin.trial-balance.index'), permission: 'ledger.view' },
+        { key: 'profit-loss', label: 'Laba Rugi', href: route('admin.profit-loss.index'), permission: 'ledger.view' },
+        { key: 'balance-sheet', label: 'Neraca', href: route('admin.balance-sheet.index'), permission: 'ledger.view' },
+        { key: 'accounting-periods', label: 'Periode', href: route('admin.accounting-periods.index'), permission: 'ledger.view' },
+      ]} />
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1.5">

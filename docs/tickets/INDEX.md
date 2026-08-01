@@ -413,14 +413,136 @@ console browser bersih tanpa error di semua langkah.
 
 **Blocking:** Fase 2 & Fase 10 selesai (independen dari Fase 3–9, 11–18).
 
-## Fase UI-01 — Fondasi UI *(baru)*
+## Fase UI-01 — Fondasi UI `[SELESAI]`
 
-- [ ] ⬜ T-116 — Konsolidasi 45 halaman → 16 menu (`config/navigation.php` permission-aware)
-- [ ] ⬜ T-117 — Scroll layout fixes + reusable tab component
-- [ ] ⬜ T-118 — Review konsistensi dark mode CSS token (lanjutan Fase 0)
-- [ ] ⬜ T-119 — Admin header + breadcrumb terintegrasi navigasi baru
+Modul asli `docs/fase-ui-01-v2.md` merancang fase ini untuk dikerjakan
+SEBELUM Fase 1 ("kalau dikerjakan belakangan, 45 halaman harus
+di-refactor"). Backlog aktual proyek ini (bagian ini sendiri)
+SENGAJA memindahkannya ke akhir urutan dengan syarat blocking "Fase 8
+selesai" — syarat itu sudah lama terpenuhi (dikerjakan sekarang di
+titik setelah Fase 14, atas pilihan eksplisit user, supaya
+halaman-halaman Fase 15+ lahir langsung dengan struktur navigasi yang
+benar alih-alih menambah utang refactor).
 
-**Blocking:** Fase 8 selesai (butuh cukup banyak halaman admin untuk konsolidasi menu).
+- [x] ✅ T-116 — `config/navigation.php` (16 entri: 1 Dashboard + 15
+      grup modul, permission-aware) + `app/Services/NavigationService.php`
+      (`forUser()` — filter OR-permission per item, drop grup kosong,
+      resolve `route()` + status aktif) dibagikan lewat prop Inertia
+      global `navigation` (`HandleInertiaRequests::share()`). **Bukan
+      45 halaman** seperti perkiraan modul asli — `php artisan
+      route:list --path=admin` menghasilkan **36 route index nyata**
+      (beberapa sudah tergabung natural sejak fase awal, mis. blok
+      Void ada di halaman CashierSession, bukan halaman sendiri).
+      **Konsolidasi dikerjakan lewat `PageTabs` yang menghubungkan
+      route/controller/halaman yang SUDAH ADA — bukan menggabung
+      controller jadi satu.** Modul asli membayangkan 1 controller per
+      grup dengan tab internal (mis. `/admin/produk` melayani 4 tab
+      sekaligus) — itu berarti merombak ulang 30+ controller yang
+      sudah teruji lengkap sejak Fase 1-14, risiko tinggi tanpa
+      manfaat fungsional (cuma kosmetik navigasi). Tiap controller
+      anggota grup cukup tambah SATU baris `'tab' => 'xxx'` di
+      `Inertia::render()` yang sudah ada; halaman `.tsx` terkait
+      tambah `<PageTabs current={tab} tabs={[...]} />` di bawah
+      `PageHeader`. Sidebar jadi 16 entri memetakan penuh 36 route:
+      Dashboard, Kasir, Sesi & Kas (Sesi Kasir·Kas), Deposit, Retur &
+      Koreksi (Retur Penjualan·Write-Off), Produk (Produk·Kategori·
+      Brand·Satuan), Stok (Ringkasan·Opname·Transfer·Penyesuaian),
+      Pembelian (PO·Pembelian·Konsinyasi), Anggota (Anggota·Poin),
+      Promo (Promo·Kupon), Hutang & Piutang (Hutang·Piutang),
+      Akuntansi (Bagan Akun·Jurnal·Buku Besar·Neraca Saldo·Laba Rugi·
+      Neraca·Periode), Laporan (grid kartu, bukan tab — pola sendiri
+      sejak Fase 14), Mitra & Outlet (Supplier·Outlet·Metode Bayar),
+      Pengguna & Sistem (Pengguna·Role & Izin·Log Aktivitas). Menu
+      "Karyawan"/pengaturan lengkap (shift/absensi/backup) dari modul
+      asli TIDAK dibuat sebagai menu kosong — belum ada satu route pun
+      untuk itu (Fase 17 belum dikerjakan).
+- [x] ✅ T-117 — `AdminLayout.tsx` dirombak: root `flex h-screen
+      overflow-hidden`, `main` jadi satu-satunya `overflow-y-auto`
+      (sebelumnya seluruh body ikut scroll, tanpa region scroll
+      independen). **Scope diperkecil dari rencana modul asli** — modul
+      asli minta `html, body, #app { overflow: hidden }` global lalu
+      "kecualikan" Public/Wali lewat CSS kondisional; `PosLayout.tsx`
+      ternyata SUDAH benar (`h-screen overflow-hidden` sejak awal),
+      `PublicLayout.tsx`/`GuestLayout.tsx` SUDAH benar (`min-h-screen`
+      natural scroll) — keduanya tidak disentuh, cukup terapkan pola
+      yang sama ke `AdminLayout` saja, hasil akhir identik tanpa perlu
+      pengecualian layout lain. `PageTabs.tsx` (baru, reusable) —
+      props `{tabs:{key,label,href,permission?}[], current}`, filter
+      tab dari `auth.user.permissions` yang sudah dibagikan sejak awal,
+      navigasi via `router.visit(href,{preserveScroll:true})`, `null`
+      jika tab yang lolos filter ≤1 (tidak render UI tab yang percuma).
+      Dipasang ke 34 dari 36 route (2 pengecualian by design: Dashboard
+      solo-item, Laporan pakai grid kartu sendiri).
+- [x] ✅ T-118 — Diaudit `grep -rn "dark:" resources/js --include=*.tsx
+      | grep -v Components/ui` → hanya **4 titik bocor nyata** (bukan
+      berserakan separah dikhawatirkan modul asli), semua pola sama
+      (`bg-navy-100 dark:bg-navy-700 text-navy-500 dark:text-navy-200`
+      badge ikon, atau `text-navy-600 dark:text-navy-200` untuk tautan)
+      di `EmptyState.tsx`, `StatCard.tsx`, `Pos/Index.tsx`,
+      `Purchases/Index.tsx` — diganti token yang SUDAH ADA & theme-aware
+      sejak Fase 0 (`bg-secondary text-secondary-foreground` untuk
+      badge, `text-primary hover:underline` untuk tautan), bukan token
+      baru. **Skema token modul asli (gaya Tailwind v3, RGB terpisah)
+      TIDAK dipakai apa adanya** — proyek sudah punya sistem Tailwind
+      v4 sendiri (`surface/bg/border/content/content-muted` + palet
+      `navy-50..900`/`gold`/`teal`/dst, dipetakan penuh ke variabel
+      shadcn) yang sudah dipakai konsisten di ~40 halaman sejak Fase 0;
+      tidak ditulis ulang. Sidebar sengaja TETAP hardcode
+      `bg-navy-800`/`text-navy-50` (bukan token terpisah) — desain
+      Fase 0 yang konsisten dipakai, navy gelap permanen di kedua mode
+      adalah pilihan sengaja, bukan kebocoran. `dark:` yang tersisa di
+      `Public/Welcome.tsx`/`PublicLayout.tsx` (2 titik) sengaja TIDAK
+      disentuh — itu styling brand publik pra-Fase-UI-01 yang
+      independen dari sistem tema admin, di luar cakupan. `ThemeToggle.tsx`
+      (baru) — dropdown 3 pilihan (Terang/Gelap/Sistem) di atas
+      `useThemeStore` yang sudah lengkap sejak Fase 0 (termasuk skrip
+      anti-FOUC di `app.blade.php`) — tinggal pasang UI-nya.
+- [x] ✅ T-119 — Header admin ditambah: tombol Ctrl+K membuka
+      `<CommandDialog>` shadcn placeholder ("Pencarian tersedia di Fase
+      15" — sesuai modul asli, isi lengkap ditunda), ikon lonceng
+      statis (badge dinamis butuh query per modul tersebar, bukan
+      pekerjaan navigasi murni, tidak diminta eksplisit T-116..T-119 —
+      struktur `badge?` sudah disiapkan di `config/navigation.php`
+      untuk perluasan nanti), `<ThemeToggle />`. Breadcrumb sudah ada
+      sejak Fase 0 lewat `PageHeader`, tidak dirombak.
+      **Bug keamanan nyata ditemukan & diperbaiki saat memetakan
+      permission navigasi:** route `admin/activity-logs` TIDAK punya
+      middleware permission SAMA SEKALI (`routes/admin.php`), dan
+      `ActivityLogController` juga tanpa `authorize()` internal — siapa
+      pun yang login (termasuk kasir) bisa lihat log aktivitas seluruh
+      sistem. Ditambahkan `->middleware('can:setting.view')`, konsisten
+      dengan halaman pengaturan lain. Ini menegakkan prinsip "3 lapis"
+      modul asli (sidebar+route+controller) — nav yang pakai permission
+      tanpa rute yang menegakkannya adalah keamanan-lewat-sembunyi yang
+      palsu; dikonfirmasi lewat Playwright: kasir1 mengakses
+      `/admin/activity-logs` maupun `/admin/journals` langsung via URL
+      (bukan lewat menu) tetap 403, bukan cuma hilang dari sidebar.
+
+**Verifikasi:** `pint --test`/`tsc --noEmit`/`eslint`/`build` bersih
+(build tanpa peringatan ukuran chunk — sempat ditemukan `import * as
+Icons from 'lucide-react'` di draf awal `AdminLayout.tsx` membengkakkan
+chunk `PageHeader` dari ~65KB ke 681KB, diperbaiki jadi `ICON_MAP`
+eksplisit berisi 15 ikon yang benar-benar dipakai) + grep ulang
+`dark:` di luar `Components/ui` pada `resources/js/Pages/Admin`,
+`Components/common`, dan `AdminLayout.tsx` → kosong. **Verifikasi
+Playwright browser sungguhan lintas 6 role** (owner/admin/supervisor/
+kasir1/warehouse/treasurer): menu tiap role cocok persis peta
+permission (owner/admin 15 grup penuh, supervisor 7 grup — kehilangan
+Deposit/Pembelian/Promo/Hutang&Piutang/Akuntansi/Mitra&Sistem karena
+tidak punya permission-nya, kasir 9 grup, warehouse 6 grup, treasurer
+7 grup), tidak ada grup kosong yang lolos ke UI, akses langsung URL
+tanpa permission → 403 (diuji silang per role: supervisor/kasir1 ke
+`/admin/journals`, treasurer ke `/admin/products`), akses ke halaman
+yang MEMANG diizinkan → 200, dark mode toggle Terang↔Gelap mengganti
+class `.dark` di `<html>` tanpa error, tab `PageTabs` diuji navigasi
+antar-tab (klik) DAN persist saat reload langsung di URL tab
+bukan-pertama (`/admin/opnames` tetap menampilkan tab "Opname" aktif
+setelah `page.reload()`, bukan reset ke tab pertama), console browser
+bersih di semua role. DB direset ke seed bersih
+(`migrate:fresh --seed`) setelah verifikasi.
+
+**Blocking:** Fase 8 selesai — dikerjakan setelah Fase 14, atas
+pilihan eksplisit user, sebelum lanjut ke Fase 15.
 
 ---
 

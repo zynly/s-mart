@@ -4,6 +4,7 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { MoreHorizontal } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
+import { PageTabs } from '@/Components/common/PageTabs'
 import { DataTable } from '@/Components/common/DataTable'
 import { ConfirmDialog } from '@/Components/common/ConfirmDialog'
 import { PinInput } from '@/Components/common/PinInput'
@@ -29,6 +30,7 @@ type UserRow = {
 }
 
 type UsersIndexProps = {
+  tab: string
   users: Paginated<UserRow>
   roles: string[]
   filters: { search?: string; role?: string }
@@ -45,7 +47,7 @@ const emptyForm = {
   is_active: true as boolean,
 }
 
-export default function Index({ users, roles, filters }: UsersIndexProps) {
+export default function Index({ tab, users, roles, filters }: UsersIndexProps) {
   const [search, setSearch] = useState(filters.search ?? '')
   const [roleFilter, setRoleFilter] = useState(filters.role ?? '')
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -181,6 +183,11 @@ export default function Index({ users, roles, filters }: UsersIndexProps) {
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Pengguna' }]}
         actions={<Button onClick={openCreate}>Tambah Pengguna</Button>}
       />
+      <PageTabs current={tab} tabs={[
+        { key: 'users', label: 'Pengguna', href: route('admin.users.index'), permission: 'user.view' },
+        { key: 'roles', label: 'Role & Izin', href: route('admin.roles.index'), permission: 'role.view' },
+        { key: 'activity-logs', label: 'Log Aktivitas', href: route('admin.activity-logs.index'), permission: 'setting.view' },
+      ]} />
 
       <div className="flex flex-wrap gap-2">
         <Input

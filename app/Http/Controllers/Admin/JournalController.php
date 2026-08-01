@@ -40,6 +40,7 @@ class JournalController extends Controller
             ->withQueryString();
 
         return Inertia::render('Admin/Journals/Index', [
+            'tab' => 'journals',
             'journals' => $journals,
             'accounts' => Account::where('is_active', true)->orderBy('code')->get(['id', 'code', 'name']),
             'outlets' => Outlet::where('is_active', true)->orderBy('name')->get(['id', 'name']),

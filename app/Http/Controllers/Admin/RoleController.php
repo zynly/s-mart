@@ -30,6 +30,7 @@ class RoleController extends Controller
         ]);
 
         return Inertia::render('Admin/Roles/Index', [
+            'tab' => 'roles',
             'roles' => $roles,
             'modules' => $modules,
             'actions' => ['view', 'create', 'update', 'delete', 'approve', 'export', 'print'],

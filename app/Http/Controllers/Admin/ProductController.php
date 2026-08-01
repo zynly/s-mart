@@ -43,6 +43,7 @@ class ProductController extends Controller
         // ini. $canViewCost sudah dikirim ke frontend supaya kolom itu bisa
         // langsung disembunyikan/ditampilkan begitu datanya ada nanti.
         return Inertia::render('Admin/Products/Index', [
+            'tab' => 'products',
             'products' => $products,
             'categories' => Category::orderBy('name')->get(['id', 'name']),
             'brands' => Brand::orderBy('name')->get(['id', 'name']),

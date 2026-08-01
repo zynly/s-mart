@@ -57,8 +57,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::post('/roles', [RoleController::class, 'store'])->name('roles.store')->middleware('can:role.create');
     Route::put('/roles/{role}', [RoleController::class, 'update'])->name('roles.update')->middleware('can:role.update');
 
+    // Bug nyata ditemukan Fase UI-01: route ini sebelumnya TIDAK punya
+    // gate permission sama sekali (cuma 'auth') — siapa pun yang login,
+    // termasuk kasir, bisa lihat log aktivitas seluruh sistem.
     Route::get('/activity-logs', [ActivityLogController::class, 'index'])
-        ->name('activity-logs.index');
+        ->name('activity-logs.index')
+        ->middleware('can:setting.view');
 
     // Master Data (Fase 2)
     Route::middleware('can:product.view')->group(function () {

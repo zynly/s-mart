@@ -35,6 +35,7 @@ class CashController extends Controller
             ->withQueryString();
 
         return Inertia::render('Admin/Cash/Index', [
+            'tab' => 'cash',
             'transactions' => $transactions,
             'accounts' => CashAccount::where('is_active', true)->orderBy('name')->get(['id', 'name', 'type', 'current_balance', 'is_drawer']),
             'categories' => CashCategory::where('is_active', true)->orderBy('name')->get(['id', 'name', 'type']),

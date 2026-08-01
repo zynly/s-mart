@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import type { ColumnDef } from '@tanstack/react-table'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
+import { PageTabs } from '@/Components/common/PageTabs'
 import { DataTable } from '@/Components/common/DataTable'
 import { Money } from '@/Components/common/Money'
 import { Button } from '@/Components/ui/button'
@@ -33,6 +34,7 @@ type WriteOffRow = {
 }
 
 type WriteOffsIndexProps = {
+  tab: string
   writeOffs: Paginated<WriteOffRow>
   products: Ref[]
   outlets: Ref[]
@@ -54,7 +56,7 @@ const STATUS_BADGE: Record<string, string> = {
   rejected: 'bg-danger text-white',
 }
 
-export default function Index({ writeOffs, products, outlets, filters }: WriteOffsIndexProps) {
+export default function Index({ tab, writeOffs, products, outlets, filters }: WriteOffsIndexProps) {
   const [statusFilter, setStatusFilter] = useState(filters.status ?? '')
   const [formOpen, setFormOpen] = useState(false)
   const [rejectTarget, setRejectTarget] = useState<WriteOffRow | null>(null)
@@ -146,6 +148,10 @@ export default function Index({ writeOffs, products, outlets, filters }: WriteOf
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Write-Off' }]}
         actions={<Button onClick={() => setFormOpen(true)}>Ajukan Write-Off</Button>}
       />
+      <PageTabs current={tab} tabs={[
+        { key: 'sale-returns', label: 'Retur Penjualan', href: route('admin.sale-returns.index'), permission: 'sale_return.view' },
+        { key: 'write-offs', label: 'Write-Off', href: route('admin.write-offs.index'), permission: 'adjustment.view' },
+      ]} />
 
       <div className="flex flex-wrap gap-2">
         <Select value={statusFilter || 'all'} onValueChange={(v) => applyFilter(v === 'all' ? '' : v)}>

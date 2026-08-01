@@ -2,6 +2,7 @@ import { type ReactElement } from 'react'
 import { router } from '@inertiajs/react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
+import { PageTabs } from '@/Components/common/PageTabs'
 import { Money } from '@/Components/common/Money'
 import { Label } from '@/Components/ui/label'
 import { Input } from '@/Components/ui/input'
@@ -20,6 +21,7 @@ type ProfitLossResult = {
 }
 
 type ProfitLossIndexProps = {
+  tab: string
   current: ProfitLossResult
   previous: ProfitLossResult
   filters: { from: string; to: string }
@@ -31,7 +33,7 @@ function Delta({ current, previous }: { current: number; previous: number }) {
   return <Money amount={diff} size="sm" showSign />
 }
 
-export default function Index({ current, previous, filters }: ProfitLossIndexProps) {
+export default function Index({ tab, current, previous, filters }: ProfitLossIndexProps) {
   function applyFilters(next: Partial<{ from: string; to: string }>) {
     router.get(route('admin.profit-loss.index'), { from: next.from ?? filters.from, to: next.to ?? filters.to }, { preserveState: true })
   }
@@ -39,6 +41,15 @@ export default function Index({ current, previous, filters }: ProfitLossIndexPro
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title="Laba Rugi" breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Laba Rugi' }]} />
+      <PageTabs current={tab} tabs={[
+        { key: 'accounts', label: 'Bagan Akun', href: route('admin.accounts.index'), permission: 'setting.view' },
+        { key: 'journals', label: 'Jurnal', href: route('admin.journals.index'), permission: 'journal.view' },
+        { key: 'ledger', label: 'Buku Besar', href: route('admin.ledger.index'), permission: 'ledger.view' },
+        { key: 'trial-balance', label: 'Neraca Saldo', href: route('admin.trial-balance.index'), permission: 'ledger.view' },
+        { key: 'profit-loss', label: 'Laba Rugi', href: route('admin.profit-loss.index'), permission: 'ledger.view' },
+        { key: 'balance-sheet', label: 'Neraca', href: route('admin.balance-sheet.index'), permission: 'ledger.view' },
+        { key: 'accounting-periods', label: 'Periode', href: route('admin.accounting-periods.index'), permission: 'ledger.view' },
+      ]} />
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1.5"><Label>Dari</Label><Input type="date" value={filters.from} onChange={(e) => applyFilters({ from: e.target.value })} /></div>

@@ -4,6 +4,7 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { AlertTriangle, PackageX } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
+import { PageTabs } from '@/Components/common/PageTabs'
 import { DataTable } from '@/Components/common/DataTable'
 import { Money } from '@/Components/common/Money'
 import { StatCard } from '@/Components/common/StatCard'
@@ -48,6 +49,7 @@ type Movement = {
 }
 
 type StockIndexProps = {
+  tab: string
   stocks: Paginated<StockRow>
   categories: Ref[]
   outlets: Ref[]
@@ -80,7 +82,7 @@ function stockStatus(qty: number, minStock: number): { label: string; className:
   return { label: 'Aman', className: 'bg-success text-white' }
 }
 
-export default function Index({ stocks, categories, outlets, currentOutletId, expiringSoon, expired, filters, canViewCost }: StockIndexProps) {
+export default function Index({ tab, stocks, categories, outlets, currentOutletId, expiringSoon, expired, filters, canViewCost }: StockIndexProps) {
   const [search, setSearch] = useState(filters.search ?? '')
   const [categoryFilter, setCategoryFilter] = useState(filters.category_id ?? '')
   const [statusFilter, setStatusFilter] = useState(filters.status ?? '')
@@ -152,6 +154,12 @@ export default function Index({ stocks, categories, outlets, currentOutletId, ex
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title="Stok" breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Stok' }]} />
+      <PageTabs current={tab} tabs={[
+        { key: 'stock', label: 'Ringkasan', href: route('admin.stock.index'), permission: 'stock.view' },
+        { key: 'opnames', label: 'Opname', href: route('admin.opnames.index'), permission: 'opname.view' },
+        { key: 'transfers', label: 'Transfer', href: route('admin.transfers.index'), permission: 'transfer.view' },
+        { key: 'stock-adjustments', label: 'Penyesuaian', href: route('admin.stock-adjustments.index'), permission: 'adjustment.view' },
+      ]} />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatCard label="Total Produk Dipantau" value={String(stocks.total)} />

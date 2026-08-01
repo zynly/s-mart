@@ -15,6 +15,7 @@ class UnitController extends Controller
     public function index(): Response
     {
         return Inertia::render('Admin/Units/Index', [
+            'tab' => 'units',
             'units' => Unit::orderBy('name')->get(),
         ]);
     }

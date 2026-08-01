@@ -24,6 +24,7 @@ class CouponController extends Controller
             ->withQueryString();
 
         return Inertia::render('Admin/Coupons/Index', [
+            'tab' => 'coupons',
             'coupons' => $coupons,
             'filters' => $request->only('status'),
         ]);

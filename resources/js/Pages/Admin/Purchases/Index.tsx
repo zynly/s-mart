@@ -4,6 +4,7 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { Plus, Trash2 } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
+import { PageTabs } from '@/Components/common/PageTabs'
 import { DataTable } from '@/Components/common/DataTable'
 import { Money } from '@/Components/common/Money'
 import { MoneyInput } from '@/Components/common/MoneyInput'
@@ -35,6 +36,7 @@ type PurchaseRow = {
 }
 
 type PurchasesIndexProps = {
+  tab: string
   purchases: Paginated<PurchaseRow>
   suppliers: SupplierRef[]
   outlets: Ref[]
@@ -70,7 +72,7 @@ const emptyForm = {
   other_costs: [] as CostField[],
 }
 
-export default function Index({ purchases, suppliers, outlets, products, units, filters }: PurchasesIndexProps) {
+export default function Index({ tab, purchases, suppliers, outlets, products, units, filters }: PurchasesIndexProps) {
   const [search, setSearch] = useState(filters.search ?? '')
   const [sheetOpen, setSheetOpen] = useState(false)
   const form = useForm(emptyForm)
@@ -128,7 +130,7 @@ export default function Index({ purchases, suppliers, outlets, products, units, 
     {
       id: 'reference',
       header: 'Referensi',
-      cell: ({ row }) => <Link href={route('admin.purchases.show', row.original.id)} className="text-navy-600 hover:underline dark:text-navy-200">{row.original.reference}</Link>,
+      cell: ({ row }) => <Link href={route('admin.purchases.show', row.original.id)} className="text-primary hover:underline">{row.original.reference}</Link>,
     },
     { id: 'supplier', header: 'Supplier', cell: ({ row }) => row.original.supplier.name },
     { id: 'date', header: 'Tanggal', cell: ({ row }) => new Date(row.original.purchase_date).toLocaleDateString('id-ID') },
@@ -148,6 +150,11 @@ export default function Index({ purchases, suppliers, outlets, products, units, 
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Pembelian' }]}
         actions={<Button onClick={openCreate}>Terima Barang</Button>}
       />
+      <PageTabs current={tab} tabs={[
+        { key: 'purchase-orders', label: 'Purchase Order', href: route('admin.purchase-orders.index'), permission: 'purchase_order.view' },
+        { key: 'purchases', label: 'Pembelian', href: route('admin.purchases.index'), permission: 'purchase.view' },
+        { key: 'consignment', label: 'Konsinyasi', href: route('admin.consignment.index'), permission: 'consignment.view' },
+      ]} />
 
       <div className="flex flex-wrap gap-2">
         <Input

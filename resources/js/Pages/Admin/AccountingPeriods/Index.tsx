@@ -2,6 +2,7 @@ import { useState, type FormEventHandler, type ReactElement } from 'react'
 import { useForm } from '@inertiajs/react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
+import { PageTabs } from '@/Components/common/PageTabs'
 import { Button } from '@/Components/ui/button'
 import { Label } from '@/Components/ui/label'
 import { Badge } from '@/Components/ui/badge'
@@ -20,13 +21,13 @@ type PeriodRow = {
   closed_at: string | null
 }
 
-type AccountingPeriodsIndexProps = { periods: PeriodRow[] }
+type AccountingPeriodsIndexProps = { tab: string; periods: PeriodRow[] }
 
 const MONTH_NAMES = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
 const STATUS_LABELS: Record<string, string> = { open: 'Terbuka', closed: 'Ditutup', locked: 'Terkunci' }
 const STATUS_BADGE: Record<string, string> = { open: 'bg-success text-white', closed: 'bg-slate-500 text-white', locked: 'bg-danger text-white' }
 
-export default function Index({ periods }: AccountingPeriodsIndexProps) {
+export default function Index({ tab, periods }: AccountingPeriodsIndexProps) {
   const now = new Date()
   const [closeOpen, setCloseOpen] = useState(false)
   const [reopenTarget, setReopenTarget] = useState<PeriodRow | null>(null)
@@ -57,6 +58,15 @@ export default function Index({ periods }: AccountingPeriodsIndexProps) {
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Periode Akuntansi' }]}
         actions={<Button onClick={() => setCloseOpen(true)}>Tutup Periode</Button>}
       />
+      <PageTabs current={tab} tabs={[
+        { key: 'accounts', label: 'Bagan Akun', href: route('admin.accounts.index'), permission: 'setting.view' },
+        { key: 'journals', label: 'Jurnal', href: route('admin.journals.index'), permission: 'journal.view' },
+        { key: 'ledger', label: 'Buku Besar', href: route('admin.ledger.index'), permission: 'ledger.view' },
+        { key: 'trial-balance', label: 'Neraca Saldo', href: route('admin.trial-balance.index'), permission: 'ledger.view' },
+        { key: 'profit-loss', label: 'Laba Rugi', href: route('admin.profit-loss.index'), permission: 'ledger.view' },
+        { key: 'balance-sheet', label: 'Neraca', href: route('admin.balance-sheet.index'), permission: 'ledger.view' },
+        { key: 'accounting-periods', label: 'Periode', href: route('admin.accounting-periods.index'), permission: 'ledger.view' },
+      ]} />
 
       <div className="overflow-x-auto rounded-md border border-border">
         <table className="w-full text-sm">

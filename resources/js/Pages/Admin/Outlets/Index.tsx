@@ -4,6 +4,7 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { MoreHorizontal } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
+import { PageTabs } from '@/Components/common/PageTabs'
 import { DataTable } from '@/Components/common/DataTable'
 import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
@@ -25,7 +26,7 @@ type OutletRow = {
 
 const emptyForm = { code: '', name: '', address: '', phone: '', is_main: false as boolean, is_active: true as boolean }
 
-export default function Index({ outlets }: { outlets: OutletRow[] }) {
+export default function Index({ tab, outlets }: { tab: string; outlets: OutletRow[] }) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<OutletRow | null>(null)
   const form = useForm(emptyForm)
@@ -107,6 +108,11 @@ export default function Index({ outlets }: { outlets: OutletRow[] }) {
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Outlet' }]}
         actions={<Button onClick={openCreate}>Tambah Outlet</Button>}
       />
+      <PageTabs current={tab} tabs={[
+        { key: 'suppliers', label: 'Supplier', href: route('admin.suppliers.index'), permission: 'supplier.view' },
+        { key: 'outlets', label: 'Outlet', href: route('admin.outlets.index'), permission: 'setting.view' },
+        { key: 'payment-methods', label: 'Metode Bayar', href: route('admin.payment-methods.index'), permission: 'setting.view' },
+      ]} />
 
       <DataTable columns={columns} data={outlets} getRowId={(row) => String(row.id)} />
 

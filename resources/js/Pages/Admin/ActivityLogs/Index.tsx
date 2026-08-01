@@ -3,6 +3,7 @@ import { router } from '@inertiajs/react'
 import type { ColumnDef } from '@tanstack/react-table'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
+import { PageTabs } from '@/Components/common/PageTabs'
 import { DataTable } from '@/Components/common/DataTable'
 import { Badge } from '@/Components/ui/badge'
 import { Input } from '@/Components/ui/input'
@@ -21,12 +22,13 @@ type LogRow = {
 }
 
 type ActivityLogsIndexProps = {
+  tab: string
   logs: Paginated<LogRow>
   logNames: string[]
   filters: { log_name?: string; causer_id?: string; date_from?: string; date_to?: string }
 }
 
-export default function Index({ logs, logNames, filters }: ActivityLogsIndexProps) {
+export default function Index({ tab, logs, logNames, filters }: ActivityLogsIndexProps) {
   const [logName, setLogName] = useState(filters.log_name ?? '')
   const [dateFrom, setDateFrom] = useState(filters.date_from ?? '')
   const [dateTo, setDateTo] = useState(filters.date_to ?? '')
@@ -65,6 +67,11 @@ export default function Index({ logs, logNames, filters }: ActivityLogsIndexProp
         subtitle="Audit trail seluruh aksi penting di sistem"
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Log Aktivitas' }]}
       />
+      <PageTabs current={tab} tabs={[
+        { key: 'users', label: 'Pengguna', href: route('admin.users.index'), permission: 'user.view' },
+        { key: 'roles', label: 'Role & Izin', href: route('admin.roles.index'), permission: 'role.view' },
+        { key: 'activity-logs', label: 'Log Aktivitas', href: route('admin.activity-logs.index'), permission: 'setting.view' },
+      ]} />
 
       <div className="flex flex-wrap gap-2">
         <Select value={logName || 'all'} onValueChange={(v) => setLogName(v === 'all' ? '' : v)}>

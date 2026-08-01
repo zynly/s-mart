@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactElement } from 'react'
 import { router } from '@inertiajs/react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
+import { PageTabs } from '@/Components/common/PageTabs'
 import { Card, CardContent } from '@/Components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/Components/ui/tabs'
 import { Checkbox } from '@/Components/ui/checkbox'
@@ -15,13 +16,14 @@ type RoleRow = {
 }
 
 type RolesIndexProps = {
+  tab: string
   roles: RoleRow[]
   modules: string[]
   actions: string[]
   allPermissions: string[]
 }
 
-export default function Index({ roles, modules, actions, allPermissions }: RolesIndexProps) {
+export default function Index({ tab, roles, modules, actions, allPermissions }: RolesIndexProps) {
   const [activeRoleName, setActiveRoleName] = useState(roles[0]?.name ?? '')
   const activeRole = roles.find((r) => r.name === activeRoleName) ?? roles[0]
   const [selected, setSelected] = useState<Set<string>>(new Set(activeRole?.permissions ?? []))
@@ -83,6 +85,11 @@ export default function Index({ roles, modules, actions, allPermissions }: Roles
           </Button>
         }
       />
+      <PageTabs current={tab} tabs={[
+        { key: 'users', label: 'Pengguna', href: route('admin.users.index'), permission: 'user.view' },
+        { key: 'roles', label: 'Role & Izin', href: route('admin.roles.index'), permission: 'role.view' },
+        { key: 'activity-logs', label: 'Log Aktivitas', href: route('admin.activity-logs.index'), permission: 'setting.view' },
+      ]} />
 
       <Tabs value={activeRoleName} onValueChange={switchRole}>
         <TabsList>

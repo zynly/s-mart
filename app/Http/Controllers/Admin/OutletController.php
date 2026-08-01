@@ -15,6 +15,7 @@ class OutletController extends Controller
     public function index(): Response
     {
         return Inertia::render('Admin/Outlets/Index', [
+            'tab' => 'outlets',
             'outlets' => Outlet::orderBy('name')->get(),
         ]);
     }

@@ -3,6 +3,7 @@ import { Link, router } from '@inertiajs/react'
 import type { ColumnDef } from '@tanstack/react-table'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
+import { PageTabs } from '@/Components/common/PageTabs'
 import { DataTable } from '@/Components/common/DataTable'
 import { Money } from '@/Components/common/Money'
 import { Badge } from '@/Components/ui/badge'
@@ -28,6 +29,7 @@ type SaleReturnRow = {
 }
 
 type SaleReturnsIndexProps = {
+  tab: string
   returns: Paginated<SaleReturnRow>
   filters: { status?: string }
 }
@@ -48,7 +50,7 @@ const STATUS_BADGE: Record<string, string> = {
   rejected: 'bg-danger text-white',
 }
 
-export default function Index({ returns, filters }: SaleReturnsIndexProps) {
+export default function Index({ tab, returns, filters }: SaleReturnsIndexProps) {
   const [statusFilter, setStatusFilter] = useState(filters.status ?? '')
 
   function applyFilter(status: string) {
@@ -85,6 +87,10 @@ export default function Index({ returns, filters }: SaleReturnsIndexProps) {
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Retur Penjualan' }]}
         actions={<Button asChild><Link href={route('admin.sale-returns.create')}>Buat Retur</Link></Button>}
       />
+      <PageTabs current={tab} tabs={[
+        { key: 'sale-returns', label: 'Retur Penjualan', href: route('admin.sale-returns.index'), permission: 'sale_return.view' },
+        { key: 'write-offs', label: 'Write-Off', href: route('admin.write-offs.index'), permission: 'adjustment.view' },
+      ]} />
 
       <div className="flex flex-wrap gap-2">
         <Select value={statusFilter || 'all'} onValueChange={(v) => applyFilter(v === 'all' ? '' : v)}>

@@ -47,6 +47,7 @@ class StockController extends Controller
             ->withQueryString();
 
         return Inertia::render('Admin/Stock/Index', [
+            'tab' => 'stock',
             'stocks' => $stocks,
             'categories' => Category::orderBy('name')->get(['id', 'name']),
             'outlets' => Outlet::where('is_active', true)->orderBy('name')->get(['id', 'name']),

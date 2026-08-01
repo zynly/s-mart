@@ -34,6 +34,7 @@ class SaleReturnController extends Controller
             ->withQueryString();
 
         return Inertia::render('Admin/SaleReturns/Index', [
+            'tab' => 'sale-returns',
             'returns' => $returns,
             'filters' => $request->only('status'),
         ]);

@@ -37,6 +37,7 @@ class OpnameController extends Controller
             ->withQueryString();
 
         return Inertia::render('Admin/Opnames/Index', [
+            'tab' => 'opnames',
             'opnames' => $opnames,
             'outlets' => Outlet::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'categories' => Category::orderBy('name')->get(['id', 'name']),

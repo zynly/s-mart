@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import type { ColumnDef } from '@tanstack/react-table'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
+import { PageTabs } from '@/Components/common/PageTabs'
 import { DataTable } from '@/Components/common/DataTable'
 import { Money } from '@/Components/common/Money'
 import { MoneyInput } from '@/Components/common/MoneyInput'
@@ -58,6 +59,7 @@ type ActiveSaleRow = {
 }
 
 type CashierSessionIndexProps = {
+  tab: string
   active: ActiveSession | null
   expected: number | null
   cashAccounts: Ref[]
@@ -78,7 +80,7 @@ const SALE_STATUS_BADGE: Record<string, string> = {
   void: 'bg-danger text-white',
 }
 
-export default function Index({ active, expected, cashAccounts, activeSales, recentSessions }: CashierSessionIndexProps) {
+export default function Index({ tab, active, expected, cashAccounts, activeSales, recentSessions }: CashierSessionIndexProps) {
   const [pinOpen, setPinOpen] = useState(false)
   const openForm = useForm({ cash_account_id: cashAccounts[0] ? String(cashAccounts[0].id) : '', opening_cash: 0 })
   // Sengaja default ke 0, bukan expected — kasir wajib menghitung fisik
@@ -182,6 +184,10 @@ export default function Index({ active, expected, cashAccounts, activeSales, rec
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title="Sesi Kasir" breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Sesi Kasir' }]} />
+      <PageTabs current={tab} tabs={[
+        { key: 'cashier-session', label: 'Sesi Kasir', href: route('admin.cashier-session.index'), permission: 'pos.view' },
+        { key: 'cash', label: 'Kas', href: route('admin.cash.index'), permission: 'cash.view' },
+      ]} />
 
       {!active ? (
         <Card className="max-w-md">

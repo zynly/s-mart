@@ -22,6 +22,7 @@ class PointController extends Controller
             ->withQueryString();
 
         return Inertia::render('Admin/Points/Index', [
+            'tab' => 'points',
             'transactions' => $transactions,
             'members' => Member::where('status', 'active')->orderBy('name')->get(['id', 'name', 'member_number', 'point_balance']),
             'filters' => $request->only('member_id', 'type'),

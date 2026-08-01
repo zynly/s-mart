@@ -4,6 +4,7 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { MoreHorizontal, Printer } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
+import { PageTabs } from '@/Components/common/PageTabs'
 import { DataTable } from '@/Components/common/DataTable'
 import { Money } from '@/Components/common/Money'
 import { MoneyInput } from '@/Components/common/MoneyInput'
@@ -40,6 +41,7 @@ type MemberRow = {
 }
 
 type MembersIndexProps = {
+  tab: string
   members: Paginated<MemberRow>
   levels: Level[]
   categories: Ref[]
@@ -92,7 +94,7 @@ const emptyForm = {
   joined_at: '',
 }
 
-export default function Index({ members, levels, categories, filters }: MembersIndexProps) {
+export default function Index({ tab, members, levels, categories, filters }: MembersIndexProps) {
   const [search, setSearch] = useState(filters.search ?? '')
   const [typeFilter, setTypeFilter] = useState(filters.type ?? '')
   const [statusFilter, setStatusFilter] = useState(filters.status ?? '')
@@ -217,6 +219,10 @@ export default function Index({ members, levels, categories, filters }: MembersI
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Anggota' }]}
         actions={<Button onClick={openCreate}>Tambah Anggota</Button>}
       />
+      <PageTabs current={tab} tabs={[
+        { key: 'members', label: 'Anggota', href: route('admin.members.index'), permission: 'member.view' },
+        { key: 'points', label: 'Poin', href: route('admin.points.index'), permission: 'member.view' },
+      ]} />
 
       <div className="flex flex-wrap gap-2">
         <Input

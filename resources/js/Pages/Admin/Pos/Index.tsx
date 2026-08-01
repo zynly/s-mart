@@ -458,7 +458,7 @@ export default function Index({ session, outlet, paymentMethods, favoriteProduct
             </div>
           ) : (
             <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-full bg-navy-100 text-navy-600 dark:bg-navy-700 dark:text-navy-100">
+              <div className="flex size-10 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
                 <User className="size-5" />
               </div>
               <div className="flex-1">

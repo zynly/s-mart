@@ -19,6 +19,7 @@ class AccountingPeriodController extends Controller
     public function index(): Response
     {
         return Inertia::render('Admin/AccountingPeriods/Index', [
+            'tab' => 'accounting-periods',
             'periods' => AccountingPeriod::with('closer:id,name')->orderByDesc('year')->orderByDesc('month')->get(),
         ]);
     }

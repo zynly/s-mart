@@ -29,6 +29,7 @@ class DebtController extends Controller
             ->withQueryString();
 
         return Inertia::render('Admin/Debts/Index', [
+            'tab' => 'debts',
             'debts' => $debts,
             'aging' => $this->debtService->getAging()->map(fn ($row) => [
                 'debt' => $row['debt'],

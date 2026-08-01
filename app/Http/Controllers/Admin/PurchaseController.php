@@ -38,6 +38,7 @@ class PurchaseController extends Controller
             ->withQueryString();
 
         return Inertia::render('Admin/Purchases/Index', [
+            'tab' => 'purchases',
             'purchases' => $purchases,
             'suppliers' => Supplier::where('is_active', true)->orderBy('name')->get(['id', 'name', 'payment_term_days', 'is_consignor']),
             'outlets' => Outlet::where('is_active', true)->orderBy('name')->get(['id', 'name']),

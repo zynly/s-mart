@@ -4,6 +4,7 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { Plus, Trash2 } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
+import { PageTabs } from '@/Components/common/PageTabs'
 import { DataTable } from '@/Components/common/DataTable'
 import { Money } from '@/Components/common/Money'
 import { MoneyInput } from '@/Components/common/MoneyInput'
@@ -31,6 +32,7 @@ type OrderRow = {
 }
 
 type PurchaseOrdersIndexProps = {
+  tab: string
   orders: Paginated<OrderRow>
   suppliers: Ref[]
   outlets: Ref[]
@@ -59,7 +61,7 @@ const STATUS_BADGE: Record<string, string> = {
   cancelled: 'bg-danger text-white',
 }
 
-export default function Index({ orders, suppliers, outlets, products, units, filters }: PurchaseOrdersIndexProps) {
+export default function Index({ tab, orders, suppliers, outlets, products, units, filters }: PurchaseOrdersIndexProps) {
   const [statusFilter, setStatusFilter] = useState(filters.status ?? '')
   const [sheetOpen, setSheetOpen] = useState(false)
 
@@ -136,6 +138,11 @@ export default function Index({ orders, suppliers, outlets, products, units, fil
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Purchase Order' }]}
         actions={<Button onClick={() => setSheetOpen(true)}>Buat PO</Button>}
       />
+      <PageTabs current={tab} tabs={[
+        { key: 'purchase-orders', label: 'Purchase Order', href: route('admin.purchase-orders.index'), permission: 'purchase_order.view' },
+        { key: 'purchases', label: 'Pembelian', href: route('admin.purchases.index'), permission: 'purchase.view' },
+        { key: 'consignment', label: 'Konsinyasi', href: route('admin.consignment.index'), permission: 'consignment.view' },
+      ]} />
 
       <div className="flex flex-wrap gap-2">
         <Select value={statusFilter || 'all'} onValueChange={(v) => applyFilter(v === 'all' ? '' : v)}>

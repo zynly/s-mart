@@ -30,6 +30,7 @@ class ReceivableController extends Controller
             ->withQueryString();
 
         return Inertia::render('Admin/Receivables/Index', [
+            'tab' => 'receivables',
             'receivables' => $receivables,
             'aging' => $this->receivableService->getAging()->map(fn ($row) => [
                 'receivable' => $row['receivable'],

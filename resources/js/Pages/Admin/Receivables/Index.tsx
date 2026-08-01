@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import type { ColumnDef } from '@tanstack/react-table'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
+import { PageTabs } from '@/Components/common/PageTabs'
 import { DataTable } from '@/Components/common/DataTable'
 import { Money } from '@/Components/common/Money'
 import { MoneyInput } from '@/Components/common/MoneyInput'
@@ -31,6 +32,7 @@ type ReceivableRow = {
 }
 
 type ReceivablesIndexProps = {
+  tab: string
   receivables: Paginated<ReceivableRow>
   aging: { receivable: ReceivableRow; bucket: string }[]
   cashAccounts: Ref[]
@@ -61,7 +63,7 @@ const BUCKET_LABELS: Record<string, string> = {
   '90+': '> 90 Hari',
 }
 
-export default function Index({ receivables, aging, cashAccounts, filters }: ReceivablesIndexProps) {
+export default function Index({ tab, receivables, aging, cashAccounts, filters }: ReceivablesIndexProps) {
   const { auth } = usePage<PageProps>().props
   const canWriteOff = auth.user?.permissions?.includes('receivable.delete') ?? false
 
@@ -144,6 +146,10 @@ export default function Index({ receivables, aging, cashAccounts, filters }: Rec
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title="Piutang Anggota" breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Piutang' }]} />
+      <PageTabs current={tab} tabs={[
+        { key: 'debts', label: 'Hutang', href: route('admin.debts.index'), permission: 'debt.view' },
+        { key: 'receivables', label: 'Piutang', href: route('admin.receivables.index'), permission: 'receivable.view' },
+      ]} />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {(['current', '0-30', '31-60', '61-90', '90+'] as const).map((bucket) => (

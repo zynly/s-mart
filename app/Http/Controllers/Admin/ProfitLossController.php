@@ -25,6 +25,7 @@ class ProfitLossController extends Controller
         $previous = $this->journalService->getProfitLoss($prevFrom, $prevTo);
 
         return Inertia::render('Admin/ProfitLoss/Index', [
+            'tab' => 'profit-loss',
             'current' => $current,
             'previous' => $previous,
             'filters' => ['from' => $from, 'to' => $to],

@@ -15,6 +15,7 @@ class PaymentMethodController extends Controller
     public function index(): Response
     {
         return Inertia::render('Admin/PaymentMethods/Index', [
+            'tab' => 'payment-methods',
             'paymentMethods' => PaymentMethod::orderBy('sort_order')->get(),
         ]);
     }

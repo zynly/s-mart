@@ -29,6 +29,7 @@ class WriteOffController extends Controller
             ->withQueryString();
 
         return Inertia::render('Admin/WriteOffs/Index', [
+            'tab' => 'write-offs',
             'writeOffs' => $writeOffs,
             'products' => Product::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'outlets' => Outlet::where('is_active', true)->get(['id', 'name']),

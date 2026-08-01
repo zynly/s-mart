@@ -18,6 +18,7 @@ class BalanceSheetController extends Controller
         $asOf = $request->string('as_of')->toString() ?: now()->toDateString();
 
         return Inertia::render('Admin/BalanceSheet/Index', [
+            'tab' => 'balance-sheet',
             'sheet' => $this->journalService->getBalanceSheet(Carbon::parse($asOf)),
             'asOf' => $asOf,
         ]);

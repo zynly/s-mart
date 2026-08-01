@@ -3,6 +3,7 @@ import { router, useForm } from '@inertiajs/react'
 import type { ColumnDef } from '@tanstack/react-table'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
+import { PageTabs } from '@/Components/common/PageTabs'
 import { DataTable } from '@/Components/common/DataTable'
 import { Money } from '@/Components/common/Money'
 import { MoneyInput } from '@/Components/common/MoneyInput'
@@ -32,6 +33,7 @@ type TransactionRow = {
 }
 
 type CashIndexProps = {
+  tab: string
   transactions: Paginated<TransactionRow>
   accounts: AccountRow[]
   categories: CategoryRow[]
@@ -40,7 +42,7 @@ type CashIndexProps = {
 
 const TYPE_LABELS: Record<string, string> = { in: 'Masuk', out: 'Keluar', transfer: 'Transfer' }
 
-export default function Index({ transactions, accounts, categories, filters }: CashIndexProps) {
+export default function Index({ tab, transactions, accounts, categories, filters }: CashIndexProps) {
   const [accountFilter, setAccountFilter] = useState(filters.cash_account_id ?? '')
 
   const inForm = useForm({ cash_account_id: '', cash_category_id: '', amount: 0, description: '' })
@@ -81,6 +83,10 @@ export default function Index({ transactions, accounts, categories, filters }: C
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title="Kas" breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Kas' }]} />
+      <PageTabs current={tab} tabs={[
+        { key: 'cashier-session', label: 'Sesi Kasir', href: route('admin.cashier-session.index'), permission: 'pos.view' },
+        { key: 'cash', label: 'Kas', href: route('admin.cash.index'), permission: 'cash.view' },
+      ]} />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {accounts.map((a) => (

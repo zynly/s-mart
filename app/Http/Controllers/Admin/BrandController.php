@@ -14,6 +14,7 @@ class BrandController extends Controller
     public function index(): Response
     {
         return Inertia::render('Admin/Brands/Index', [
+            'tab' => 'brands',
             'brands' => Brand::orderBy('name')->get(),
         ]);
     }

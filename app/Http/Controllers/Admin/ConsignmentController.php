@@ -27,6 +27,7 @@ class ConsignmentController extends Controller
             ->withQueryString();
 
         return Inertia::render('Admin/Consignment/Index', [
+            'tab' => 'consignment',
             'settlements' => $settlements,
             'suppliers' => Supplier::where('is_consignor', true)->where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'outlets' => Outlet::where('is_active', true)->orderBy('name')->get(['id', 'name']),

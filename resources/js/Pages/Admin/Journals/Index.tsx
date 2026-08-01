@@ -3,6 +3,7 @@ import { Link, router, useForm } from '@inertiajs/react'
 import type { ColumnDef } from '@tanstack/react-table'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
+import { PageTabs } from '@/Components/common/PageTabs'
 import { DataTable } from '@/Components/common/DataTable'
 import { Money } from '@/Components/common/Money'
 import { Button } from '@/Components/ui/button'
@@ -44,6 +45,7 @@ type ValidationSummary = {
 }
 
 type JournalsIndexProps = {
+  tab: string
   journals: Paginated<JournalRow>
   accounts: AccountOption[]
   outlets: OutletOption[]
@@ -72,7 +74,7 @@ const VALIDATION_LABELS: Record<keyof ValidationSummary, string> = {
 
 type EntryLine = { account_code: string; debit: string; credit: string; description: string }
 
-export default function Index({ journals, accounts, outlets, filters, validation }: JournalsIndexProps) {
+export default function Index({ tab, journals, accounts, outlets, filters, validation }: JournalsIndexProps) {
   const [typeFilter, setTypeFilter] = useState(filters.type ?? '')
   const [statusFilter, setStatusFilter] = useState(filters.status ?? '')
   const [manualOpen, setManualOpen] = useState(false)
@@ -148,6 +150,15 @@ export default function Index({ journals, accounts, outlets, filters, validation
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Jurnal' }]}
         actions={<Button onClick={() => setManualOpen(true)}>Jurnal Manual</Button>}
       />
+      <PageTabs current={tab} tabs={[
+        { key: 'accounts', label: 'Bagan Akun', href: route('admin.accounts.index'), permission: 'setting.view' },
+        { key: 'journals', label: 'Jurnal', href: route('admin.journals.index'), permission: 'journal.view' },
+        { key: 'ledger', label: 'Buku Besar', href: route('admin.ledger.index'), permission: 'ledger.view' },
+        { key: 'trial-balance', label: 'Neraca Saldo', href: route('admin.trial-balance.index'), permission: 'ledger.view' },
+        { key: 'profit-loss', label: 'Laba Rugi', href: route('admin.profit-loss.index'), permission: 'ledger.view' },
+        { key: 'balance-sheet', label: 'Neraca', href: route('admin.balance-sheet.index'), permission: 'ledger.view' },
+        { key: 'accounting-periods', label: 'Periode', href: route('admin.accounting-periods.index'), permission: 'ledger.view' },
+      ]} />
 
       <Card className={validationTotal > 0 ? 'border-warning' : 'border-success'}>
         <CardContent className="flex flex-col gap-2 p-4">

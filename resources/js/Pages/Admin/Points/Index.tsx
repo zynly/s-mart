@@ -3,6 +3,7 @@ import { router } from '@inertiajs/react'
 import type { ColumnDef } from '@tanstack/react-table'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
+import { PageTabs } from '@/Components/common/PageTabs'
 import { DataTable } from '@/Components/common/DataTable'
 import { Badge } from '@/Components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
@@ -24,6 +25,7 @@ type PointTransactionRow = {
 }
 
 type PointsIndexProps = {
+  tab: string
   transactions: Paginated<PointTransactionRow>
   members: MemberRef[]
   filters: { member_id?: string; type?: string }
@@ -41,7 +43,7 @@ const TYPE_BADGE: Record<string, string> = {
   bonus: 'bg-teal text-white',
 }
 
-export default function Index({ transactions, members, filters }: PointsIndexProps) {
+export default function Index({ tab, transactions, members, filters }: PointsIndexProps) {
   const [memberFilter, setMemberFilter] = useState(filters.member_id ?? '')
   const [typeFilter, setTypeFilter] = useState(filters.type ?? '')
 
@@ -75,6 +77,10 @@ export default function Index({ transactions, members, filters }: PointsIndexPro
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title="Poin Reward" breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Poin' }]} />
+      <PageTabs current={tab} tabs={[
+        { key: 'members', label: 'Anggota', href: route('admin.members.index'), permission: 'member.view' },
+        { key: 'points', label: 'Poin', href: route('admin.points.index'), permission: 'member.view' },
+      ]} />
 
       <div className="flex flex-wrap gap-2">
         <Select

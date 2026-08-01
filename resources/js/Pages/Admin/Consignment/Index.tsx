@@ -3,6 +3,7 @@ import { router, useForm } from '@inertiajs/react'
 import type { ColumnDef } from '@tanstack/react-table'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
+import { PageTabs } from '@/Components/common/PageTabs'
 import { DataTable } from '@/Components/common/DataTable'
 import { Money } from '@/Components/common/Money'
 import { Button } from '@/Components/ui/button'
@@ -30,6 +31,7 @@ type SettlementRow = {
 }
 
 type ConsignmentIndexProps = {
+  tab: string
   settlements: Paginated<SettlementRow>
   suppliers: Ref[]
   outlets: Ref[]
@@ -42,7 +44,7 @@ const STATUS_BADGE: Record<string, string> = {
   paid: 'bg-success text-white',
 }
 
-export default function Index({ settlements, suppliers, outlets }: ConsignmentIndexProps) {
+export default function Index({ tab, settlements, suppliers, outlets }: ConsignmentIndexProps) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const form = useForm({
     supplier_id: '',
@@ -109,6 +111,11 @@ export default function Index({ settlements, suppliers, outlets }: ConsignmentIn
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Konsinyasi' }]}
         actions={<Button onClick={() => setSheetOpen(true)}>Buat Settlement</Button>}
       />
+      <PageTabs current={tab} tabs={[
+        { key: 'purchase-orders', label: 'Purchase Order', href: route('admin.purchase-orders.index'), permission: 'purchase_order.view' },
+        { key: 'purchases', label: 'Pembelian', href: route('admin.purchases.index'), permission: 'purchase.view' },
+        { key: 'consignment', label: 'Konsinyasi', href: route('admin.consignment.index'), permission: 'consignment.view' },
+      ]} />
 
       <DataTable columns={columns} data={settlements.data} getRowId={(row) => String(row.id)} emptyDescription="Belum ada settlement konsinyasi." />
 

@@ -34,6 +34,7 @@ class LedgerController extends Controller
         }
 
         return Inertia::render('Admin/Ledger/Index', [
+            'tab' => 'ledger',
             'accounts' => $accounts,
             'account' => $account,
             'entries' => $entries,

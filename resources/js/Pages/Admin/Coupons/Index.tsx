@@ -3,6 +3,7 @@ import { router, useForm } from '@inertiajs/react'
 import type { ColumnDef } from '@tanstack/react-table'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
+import { PageTabs } from '@/Components/common/PageTabs'
 import { DataTable } from '@/Components/common/DataTable'
 import { Money } from '@/Components/common/Money'
 import { MoneyInput } from '@/Components/common/MoneyInput'
@@ -32,6 +33,7 @@ type CouponRow = {
 }
 
 type CouponsIndexProps = {
+  tab: string
   coupons: Paginated<CouponRow>
   filters: { status?: string }
 }
@@ -54,7 +56,7 @@ const SOURCE_LABELS: Record<string, string> = {
   manual: 'Manual', birthday: 'Ulang Tahun', loyalty: 'Loyalti', campaign: 'Kampanye',
 }
 
-export default function Index({ coupons, filters }: CouponsIndexProps) {
+export default function Index({ tab, coupons, filters }: CouponsIndexProps) {
   const [statusFilter, setStatusFilter] = useState(filters.status ?? '')
   const [formOpen, setFormOpen] = useState(false)
   const form = useForm({
@@ -115,6 +117,10 @@ export default function Index({ coupons, filters }: CouponsIndexProps) {
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Kupon' }]}
         actions={<Button onClick={() => setFormOpen(true)}>Buat Kupon</Button>}
       />
+      <PageTabs current={tab} tabs={[
+        { key: 'promos', label: 'Promo', href: route('admin.promos.index'), permission: 'promo.view' },
+        { key: 'coupons', label: 'Kupon', href: route('admin.coupons.index'), permission: 'coupon.view' },
+      ]} />
 
       <div className="flex flex-wrap gap-2">
         <Select value={statusFilter || 'all'} onValueChange={(v) => applyFilter(v === 'all' ? '' : v)}>

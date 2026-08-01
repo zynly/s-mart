@@ -28,6 +28,7 @@ class CashierSessionController extends Controller
         $active = $this->sessionService->getActive($request->user());
 
         return Inertia::render('Admin/CashierSession/Index', [
+            'tab' => 'cashier-session',
             'active' => $active?->load('cashAccount:id,name'),
             'expected' => $active !== null ? $this->sessionService->calculateExpected($active) : null,
             'cashAccounts' => CashAccount::where('is_drawer', true)->where('is_active', true)->orderBy('name')->get(['id', 'name']),

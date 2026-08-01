@@ -23,6 +23,7 @@ class ActivityLogController extends Controller
             ->withQueryString();
 
         return Inertia::render('Admin/ActivityLogs/Index', [
+            'tab' => 'activity-logs',
             'logs' => $logs,
             'logNames' => Activity::query()->distinct()->pluck('log_name'),
             'filters' => $request->only('log_name', 'causer_id', 'date_from', 'date_to'),

@@ -19,6 +19,7 @@ class TrialBalanceController extends Controller
         $rows = $this->journalService->getTrialBalance(Carbon::parse($asOf));
 
         return Inertia::render('Admin/TrialBalance/Index', [
+            'tab' => 'trial-balance',
             'rows' => $rows->values(),
             'totalDebit' => (int) $rows->sum('debit'),
             'totalCredit' => (int) $rows->sum('credit'),

@@ -4,6 +4,7 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { MoreHorizontal } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
+import { PageTabs } from '@/Components/common/PageTabs'
 import { DataTable } from '@/Components/common/DataTable'
 import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
@@ -27,7 +28,7 @@ type CategoryRow = {
 
 const emptyForm = { code: '', name: '', parent_id: '', description: '', is_active: true as boolean }
 
-export default function Index({ categories }: { categories: CategoryRow[] }) {
+export default function Index({ tab, categories }: { tab: string; categories: CategoryRow[] }) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<CategoryRow | null>(null)
   const form = useForm(emptyForm)
@@ -104,6 +105,12 @@ export default function Index({ categories }: { categories: CategoryRow[] }) {
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Kategori' }]}
         actions={<Button onClick={openCreate}>Tambah Kategori</Button>}
       />
+      <PageTabs current={tab} tabs={[
+        { key: 'products', label: 'Produk', href: route('admin.products.index'), permission: 'product.view' },
+        { key: 'categories', label: 'Kategori', href: route('admin.categories.index'), permission: 'category.view' },
+        { key: 'brands', label: 'Brand', href: route('admin.brands.index'), permission: 'brand.view' },
+        { key: 'units', label: 'Satuan', href: route('admin.units.index'), permission: 'unit.view' },
+      ]} />
 
       <DataTable columns={columns} data={categories} getRowId={(row) => String(row.id)} />
 

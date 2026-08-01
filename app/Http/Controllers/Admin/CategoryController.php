@@ -15,6 +15,7 @@ class CategoryController extends Controller
     public function index(): Response
     {
         return Inertia::render('Admin/Categories/Index', [
+            'tab' => 'categories',
             'categories' => Category::with('parent:id,name')->orderBy('name')->get(),
         ]);
     }

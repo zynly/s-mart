@@ -17,6 +17,7 @@ class AccountController extends Controller
     public function index(): Response
     {
         return Inertia::render('Admin/Accounts/Index', [
+            'tab' => 'accounts',
             'accounts' => Account::orderBy('code')->get(),
         ]);
     }

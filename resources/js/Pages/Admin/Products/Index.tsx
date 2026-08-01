@@ -4,6 +4,7 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { MoreHorizontal, Plus, Trash2 } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
+import { PageTabs } from '@/Components/common/PageTabs'
 import { DataTable } from '@/Components/common/DataTable'
 import { Money } from '@/Components/common/Money'
 import { MoneyInput } from '@/Components/common/MoneyInput'
@@ -37,6 +38,7 @@ type ProductRow = {
 }
 
 type ProductsIndexProps = {
+  tab: string
   products: Paginated<ProductRow>
   categories: Ref[]
   brands: Ref[]
@@ -68,7 +70,7 @@ const emptyForm = {
   price: { outlet_id: '', unit_id: '', price: 0, member_price: null as number | null },
 }
 
-export default function Index({ products, categories, brands, units, outlets, filters, canViewCost }: ProductsIndexProps) {
+export default function Index({ tab, products, categories, brands, units, outlets, filters, canViewCost }: ProductsIndexProps) {
   const [search, setSearch] = useState(filters.search ?? '')
   const [categoryFilter, setCategoryFilter] = useState(filters.category_id ?? '')
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -190,6 +192,12 @@ export default function Index({ products, categories, brands, units, outlets, fi
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Produk' }]}
         actions={<Button onClick={openCreate}>Tambah Produk</Button>}
       />
+      <PageTabs current={tab} tabs={[
+        { key: 'products', label: 'Produk', href: route('admin.products.index'), permission: 'product.view' },
+        { key: 'categories', label: 'Kategori', href: route('admin.categories.index'), permission: 'category.view' },
+        { key: 'brands', label: 'Brand', href: route('admin.brands.index'), permission: 'brand.view' },
+        { key: 'units', label: 'Satuan', href: route('admin.units.index'), permission: 'unit.view' },
+      ]} />
 
       <div className="flex flex-wrap gap-2">
         <Input

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\NavigationService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Tighten\Ziggy\Ziggy;
@@ -58,6 +59,9 @@ class HandleInertiaRequests extends Middleware
             // setelah PIN supervisor tervalidasi — SupervisorPinDialog
             // membacanya dari page.props untuk resolve approver_id.
             'approverId' => fn () => $request->session()->get('approverId'),
+            // T-116 (Fase UI-01): sidebar admin dibangun dari sini, bukan
+            // hardcoded di React — lihat NavigationService.
+            'navigation' => fn () => $user ? app(NavigationService::class)->forUser($user) : [],
             'ziggy' => fn () => [
                 ...(new Ziggy)->toArray(),
                 'location' => $request->url(),

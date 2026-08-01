@@ -25,6 +25,7 @@ class PromoController extends Controller
             ->withQueryString();
 
         return Inertia::render('Admin/Promos/Index', [
+            'tab' => 'promos',
             'promos' => $promos,
             'products' => Product::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'categories' => Category::where('is_active', true)->orderBy('name')->get(['id', 'name']),

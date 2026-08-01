@@ -34,6 +34,7 @@ class UserController extends Controller
             ->withQueryString();
 
         return Inertia::render('Admin/Users/Index', [
+            'tab' => 'users',
             'users' => $users,
             'roles' => Role::orderBy('name')->pluck('name'),
             'filters' => $request->only('search', 'role'),

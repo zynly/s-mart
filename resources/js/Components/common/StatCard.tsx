@@ -33,7 +33,7 @@ export function StatCard({ label, value, icon: Icon, trend, trendLabel }: StatCa
           )}
         </div>
         {Icon && (
-          <div className="rounded-lg bg-navy-100 p-2 text-navy-600 dark:bg-navy-700 dark:text-navy-100">
+          <div className="rounded-lg bg-secondary p-2 text-secondary-foreground">
             <Icon className="size-5" />
           </div>
         )}

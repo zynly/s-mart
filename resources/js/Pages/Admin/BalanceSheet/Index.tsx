@@ -2,6 +2,7 @@ import { type ReactElement } from 'react'
 import { router } from '@inertiajs/react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
+import { PageTabs } from '@/Components/common/PageTabs'
 import { Money } from '@/Components/common/Money'
 import { Label } from '@/Components/ui/label'
 import { Input } from '@/Components/ui/input'
@@ -20,6 +21,7 @@ type BalanceSheetResult = {
 }
 
 type BalanceSheetIndexProps = {
+  tab: string
   sheet: BalanceSheetResult
   asOf: string
 }
@@ -40,7 +42,7 @@ function LineTable({ lines }: { lines: Line[] }) {
   )
 }
 
-export default function Index({ sheet, asOf }: BalanceSheetIndexProps) {
+export default function Index({ tab, sheet, asOf }: BalanceSheetIndexProps) {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
@@ -48,6 +50,15 @@ export default function Index({ sheet, asOf }: BalanceSheetIndexProps) {
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Neraca' }]}
         actions={<Badge className={sheet.isBalanced ? 'bg-success text-white' : 'bg-danger text-white'}>{sheet.isBalanced ? 'Seimbang' : 'TIDAK SEIMBANG'}</Badge>}
       />
+      <PageTabs current={tab} tabs={[
+        { key: 'accounts', label: 'Bagan Akun', href: route('admin.accounts.index'), permission: 'setting.view' },
+        { key: 'journals', label: 'Jurnal', href: route('admin.journals.index'), permission: 'journal.view' },
+        { key: 'ledger', label: 'Buku Besar', href: route('admin.ledger.index'), permission: 'ledger.view' },
+        { key: 'trial-balance', label: 'Neraca Saldo', href: route('admin.trial-balance.index'), permission: 'ledger.view' },
+        { key: 'profit-loss', label: 'Laba Rugi', href: route('admin.profit-loss.index'), permission: 'ledger.view' },
+        { key: 'balance-sheet', label: 'Neraca', href: route('admin.balance-sheet.index'), permission: 'ledger.view' },
+        { key: 'accounting-periods', label: 'Periode', href: route('admin.accounting-periods.index'), permission: 'ledger.view' },
+      ]} />
 
       <div className="space-y-1.5 w-fit">
         <Label>Per Tanggal</Label>
