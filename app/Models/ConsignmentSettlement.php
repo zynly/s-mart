@@ -37,6 +37,11 @@ class ConsignmentSettlement extends Model
         return $this->belongsTo(Outlet::class);
     }
 
+    public function cashAccount(): BelongsTo
+    {
+        return $this->belongsTo(CashAccount::class);
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(ConsignmentSettlementItem::class);

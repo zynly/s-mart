@@ -110,7 +110,7 @@ export default function Show({ opname, canApproveVariance, tolerancePercent }: O
       }
 
       setLocalQty((prev) => ({ ...prev, [productId]: physicalQty }))
-      router.reload({ only: ['opname'], preserveScroll: true, preserveState: true })
+      router.reload({ only: ['opname'] })
     } catch {
       toast.error('Gagal mencatat hitungan.')
     }

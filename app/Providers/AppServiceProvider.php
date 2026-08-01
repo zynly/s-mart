@@ -2,6 +2,34 @@
 
 namespace App\Providers;
 
+use App\Models\CashierSession;
+use App\Models\CashTransaction;
+use App\Models\ConsignmentSettlement;
+use App\Models\DebtPayment;
+use App\Models\DepositTransaction;
+use App\Models\Purchase;
+use App\Models\PurchaseReturn;
+use App\Models\Receivable;
+use App\Models\ReceivablePayment;
+use App\Models\Sale;
+use App\Models\SaleReturn;
+use App\Models\StockAdjustment;
+use App\Models\StockOpname;
+use App\Models\StockWriteOff;
+use App\Observers\CashierSessionObserver;
+use App\Observers\CashTransactionObserver;
+use App\Observers\ConsignmentSettlementObserver;
+use App\Observers\DebtPaymentObserver;
+use App\Observers\DepositTransactionObserver;
+use App\Observers\PurchaseObserver;
+use App\Observers\PurchaseReturnObserver;
+use App\Observers\ReceivableObserver;
+use App\Observers\ReceivablePaymentObserver;
+use App\Observers\SaleObserver;
+use App\Observers\SaleReturnObserver;
+use App\Observers\StockAdjustmentObserver;
+use App\Observers\StockOpnameObserver;
+use App\Observers\StockWriteOffObserver;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -16,9 +44,26 @@ class AppServiceProvider extends ServiceProvider
 
     /**
      * Bootstrap any application services.
+     *
+     * T-081 (Fase 13): jurnal terbit OTOMATIS lewat Observer di sini —
+     * TIDAK ADA panggilan JournalService manual di service manapun
+     * (CATATAN-PERBAIKAN.md §Fase13 menegaskan ini eksplisit).
      */
     public function boot(): void
     {
-        //
+        Sale::observe(SaleObserver::class);
+        SaleReturn::observe(SaleReturnObserver::class);
+        Purchase::observe(PurchaseObserver::class);
+        PurchaseReturn::observe(PurchaseReturnObserver::class);
+        DebtPayment::observe(DebtPaymentObserver::class);
+        DepositTransaction::observe(DepositTransactionObserver::class);
+        ReceivablePayment::observe(ReceivablePaymentObserver::class);
+        Receivable::observe(ReceivableObserver::class);
+        CashTransaction::observe(CashTransactionObserver::class);
+        CashierSession::observe(CashierSessionObserver::class);
+        ConsignmentSettlement::observe(ConsignmentSettlementObserver::class);
+        StockWriteOff::observe(StockWriteOffObserver::class);
+        StockOpname::observe(StockOpnameObserver::class);
+        StockAdjustment::observe(StockAdjustmentObserver::class);
     }
 }

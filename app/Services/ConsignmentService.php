@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\CashAccount;
 use App\Models\ConsignmentSettlement;
 use App\Models\ConsignmentSettlementItem;
 use App\Models\Outlet;
@@ -19,6 +20,7 @@ class ConsignmentService
     public function __construct(
         private readonly PriceService $priceService,
         private readonly StockService $stockService,
+        private readonly CashService $cashService,
     ) {}
 
     /**
@@ -114,11 +116,32 @@ class ConsignmentService
         return $settlement;
     }
 
-    public function markPaid(ConsignmentSettlement $settlement): ConsignmentSettlement
+    /**
+     * Bug nyata (Fase 13 §Temuan L): sebelumnya cuma ubah status,
+     * pembayaran ke pemilik barang tidak pernah menyentuh kas sama
+     * sekali meski `consignment_settlements.cash_account_id` sudah
+     * disiapkan sejak tabel ini dibuat.
+     */
+    public function markPaid(ConsignmentSettlement $settlement, ?CashAccount $cashAccount = null): ConsignmentSettlement
     {
-        $settlement->update(['status' => 'paid', 'paid_at' => now()]);
+        return DB::transaction(function () use ($settlement, $cashAccount) {
+            $locked = ConsignmentSettlement::lockForUpdate()->findOrFail($settlement->id);
+            $account = $cashAccount
+                ?? CashAccount::where('outlet_id', $locked->outlet_id)->where('is_default', true)->first()
+                ?? CashAccount::where('outlet_id', $locked->outlet_id)->first();
 
-        return $settlement;
+            if ($account !== null && $locked->payable_amount > 0) {
+                $this->cashService->recordOut($account, $locked->payable_amount, null, "Settlement konsinyasi {$locked->reference}", null, $locked);
+            }
+
+            $locked->update([
+                'status' => 'paid',
+                'paid_at' => now(),
+                'cash_account_id' => $account?->id,
+            ]);
+
+            return $locked;
+        });
     }
 
     public function returnGoods(StockLayer $layer, float $qty): void

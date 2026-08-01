@@ -79,14 +79,19 @@ class MasterDataSeeder extends Seeder
         }
 
         $cashCategories = [
-            ['code' => 'PENJUALAN', 'name' => 'Penjualan', 'type' => 'in', 'is_system' => true],
-            ['code' => 'TOPUP', 'name' => 'Top-Up Deposit', 'type' => 'in', 'is_system' => true],
-            ['code' => 'PELUNASAN', 'name' => 'Pelunasan Piutang', 'type' => 'in', 'is_system' => true],
-            ['code' => 'MODAL', 'name' => 'Setoran Modal', 'type' => 'in'],
-            ['code' => 'BELANJA_OPS', 'name' => 'Belanja Operasional', 'type' => 'out'],
-            ['code' => 'BAYAR_HUTANG', 'name' => 'Pembayaran Hutang', 'type' => 'out', 'is_system' => true],
-            ['code' => 'GAJI', 'name' => 'Gaji/Honor', 'type' => 'out'],
-            ['code' => 'LAIN_LAIN', 'name' => 'Lain-lain', 'type' => 'out'],
+            // account_code dipetakan di Fase 13 §Temuan L (kolom sudah ada
+            // sejak Fase 7, komentar migration eksplisit "dipetakan saat
+            // Fase 13 dibangun" — dipakai CashTransactionObserver untuk kas
+            // masuk/keluar MANUAL lewat CashController, bukan kas yang
+            // sudah dijurnal observer lain lewat sourceable_type).
+            ['code' => 'PENJUALAN', 'name' => 'Penjualan', 'type' => 'in', 'is_system' => true, 'account_code' => '4-1000'],
+            ['code' => 'TOPUP', 'name' => 'Top-Up Deposit', 'type' => 'in', 'is_system' => true, 'account_code' => '2-1200'],
+            ['code' => 'PELUNASAN', 'name' => 'Pelunasan Piutang', 'type' => 'in', 'is_system' => true, 'account_code' => '1-1500'],
+            ['code' => 'MODAL', 'name' => 'Setoran Modal', 'type' => 'in', 'account_code' => '3-1000'],
+            ['code' => 'BELANJA_OPS', 'name' => 'Belanja Operasional', 'type' => 'out', 'account_code' => '6-1800'],
+            ['code' => 'BAYAR_HUTANG', 'name' => 'Pembayaran Hutang', 'type' => 'out', 'is_system' => true, 'account_code' => '2-1100'],
+            ['code' => 'GAJI', 'name' => 'Gaji/Honor', 'type' => 'out', 'account_code' => '6-1700'],
+            ['code' => 'LAIN_LAIN', 'name' => 'Lain-lain', 'type' => 'out', 'account_code' => '6-1900'],
         ];
 
         foreach ($cashCategories as $category) {

@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             MemberLevelSeeder::class,
             MemberSeeder::class,
             StockLayerSeeder::class,
+            AccountSeeder::class,
         ]);
     }
 }

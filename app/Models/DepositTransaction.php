@@ -46,6 +46,11 @@ class DepositTransaction extends Model
         return $this->belongsTo(PaymentMethod::class);
     }
 
+    public function cashAccount(): BelongsTo
+    {
+        return $this->belongsTo(CashAccount::class);
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

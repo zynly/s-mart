@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\MissingExpiryDateException;
+use App\Models\CashAccount;
 use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\Purchase;
@@ -27,6 +28,7 @@ class PurchaseService
     public function __construct(
         private readonly StockService $stockService,
         private readonly DebtService $debtService,
+        private readonly CashService $cashService,
     ) {}
 
     /**
@@ -146,6 +148,20 @@ class PurchaseService
             if (! $isConsignment && $paymentType === 'credit') {
                 $this->debtService->createFromPurchase($purchase);
             }
+
+            // Catatan (Fase 13, ditemukan saat membaca ulang bersamaan
+            // dengan Temuan D): sisi pembelian TUNAI-nya sendiri juga tidak
+            // pernah menyentuh CashService. Beda dengan retur (recordIn,
+            // selalu berhasil), di sini recordOut() bisa gagal
+            // (InsufficientCashBalanceException) karena cash_accounts.
+            // current_balance SELALU disemai 0 dan tidak pernah didanai
+            // otomatis (lihat Temuan C) — menyambungkannya di sini akan
+            // memblokir alur pembelian tunai yang sudah berjalan sampai
+            // pemilik toko menyetor kas manual dulu, perubahan perilaku
+            // operasional yang di luar cakupan bug-fix retur yang disetujui.
+            // Sengaja TIDAK diperbaiki di fase ini — didokumentasikan saja,
+            // konsisten dengan keputusan Temuan C (GL jurnal & cash_accounts
+            // tetap dua ledger terpisah untuk fase ini).
 
             return $purchase->fresh(['items', 'otherCosts']);
         });
@@ -276,10 +292,18 @@ class PurchaseService
                 if ($debt !== null) {
                     $this->debtService->reduceFromReturn($debt, $total);
                 }
+            } elseif ($total > 0) {
+                // Bug nyata (Fase 13 §Temuan D): retur pembelian tunai
+                // sebelumnya tidak pernah menyentuh kas sama sekali meski
+                // CashService sudah ada sejak Fase 7 — supplier
+                // mengembalikan uang tapi cash_accounts tidak pernah tahu.
+                $cashAccount = CashAccount::where('outlet_id', $outlet->id)->where('is_default', true)->first()
+                    ?? CashAccount::where('outlet_id', $outlet->id)->first();
+
+                if ($cashAccount !== null) {
+                    $this->cashService->recordIn($cashAccount, $total, null, "Retur pembelian tunai {$return->reference}", null, $return);
+                }
             }
-            // Retur pembelian tunai: idealnya menambah kas, tapi cash_accounts
-            // baru ada di Fase 7 — total retur tercatat di PurchaseReturn,
-            // efek kas menyusul saat CashService dibangun.
 
             return $return->fresh('items');
         });

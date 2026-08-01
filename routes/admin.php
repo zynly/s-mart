@@ -1,6 +1,9 @@
 <?php
 
+use App\Http\Controllers\Admin\AccountController;
+use App\Http\Controllers\Admin\AccountingPeriodController;
 use App\Http\Controllers\Admin\ActivityLogController;
+use App\Http\Controllers\Admin\BalanceSheetController;
 use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\CashController;
 use App\Http\Controllers\Admin\CashierSessionController;
@@ -9,12 +12,15 @@ use App\Http\Controllers\Admin\ConsignmentController;
 use App\Http\Controllers\Admin\CouponController;
 use App\Http\Controllers\Admin\DebtController;
 use App\Http\Controllers\Admin\DepositController;
+use App\Http\Controllers\Admin\JournalController;
+use App\Http\Controllers\Admin\LedgerController;
 use App\Http\Controllers\Admin\MemberController;
 use App\Http\Controllers\Admin\OpnameController;
 use App\Http\Controllers\Admin\OutletController;
 use App\Http\Controllers\Admin\PaymentMethodController;
 use App\Http\Controllers\Admin\PointController;
 use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\ProfitLossController;
 use App\Http\Controllers\Admin\PromoController;
 use App\Http\Controllers\Admin\PurchaseController;
 use App\Http\Controllers\Admin\PurchaseOrderController;
@@ -25,6 +31,7 @@ use App\Http\Controllers\Admin\StockAdjustmentController;
 use App\Http\Controllers\Admin\StockController;
 use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\TransferController;
+use App\Http\Controllers\Admin\TrialBalanceController;
 use App\Http\Controllers\Admin\UnitController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\WriteOffController;
@@ -233,4 +240,30 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::post('/stock-adjustments', [StockAdjustmentController::class, 'store'])->name('stock-adjustments.store')->middleware('can:adjustment.create');
     Route::put('/stock-adjustments/{stockAdjustment}/approve', [StockAdjustmentController::class, 'approve'])->name('stock-adjustments.approve')->middleware('can:adjustment.approve');
     Route::put('/stock-adjustments/{stockAdjustment}/post', [StockAdjustmentController::class, 'post'])->name('stock-adjustments.post')->middleware('can:adjustment.approve');
+
+    // Akuntansi: COA, Jurnal & Buku Besar (Fase 13)
+    Route::middleware('can:setting.view')->group(function () {
+        Route::get('/accounts', [AccountController::class, 'index'])->name('accounts.index');
+    });
+    Route::post('/accounts', [AccountController::class, 'store'])->name('accounts.store')->middleware('can:setting.create');
+    Route::put('/accounts/{account}', [AccountController::class, 'update'])->name('accounts.update')->middleware('can:setting.update');
+    Route::delete('/accounts/{account}', [AccountController::class, 'destroy'])->name('accounts.destroy')->middleware('can:setting.delete');
+
+    Route::middleware('can:journal.view')->group(function () {
+        Route::get('/journals', [JournalController::class, 'index'])->name('journals.index');
+        Route::get('/journals/{journal}', [JournalController::class, 'show'])->name('journals.show');
+    });
+    Route::post('/journals', [JournalController::class, 'store'])->name('journals.store')->middleware('can:journal.create');
+    Route::put('/journals/{journal}/post', [JournalController::class, 'post'])->name('journals.post')->middleware('can:journal.approve');
+    Route::put('/journals/{journal}/reverse', [JournalController::class, 'reverse'])->name('journals.reverse')->middleware('can:journal.approve');
+
+    Route::middleware('can:ledger.view')->group(function () {
+        Route::get('/ledger', [LedgerController::class, 'index'])->name('ledger.index');
+        Route::get('/trial-balance', [TrialBalanceController::class, 'index'])->name('trial-balance.index');
+        Route::get('/profit-loss', [ProfitLossController::class, 'index'])->name('profit-loss.index');
+        Route::get('/balance-sheet', [BalanceSheetController::class, 'index'])->name('balance-sheet.index');
+        Route::get('/accounting-periods', [AccountingPeriodController::class, 'index'])->name('accounting-periods.index');
+    });
+    Route::put('/accounting-periods/close', [AccountingPeriodController::class, 'close'])->name('accounting-periods.close')->middleware('can:period.close');
+    Route::put('/accounting-periods/reopen', [AccountingPeriodController::class, 'reopen'])->name('accounting-periods.reopen')->middleware('can:period.close');
 });
