@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateRolePermissionsRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Permission;
@@ -49,7 +50,30 @@ class RoleController extends Controller
 
     public function update(UpdateRolePermissionsRequest $request, Role $role): RedirectResponse
     {
-        $role->syncPermissions($request->validated('permissions', []));
+        // Temuan audit keamanan: sebelumnya tidak ada pengecekan sama
+        // sekali — role apa pun (termasuk admin, yang tidak punya 6
+        // permission eksklusif owner) bisa syncPermissions() apa saja,
+        // termasuk memberi dirinya sendiri izin yang dia sendiri tidak
+        // punya. Aturan umum: aktor tidak bisa memberi izin yang dia
+        // sendiri tidak pegang — otomatis cover permission baru di masa
+        // depan tanpa hardcode daftar. Role "owner" sendiri cuma boleh
+        // diedit oleh pemegang role owner (pertahanan berlapis).
+        $requested = $request->validated('permissions', []);
+        $actor = $request->user();
+
+        if ($role->name === 'owner' && ! $actor->hasRole('owner')) {
+            throw ValidationException::withMessages(['permissions' => 'Hanya owner yang boleh mengubah izin role owner.']);
+        }
+
+        $notOwned = array_values(array_filter($requested, fn (string $perm) => ! $actor->can($perm)));
+
+        if ($notOwned !== []) {
+            throw ValidationException::withMessages([
+                'permissions' => 'Tidak bisa memberikan izin yang Anda sendiri tidak miliki: '.implode(', ', $notOwned),
+            ]);
+        }
+
+        $role->syncPermissions($requested);
 
         return back()->with('success', "Izin role \"{$role->name}\" berhasil diperbarui.");
     }

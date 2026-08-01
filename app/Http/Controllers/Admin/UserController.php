@@ -10,6 +10,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Role;
@@ -43,25 +44,41 @@ class UserController extends Controller
 
     public function store(StoreUserRequest $request): RedirectResponse
     {
+        // Temuan audit keamanan: role divalidasi cuma exists:roles,name —
+        // admin (bukan hanya owner) bisa membuat akun baru dengan
+        // role=owner lewat request biasa. Role owner hanya boleh
+        // di-assign oleh aktor yang sendiri sudah owner.
+        $role = $request->validated('role');
+
+        if ($role === 'owner' && ! $request->user()->hasRole('owner')) {
+            throw ValidationException::withMessages(['role' => 'Hanya owner yang boleh membuat akun owner baru.']);
+        }
+
         $user = User::create([
             ...$request->safe()->except(['role', 'password']),
             'password' => $request->validated('password'),
             'is_active' => $request->boolean('is_active', true),
         ]);
 
-        $user->assignRole($request->validated('role'));
+        $user->assignRole($role);
 
         return back()->with('success', "Pengguna {$user->name} berhasil dibuat.");
     }
 
     public function update(UpdateUserRequest $request, User $user): RedirectResponse
     {
+        $role = $request->validated('role');
+
+        if ($role === 'owner' && ! $request->user()->hasRole('owner')) {
+            throw ValidationException::withMessages(['role' => 'Hanya owner yang boleh memberi role owner ke pengguna lain.']);
+        }
+
         $user->update([
             ...$request->safe()->except(['role']),
             'is_active' => $request->boolean('is_active', true),
         ]);
 
-        $user->syncRoles([$request->validated('role')]);
+        $user->syncRoles([$role]);
 
         return back()->with('success', "Pengguna {$user->name} berhasil diperbarui.");
     }

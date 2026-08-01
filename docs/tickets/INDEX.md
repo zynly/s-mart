@@ -803,6 +803,179 @@ asli tanpa tiket resmi sebelumnya:**
 **Blocking (T-120–T-124):** tidak memblokir Fase 18/19 — modul
 administratif, tidak menyentuh risiko finansial/keamanan.
 
+## Audit Keamanan Menyeluruh Lintas-Fase `[SELESAI — Phase A]`
+
+Diminta audit menyeluruh (Principal Engineer/Architect/Security/
+Performance/QA sekaligus) atas seluruh codebase, bukan cuma mengikuti
+backlog tiket. Tiga riset paralel (baca-saja) dijalankan: keamanan &
+konfigurasi, performa & data layer, kualitas kode & arsitektur —
+totalnya ~45 temuan. Detail lengkap ketiganya ada di riwayat sesi;
+ringkasan & keputusan skop didokumentasikan di sini.
+
+**Keputusan skop:** tidak mungkin menambal 45 temuan sekaligus secara
+bertanggung jawab — `tests/` masih kosong (T-105 belum digarap), jadi
+setiap perubahan cuma bisa diverifikasi manual, dan menggabungkan
+puluhan perubahan sekaligus di file paling sensitif (`SaleService`,
+`CashierSessionService`, `RoleController`) bikin verifikasi tidak
+reliable. **Phase A** (dikerjakan sekarang) mengambil 7 temuan
+CRITICAL/HIGH keamanan yang punya kesamaan: jalur konkret uang/barang
+bisa "bocor" dari sistem HARI INI kalau ada kasir/admin nakal atau akun
+dikompromikan — beda kelas dari technical debt biasa. Ditambah 4
+hardening murah berisiko nyaris nol.
+
+**A1 — Price override tanpa otorisasi (CRITICAL).**
+`SaleService::complete()` menerima `items[].price_override` dan
+menimpa harga tanpa cek apa pun — permission `sale.change_price` ada
+di seeder tapi 0 referensi di kode manapun; UI POS pun tidak pernah
+mengirim field ini (satu-satunya jalur field ini terisi adalah request
+yang dirakit manual/DevTools). Ditambal: kalau ada baris dengan harga
+berubah, wajib `price_override_approver_id` yang benar-benar
+`->can('sale.change_price')` (reuse pola `VoidService::void()`) —
+tanpa itu, `DomainException`. `price_changed_by` diisi approver
+sungguhan, bukan kasir.
+
+**A2 — Tutup sesi kasir: approver tidak diverifikasi (CRITICAL).**
+Docblock `CashierSessionService::close()` sudah lama bilang
+"dicek di controller lewat AuthorizationService" — nyatanya
+`CashierSessionController::close()` cuma `User::find($approver_id)`
+tanpa cek permission sama sekali (bug regresi dari desain asli, bukan
+kesengajaan). Selisih kas bisa "disetujui" siapa saja termasuk diri
+sendiri. Ditambal: `CashierSessionService::close()` sekarang menolak
+kalau approver tidak `->can('pos.approve')`. Frontend sudah benar
+sejak awal (`SupervisorPinDialog permission="pos.approve"` di
+`CashierSession/Index.tsx`) — tidak disentuh.
+
+**A3 — Eskalasi privilege lewat Role & User (HIGH).**
+`RoleController::update()` men-`syncPermissions()` apa pun yang lolos
+`exists:permissions,name` — role `admin` bisa memberi dirinya sendiri
+`system.reset`/`deposit.adjust`/dst (6 permission eksklusif owner).
+`UserController::store()`/`update()` bisa assign role `owner` ke user
+baru/lama tanpa cek apa pun. Ditambal: aktor tidak bisa memberi
+permission yang dia sendiri tidak punya (aturan umum, otomatis cover
+permission baru di masa depan); role `owner` & assignment role=owner
+cuma boleh oleh pemegang role owner.
+
+**A4 — Idempotency key digenerate ulang tiap klik (HIGH).**
+5 lokasi frontend (POS, Deposit×3, Retur, Top-up wali) memanggil
+`newIdempotencyKey()` di DALAM handler submit — klik dobel/network
+lambat = key baru tiap kali = dedup backend tidak pernah kena. Ditambal:
+key dibuat sekali per form/keranjang (`useRef`), dipakai ulang untuk
+semua retry sampai sukses, baru di-generate ulang setelah sukses.
+Bonus: `TopupRequestService::submit()` (jalur yang TIDAK punya dedup
+service-level sama sekali) ditambah guard tolak pengajuan identik
+(wali+anak+nominal) dalam 60 detik terakhir.
+
+**A5 — Diskon nota manual tanpa otorisasi, di-clamp diam-diam (HIGH).**
+`bill_discount` di atas `max_discount_percent` sebelumnya dipotong
+diam-diam (bukan ditolak) — `sale_items.subtotal` tetap pakai diskon
+promo asli sementara `sales.total_discount` dipotong, jadi
+`SUM(sale_items.subtotal) != grand_total`. Permission
+`sale.discount_over_limit` 0 referensi, kolom `discount_approved_by`
+tidak pernah ditulis. Ditambal: pola sama seperti A1 — wajib
+`discount_approver_id` valid, tanpa itu TOLAK (bukan clamp).
+
+**A6 — Settings menyimpan nilai apa pun tanpa validasi (HIGH).**
+`SettingController::update()` (T-103, baru saja dibangun sesi
+sebelumnya) cuma `['nullable']` untuk SEMUA field — `no_pin_threshold`
+bisa di-set sangat besar (bypass PIN untuk SEMUA transaksi deposit),
+`max_discount_percent` bisa 100. Ditambal: `Rule::in`/`min`/`max` nyata
+per field. **Sekalian ditutup temuan kualitas kode terkait**: 3 dari 7
+field yang sebelumnya "mati" (owner ubah, tidak berpengaruh) sekarang
+disambungkan — `AuthorizationService`/`MemberPinService` baca
+`config('pos.pin_max_attempts')`/`pin_lockout_minutes'` (sebelumnya
+hardcode 3/15). Model `Setting` ditambah `LogsActivityCustom` (audit
+trail perubahan pengaturan finansial, belum ada sama sekali).
+(4 field lain — `rounding_step`/`rounding_mode`/`tax_percent`/
+`low_stock_threshold_percent` — TETAP belum disambungkan ke pemakainya;
+dicatat sebagai backlog Phase D, bukan lubang keamanan, cuma fitur
+belum lengkap.)
+
+**A7 — Bukti transfer top-up wali di disk publik (HIGH).**
+Tersimpan di `storage/app/public/topup-proofs` — bisa diakses lewat
+URL `/storage/...` TANPA login sama sekali. Isinya foto mutasi rekening
+bank (no. rekening, nama pengirim, nominal — data finansial wali
+santri), kontradiksi langsung dengan kerja enkripsi UU PDP di Fase
+17-Darurat. Ditambal: disk `local` (private) + route baru
+`GET /admin/topup-requests/{id}/proof` ber-`can:topup.view`, streaming
+file — bukan URL statis.
+
+**A8 — Hardening murah tambahan (LOW/MEDIUM, risiko nyaris nol):**
+`/uji-komponen` sekarang dibungkus `app()->environment('local')`
+(sebelumnya publik di produksi tanpa auth apa pun); `ReportExport`
+sekarang paksa `TYPE_STRING` untuk nilai yang diawali `=+-@` (cegah
+formula injection `=HYPERLINK(...)` dari input produk/supplier bebas
+lewat Excel export); `config/app.php` dapat safety-net serupa
+`SESSION_SECURE_COOKIE` — `debug` paksa `false` kalau
+`APP_ENV=production` apa pun isi `.env`; `bootstrap/app.php`
+`withExceptions()` (sebelumnya kosong total) sekarang punya
+`renderable` untuk `DomainException` → redirect back dengan flash error
+terkontrol untuk request Inertia, bukan 500 mentah (menutup jalur Wali
+yang sebelumnya tidak ada try/catch sama sekali).
+
+**Verifikasi:** `pint --test`/`tsc --noEmit`/`eslint`/`build` bersih.
+Tinker: A1/A5 diuji dengan 3 skenario (tanpa approver → ditolak,
+approver tanpa izin → ditolak, approver sah → berhasil dengan kolom
+approval terisi benar) via `SaleService::complete()` langsung dengan
+sesi kasir & stok nyata. A2 diuji serupa (approver tanpa `pos.approve`
+→ ditolak, dengan → berhasil). A7 diuji: file benar-benar landing di
+disk `local`, TIDAK ada di disk `public`. Playwright: A3 dikonfirmasi
+dari halaman Role & Izin (checkbox `system.reset` untuk role admin
+tetap tidak tercentang setelah reload meski dicoba dicentang+simpan)
+dan halaman Pengguna (user baru role=owner tidak tercipta); A6
+dikonfirmasi lewat query DB langsung (`no_pin_threshold=999999999`
+TIDAK tersimpan sama sekali, bukan cuma dicek dari tampilan form).
+DB dibersihkan dari seluruh data uji setelah verifikasi.
+
+**Backlog eksplisit, TIDAK dikerjakan di Phase A** (supaya ~38 temuan
+sisanya tidak hilang dari tracking):
+
+- **Phase B (security, MEDIUM)** — `cashier_session_id`/`outlet_id` di
+  request sale tidak diverifikasi milik aktor yang login;
+  `SaleController::hold()` pakai `$request->all()` tanpa validasi,
+  `recall()` bisa hapus hold kasir lain tanpa cek kepemilikan; throttle
+  PIN override supervisor di-key per-permission GLOBAL (1 kasir bisa
+  kunci seluruh toko 15 menit) — perlu di-key per user/terminal; reset
+  password wali kembalikan plaintext ke siapa pun ber-`member.update`
+  tanpa notifikasi ke wali.
+- **Phase C (performa)** — urutan rekomendasi: lock contention
+  `ReferenceGenerator::increment()` (SATU-SATUNYA temuan yang bikin
+  "30 concurrent user" ADR-0008 tidak tercapai berapa pun cepatnya
+  query lain) → N+1 checkout `SaleService::complete()` (~120-180
+  query/transaksi) → cache `PromoEngine`/`JournalService` (9+6-10
+  query/baris tanpa cache) → jadwalkan queue worker cron (fitur ekspor
+  laporan besar rusak diam-diam, `jobs` table menumpuk tak pernah
+  dikonsumsi) → index & sargability tanggal (26 pemakaian `whereDate()`
+  non-sargable + index `sales`/`activity_log`/`sale_items.promo_id`
+  hilang) → agregasi laporan di SQL (semua `app/Reports/*.php`
+  `summary()` tarik SEMUA baris ke PHP) → caching read-heavy
+  (Category/Brand/Unit/Account/Navigation nyaris 0 caching di seluruh
+  app) → bundle frontend (`Dashboard.js` 417KB, Recharts tidak
+  lazy-load). Refactor besar `SaleService::complete()` — SENGAJA
+  dipisah dari Phase A.
+- **Phase D (code quality/arsitektur)** — pisah `JournalService`
+  (mesin posting vs mesin laporan keuangan, 532 baris jadi satu);
+  ekstrak `DashboardService` (326 baris, satu-satunya controller yang
+  menyimpang pola, duplikasi verbatim `scopedQuery()` dari
+  `ReportController`); **setup CI** (GitHub Actions menjalankan
+  pint/tsc/eslint/build/test — nilai tertinggi per-jam karena jadi rem
+  buat SEMUA temuan lain, saat ini semua gerbang kualitas dijalankan
+  manual); konsolidasi format tanggal (`Lib/date.ts` cuma 3 importer,
+  23 halaman lain format manual dengan hasil visual BEDA) & uang
+  (`<Money>` vs `toLocaleString` manual, "Rp " vs "Rp" beda spasi);
+  hapus dead code (`app/Support/Money.php` — 0 pemanggilan,
+  `sales.rounding` selalu 0, fitur T-004 setengah jadi; trait
+  `HasReference`/`BelongsToOutlet` — 0 pemakai; folder `app/Data/`/
+  `app/Enums/` kosong sejak T-003); sambungkan 4 field Settings yang
+  masih mati (`rounding_step`/`rounding_mode`/`tax_percent`/
+  `low_stock_threshold_percent`); bereskan `payroll_deductions` (tabel
+  write-only, tidak ada UI/laporan sama sekali) & `exchanges` (fitur
+  backend lengkap, 0 UI — T-072 sengaja ditunda, tapi tetap kode mati
+  yang di-maintain); konsolidasi aturan bucket aging (6 tempat) &
+  "stok rendah" (4 tempat, 2 sumber data BEDA — Dashboard & halaman
+  Stok bisa tampilkan angka kritis berbeda); `Lib/api.ts` wrapper
+  `fetch()` (token XSRF di-copy-paste 4× — kelas bug yang sudah 2×
+  menggigit proyek ini).
+
 ## Fase 18 — Pengujian, Keamanan & Penyiapan
 
 **Catatan:** beberapa gap keamanan konkret di T-106/T-109 sudah

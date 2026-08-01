@@ -30,7 +30,31 @@ class TopupRequestService
             throw new DomainException('Nominal top-up harus lebih dari nol.');
         }
 
-        $path = $proof?->store('topup-proofs', 'public');
+        // Temuan audit keamanan: route ini pakai middleware `idempotent`
+        // (cuma cek header ADA, tidak dedup) dan tabel `topup_requests`
+        // tidak punya kolom idempotency_key — klik dobel/retry jaringan
+        // bisa bikin 2 pengajuan identik. Guard sederhana: tolak kalau
+        // ada pengajuan pending identik (wali+anak+nominal) dalam 60
+        // detik terakhir, tanpa perlu migrasi kolom baru.
+        $isDuplicate = TopupRequest::where('guardian_id', $guardian->id)
+            ->where('member_id', $member->id)
+            ->where('amount', $amount)
+            ->where('status', 'pending')
+            ->where('created_at', '>=', now()->subSeconds(60))
+            ->exists();
+
+        if ($isDuplicate) {
+            throw new DomainException('Pengajuan top-up dengan nominal yang sama baru saja dikirim — mohon tunggu sebentar sebelum mengirim ulang.');
+        }
+
+        // Temuan audit keamanan: sebelumnya disimpan di disk `public`
+        // (storage/app/public — bisa diakses lewat URL /storage/... tanpa
+        // login sama sekali). Isinya foto struk transfer bank (no.
+        // rekening, nama pengirim, nominal — data finansial wali santri).
+        // Bertolak belakang dengan enkripsi UU PDP di Fase 17-Darurat.
+        // Disk `local` (private) + akses lewat route ber-auth
+        // (TopupRequestController::proof(), can:topup.view).
+        $path = $proof?->store('topup-proofs', 'local');
 
         return TopupRequest::create([
             'reference' => ReferenceGenerator::generate('TRQ', 0),

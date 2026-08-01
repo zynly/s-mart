@@ -99,6 +99,7 @@ export default function Index({ session, outlet, paymentMethods, favoriteProduct
   const [submitting, setSubmitting] = useState(false)
   const [paymentError, setPaymentError] = useState<string | null>(null)
   const [holdError, setHoldError] = useState<string | null>(null)
+  const idempotencyKeyRef = useRef(newIdempotencyKey())
   const barcodeRef = useRef<HTMLInputElement>(null)
 
   const subtotal = useMemo(() => cart.reduce((sum, line) => sum + line.qty * line.unit_price, 0), [cart])
@@ -237,6 +238,11 @@ export default function Index({ session, outlet, paymentMethods, favoriteProduct
     setSelectedMethodId('')
     setCreditWarning(null)
     setPaymentError(null)
+    // Temuan audit keamanan: key HARUS dibuat sekali per keranjang, bukan
+    // per klik submit — kalau tidak, retry (klik dobel/network lambat)
+    // mengirim key baru tiap kali dan idempotency di backend jadi tidak
+    // berarti (nota ganda, stok/saldo terpotong ganda).
+    idempotencyKeyRef.current = newIdempotencyKey()
     setPaymentOpen(true)
   }
 
@@ -325,11 +331,12 @@ export default function Index({ session, outlet, paymentMethods, favoriteProduct
         })),
       },
       {
-        headers: { 'X-Idempotency-Key': newIdempotencyKey() },
+        headers: { 'X-Idempotency-Key': idempotencyKeyRef.current },
         onSuccess: () => {
           setCart([])
           setMember(null)
           setPaymentOpen(false)
+          idempotencyKeyRef.current = newIdempotencyKey()
         },
         onError: (errors) => setPaymentError(Object.values(errors)[0] ?? 'Gagal menyelesaikan transaksi.'),
         onFinish: () => setSubmitting(false),

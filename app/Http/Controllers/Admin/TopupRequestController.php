@@ -9,9 +9,11 @@ use App\Services\TopupRequestService;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * T-098 (Fase 16). Verifikasi top-up wali TANPA sesi kasir aktif
@@ -59,6 +61,20 @@ class TopupRequestController extends Controller
         }
 
         return back()->with('success', "Top-up {$approved->reference} diverifikasi, saldo sudah ditambahkan.");
+    }
+
+    /**
+     * Temuan audit keamanan: bukti transfer sebelumnya di disk `public`,
+     * bisa diakses lewat URL /storage/... tanpa login. Sekarang di disk
+     * `local` (private), cuma bisa diakses lewat sini — gate
+     * `can:topup.view` di routes/admin.php.
+     */
+    public function proof(TopupRequest $topupRequest): StreamedResponse
+    {
+        abort_if($topupRequest->proof_image === null, 404);
+        abort_unless(Storage::disk('local')->exists($topupRequest->proof_image), 404);
+
+        return Storage::disk('local')->response($topupRequest->proof_image);
     }
 
     public function reject(TopupRequest $topupRequest, Request $request): RedirectResponse

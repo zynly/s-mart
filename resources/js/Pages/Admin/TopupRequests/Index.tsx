@@ -89,7 +89,7 @@ export default function Index({ tab, topupRequests, filters }: TopupRequestsInde
       id: 'proof',
       header: 'Bukti',
       cell: ({ row }) => row.original.proof_image
-        ? <a href={`/storage/${row.original.proof_image}`} target="_blank" rel="noreferrer" className="text-primary hover:underline">Lihat</a>
+        ? <a href={route('admin.topup-requests.proof', row.original.id)} target="_blank" rel="noreferrer" className="text-primary hover:underline">Lihat</a>
         : '—',
     },
     {

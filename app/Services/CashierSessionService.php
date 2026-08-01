@@ -81,6 +81,16 @@ class CashierSessionService
                 throw CashDifferenceRequiresApprovalException::make($difference);
             }
 
+            // Temuan audit keamanan: docblock method ini sudah lama
+            // menyatakan approver "dicek di controller lewat
+            // AuthorizationService sebelum sampai sini" — tapi
+            // CashierSessionController::close() ternyata cuma User::find()
+            // tanpa cek permission apa pun. Pindahkan pengecekan ke sini
+            // (satu sumber kebenaran, sama seperti VoidService::void()).
+            if ($approver !== null && ! $approver->can('pos.approve')) {
+                throw new DomainException('Persetujuan selisih kas wajib dari pemegang izin pos.approve (supervisor/admin/owner).');
+            }
+
             $locked->update([
                 'closed_at' => now(),
                 'expected_cash' => $expected,

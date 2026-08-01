@@ -6,8 +6,12 @@ use App\Models\User;
 use App\Reports\BaseReport;
 use Illuminate\Database\Eloquent\Builder;
 use Maatwebsite\Excel\Concerns\FromQuery;
+use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
+use PhpOffice\PhpSpreadsheet\Cell\Cell;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 
 /**
  * T-089. Satu class Export generik dipakai SEMUA laporan — menerima
@@ -17,7 +21,7 @@ use Maatwebsite\Excel\Concerns\WithMapping;
  * user tanpa product.view_cost tidak dapat kolom HPP/margin di Excel
  * juga, bukan cuma disembunyikan di layar).
  */
-class ReportExport implements FromQuery, WithHeadings, WithMapping
+class ReportExport extends DefaultValueBinder implements FromQuery, WithCustomValueBinder, WithHeadings, WithMapping
 {
     private array $columns;
 
@@ -53,5 +57,23 @@ class ReportExport implements FromQuery, WithHeadings, WithMapping
                 default => (string) ($value ?? ''),
             };
         }, $this->columns);
+    }
+
+    /**
+     * Temuan audit keamanan: nilai teks bebas (nama produk/supplier,
+     * catatan retur, dst — semuanya diisi manusia lewat form tanpa
+     * larangan karakter) sebelumnya dikirim ke PhpSpreadsheet apa
+     * adanya. String yang diawali =/+/-/@ ditafsirkan Excel sebagai
+     * formula (mis. `=HYPERLINK(...)`) dan bisa tereksekusi di mesin
+     * siapa pun yang membuka file ekspor. Paksa TYPE_STRING untuk
+     * nilai semacam itu supaya Excel selalu memperlakukannya sebagai teks.
+     */
+    public function bindValue(Cell $cell, $value): bool
+    {
+        if (is_string($value) && preg_match('/^[=+\-@]/', $value) === 1) {
+            return $cell->setValueExplicit($value, DataType::TYPE_STRING);
+        }
+
+        return parent::bindValue($cell, $value);
     }
 }

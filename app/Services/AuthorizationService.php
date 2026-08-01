@@ -10,24 +10,26 @@ use Spatie\Permission\Models\Permission;
 
 class AuthorizationService
 {
-    private const MAX_ATTEMPTS = 3;
-
-    private const LOCKOUT_MINUTES = 15;
-
     public function requestOverride(string $permission, string $pin): User
     {
         $this->ensurePermissionExists($permission);
 
         $key = $this->throttleKey($permission);
+        // Temuan audit keamanan (code-quality #1/#8): sebelumnya hardcode
+        // 3/15, mengabaikan config('pos.pin_max_attempts')/
+        // ('pos.pin_lockout_minutes') yang bisa diubah owner lewat
+        // Pengaturan (T-103).
+        $maxAttempts = (int) config('pos.pin_max_attempts', 3);
+        $lockoutMinutes = (int) config('pos.pin_lockout_minutes', 15);
 
-        if (RateLimiter::tooManyAttempts($key, self::MAX_ATTEMPTS)) {
+        if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {
             throw AuthorizationOverrideException::lockedOut(RateLimiter::availableIn($key));
         }
 
         $approver = $this->findMatchingUser($permission, $pin);
 
         if ($approver === null) {
-            RateLimiter::hit($key, self::LOCKOUT_MINUTES * 60);
+            RateLimiter::hit($key, $lockoutMinutes * 60);
             $this->logAttempt($permission, null, success: false);
 
             throw AuthorizationOverrideException::invalidPin();

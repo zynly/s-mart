@@ -7,7 +7,13 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', fn () => Inertia::render('Public/Welcome'));
-Route::get('/uji-komponen', fn () => Inertia::render('UjiKomponen'));
+
+// Temuan audit keamanan: halaman showcase komponen internal ini
+// sebelumnya terdaftar TANPA guard apa pun — publik di produksi,
+// membocorkan peta komponen internal & stack yang dipakai. Dev-only.
+if (app()->environment('local')) {
+    Route::get('/uji-komponen', fn () => Inertia::render('UjiKomponen'));
+}
 
 Route::middleware('auth')->group(function () {
     Route::post('/authorization/override', AuthorizationOverrideController::class)

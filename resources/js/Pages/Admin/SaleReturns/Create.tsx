@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactElement } from 'react'
+import { useMemo, useRef, useState, type ReactElement } from 'react'
 import { router } from '@inertiajs/react'
 import { toast } from 'sonner'
 import AdminLayout from '@/Layouts/AdminLayout'
@@ -96,6 +96,10 @@ export default function Create({ session }: SaleReturnCreateProps) {
   const [approverId, setApproverId] = useState<number | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  // Temuan audit keamanan: key idempotency dibuat sekali per kunjungan
+  // halaman (bukan per klik submit) — retry setelah gagal/network lambat
+  // pakai key yang sama supaya backend bisa men-dedup dengan benar.
+  const idempotencyKeyRef = useRef(newIdempotencyKey())
 
   const refundTotal = useMemo(
     () => cart.reduce((sum, l) => sum + l.qty * l.unit_price, 0),
@@ -213,7 +217,7 @@ export default function Create({ session }: SaleReturnCreateProps) {
           : [],
       },
       {
-        headers: { 'X-Idempotency-Key': newIdempotencyKey() },
+        headers: { 'X-Idempotency-Key': idempotencyKeyRef.current },
         onError: (errors) => {
           setSubmitError(Object.values(errors)[0] ?? 'Gagal memproses retur.')
           toast.error(Object.values(errors)[0] ?? 'Gagal memproses retur.')

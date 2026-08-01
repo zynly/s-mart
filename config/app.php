@@ -39,7 +39,15 @@ return [
     |
     */
 
-    'debug' => (bool) env('APP_DEBUG', false),
+    // Temuan audit keamanan (Fase 18, T-106): APP_DEBUG default `true` di
+    // .env.example, tanpa guard runtime — deploy produksi yang lupa
+    // meng-override risiko membocorkan stack trace lengkap (query SQL,
+    // path server, isi variabel) ke publik lewat halaman error. Safety
+    // net: paksa false kalau APP_ENV=production apa pun isi APP_DEBUG,
+    // pola sama seperti SESSION_SECURE_COOKIE di config/session.php.
+    // Baca env('APP_ENV') langsung (bukan app()->environment()) — config
+    // files dimuat sebelum container sepenuhnya siap.
+    'debug' => (bool) env('APP_DEBUG', false) && env('APP_ENV') !== 'production',
 
     /*
     |--------------------------------------------------------------------------

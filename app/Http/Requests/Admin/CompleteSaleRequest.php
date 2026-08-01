@@ -22,6 +22,7 @@ class CompleteSaleRequest extends FormRequest
             'member_id' => ['nullable', 'exists:members,id'],
             'member_card_id' => ['nullable', 'exists:member_cards,id'],
             'bill_discount' => ['nullable', 'integer', 'min:0'],
+            'discount_approver_id' => ['nullable', 'integer', 'exists:users,id'],
             'coupon_code' => ['nullable', 'string', 'max:30'],
 
             'items' => ['required', 'array', 'min:1'],
@@ -29,6 +30,7 @@ class CompleteSaleRequest extends FormRequest
             'items.*.unit_id' => ['required', 'exists:units,id'],
             'items.*.qty' => ['required', 'numeric', 'min:0.001'],
             'items.*.price_override' => ['nullable', 'integer', 'min:0'],
+            'price_override_approver_id' => ['nullable', 'integer', 'exists:users,id'],
 
             'payments' => ['required', 'array', 'min:1'],
             'payments.*.payment_method_id' => ['required', 'exists:payment_methods,id'],

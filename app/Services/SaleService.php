@@ -34,6 +34,7 @@ class SaleService
     /**
      * @param  array{outlet_id:int, cashier_session_id:int, member_id?:int, member_card_id?:int,
      *     bill_discount?:int, coupon_code?:string, idempotency_key:string,
+     *     price_override_approver_id?:int, discount_approver_id?:int,
      *     payments: array<int, array<string, mixed>>,
      *     items: array<int, array{product_id:int, unit_id:int, qty:float, price_override?:int}>}  $cart
      */
@@ -81,6 +82,21 @@ class SaleService
                 $subtotal += $lineSubtotal;
             }
 
+            // Temuan audit keamanan: harga manual di POS TIDAK dikirim UI
+            // kasir mana pun saat ini (satu-satunya jalur field ini terisi
+            // adalah request yang dirakit manual) — tanpa cek ini, harga
+            // bisa ditimpa bebas (termasuk ke 0) tanpa otorisasi apa pun.
+            $priceApprover = null;
+            $hasPriceOverride = count(array_filter($lines, fn ($l) => $l['price_changed'])) > 0;
+
+            if ($hasPriceOverride) {
+                $priceApprover = $this->resolveApprover($cart['price_override_approver_id'] ?? null, 'sale.change_price');
+
+                if ($priceApprover === null) {
+                    throw new DomainException('Ubah harga wajib otorisasi supervisor (permission sale.change_price).');
+                }
+            }
+
             $promoResult = $this->promoEngine->applyToCart(
                 array_map(fn ($l) => ['key' => $l['key'], 'product' => $l['product'], 'qty' => $l['qty'], 'unit_price' => $l['unit_price'], 'subtotal' => $l['subtotal']], $lines),
                 $member,
@@ -113,9 +129,20 @@ class SaleService
             $totalDiscount = $itemDiscountTotal + $promoBillDiscount + $couponDiscount + $manualBillDiscount;
             $maxDiscount = (int) round($subtotal * (int) config('pos.max_discount_percent', 50) / 100);
 
+            // Temuan audit keamanan: sebelumnya diskon di atas batas
+            // di-CLAMP diam-diam (bukan ditolak) — SUM(sale_items.subtotal)
+            // jadi tidak sama dengan grand_total karena diskon per item
+            // (promo) tetap pakai nilai asli sementara total dipotong.
+            // Sekarang wajib otorisasi eksplisit, dan kalau tidak ada,
+            // TOLAK transaksi (bukan diam-diam dipotong).
+            $discountApprover = null;
+
             if ($totalDiscount > $maxDiscount) {
-                $promoResult['warnings'][] = "Total diskon dipotong ke batas maksimal {$maxDiscount}% dari subtotal.";
-                $totalDiscount = $maxDiscount;
+                $discountApprover = $this->resolveApprover($cart['discount_approver_id'] ?? null, 'sale.discount_over_limit');
+
+                if ($discountApprover === null) {
+                    throw new DomainException("Total diskon melebihi batas maksimal {$maxDiscount} (dari subtotal) — wajib otorisasi supervisor (permission sale.discount_over_limit).");
+                }
             }
 
             $grandTotal = max(0, $subtotal - $totalDiscount);
@@ -140,6 +167,7 @@ class SaleService
                 'promo_discount' => $promoBillDiscount,
                 'coupon_discount' => $couponDiscount,
                 'total_discount' => $totalDiscount,
+                'discount_approved_by' => $discountApprover?->id,
                 'grand_total' => $grandTotal,
                 'status' => 'completed',
                 'idempotency_key' => $cart['idempotency_key'],
@@ -169,7 +197,7 @@ class SaleService
                     'promo_id' => $firstPromo?->id,
                     'promo_discount' => $itemPromo['discount'],
                     'subtotal' => $line['subtotal'] - $itemPromo['discount'],
-                    'price_changed_by' => $line['price_changed'] ? auth()->id() : null,
+                    'price_changed_by' => $line['price_changed'] ? $priceApprover?->id : null,
                 ]);
 
                 $qtyBefore = $this->stockService->getAvailable($line['product'], $outlet);
@@ -269,6 +297,27 @@ class SaleService
     public function void(Sale $sale, string $reason, ?User $approver = null): Sale
     {
         return $this->voidService->void($sale, $reason, $approver);
+    }
+
+    /**
+     * Resolusi & verifikasi approver untuk override harga/diskon di atas
+     * batas — pola sama seperti VoidService::void(): approver harus User
+     * aktif yang benar-benar memegang permission terkait, bukan sekadar
+     * ID yang valid ada di tabel users.
+     */
+    private function resolveApprover(?int $approverId, string $permission): ?User
+    {
+        if ($approverId === null) {
+            return null;
+        }
+
+        $approver = User::find($approverId);
+
+        if ($approver === null || ! $approver->can($permission)) {
+            return null;
+        }
+
+        return $approver;
     }
 
     private function convertToBaseQty(Product $product, Unit $unit, float $qty): float

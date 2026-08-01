@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivityCustom;
 use Illuminate\Database\Eloquent\Model;
 
 class Setting extends Model
 {
+    use LogsActivityCustom;
+
     protected $fillable = ['group', 'key', 'value', 'type', 'label', 'description'];
 
     public function castValue(): string|int|float|bool|null

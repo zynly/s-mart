@@ -13,6 +13,7 @@ use App\Models\CashierSession;
 use App\Models\Sale;
 use App\Models\User;
 use App\Services\CashierSessionService;
+use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -75,6 +76,8 @@ class CashierSessionController extends Controller
             throw ValidationException::withMessages(['actual_cash' => $e->getMessage()]);
         } catch (SessionCannotCloseWithHoldsException $e) {
             throw ValidationException::withMessages(['actual_cash' => $e->getMessage()]);
+        } catch (DomainException $e) {
+            throw ValidationException::withMessages(['approver_id' => $e->getMessage()]);
         }
 
         return back()->with('success', 'Sesi kasir ditutup.');

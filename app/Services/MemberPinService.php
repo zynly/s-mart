@@ -9,10 +9,6 @@ use Illuminate\Support\Facades\Hash;
 
 class MemberPinService
 {
-    private const MAX_ATTEMPTS = 3;
-
-    private const LOCKOUT_MINUTES = 15;
-
     private const WEAK_PINS = [
         '1234', '0000', '1111', '2222', '3333', '4444',
         '5555', '6666', '7777', '8888', '9999', '4321',
@@ -37,11 +33,16 @@ class MemberPinService
 
         if ($member->pin === null || ! Hash::check($pin, $member->pin)) {
             $attempts = $member->pin_attempts + 1;
-            $locked = $attempts >= self::MAX_ATTEMPTS;
+            // Temuan audit keamanan (code-quality #1/#8): sebelumnya
+            // hardcode 3/15, mengabaikan config('pos.pin_max_attempts')/
+            // ('pos.pin_lockout_minutes') yang sudah dipajang & bisa
+            // diubah owner lewat halaman Pengaturan (T-103) — owner ubah
+            // nilainya, toast sukses, tapi tidak berpengaruh sama sekali.
+            $locked = $attempts >= (int) config('pos.pin_max_attempts', 3);
 
             $member->update([
                 'pin_attempts' => $locked ? 0 : $attempts,
-                'pin_locked_until' => $locked ? now()->addMinutes(self::LOCKOUT_MINUTES) : null,
+                'pin_locked_until' => $locked ? now()->addMinutes((int) config('pos.pin_lockout_minutes', 15)) : null,
             ]);
 
             return false;

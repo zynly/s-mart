@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEventHandler, type ReactElement } from 'react'
+import { useMemo, useRef, useState, type FormEventHandler, type ReactElement } from 'react'
 import { router, useForm } from '@inertiajs/react'
 import type { ColumnDef } from '@tanstack/react-table'
 import type { DateRange } from 'react-day-picker'
@@ -77,6 +77,13 @@ export default function Index({ tab, transactions, members, paymentMethods, outl
   const withdrawForm = useForm({ member_id: '', amount: 0, note: '' })
   const adjustForm = useForm({ member_id: '', amount: 0, reason: '' })
 
+  // Temuan audit keamanan: key idempotency HARUS dibuat sekali per form
+  // (bukan per klik submit), supaya retry (network lambat/klik dobel)
+  // mengirim key yang SAMA — backend baru bisa benar-benar men-dedup.
+  const topupKeyRef = useRef(newIdempotencyKey())
+  const withdrawKeyRef = useRef(newIdempotencyKey())
+  const adjustKeyRef = useRef(newIdempotencyKey())
+
   const filteredMembers = useMemo(() => {
     if (!memberSearch.trim()) return members.slice(0, 20)
     const q = memberSearch.toLowerCase()
@@ -95,10 +102,11 @@ export default function Index({ tab, transactions, members, paymentMethods, outl
     e.preventDefault()
     router.post(route('admin.deposit.topup'), topupForm.data, {
       preserveScroll: true,
-      headers: { 'X-Idempotency-Key': newIdempotencyKey() },
+      headers: { 'X-Idempotency-Key': topupKeyRef.current },
       onSuccess: () => {
         topupForm.reset()
         setSelectedMemberId('')
+        topupKeyRef.current = newIdempotencyKey()
       },
       onError: (errors) => topupForm.setError(errors as never),
     })
@@ -108,10 +116,11 @@ export default function Index({ tab, transactions, members, paymentMethods, outl
     e.preventDefault()
     router.post(route('admin.deposit.withdrawal'), withdrawForm.data, {
       preserveScroll: true,
-      headers: { 'X-Idempotency-Key': newIdempotencyKey() },
+      headers: { 'X-Idempotency-Key': withdrawKeyRef.current },
       onSuccess: () => {
         withdrawForm.reset()
         setWithdrawOpen(false)
+        withdrawKeyRef.current = newIdempotencyKey()
       },
       onError: (errors) => withdrawForm.setError(errors as never),
     })
@@ -121,10 +130,11 @@ export default function Index({ tab, transactions, members, paymentMethods, outl
     e.preventDefault()
     router.post(route('admin.deposit.adjustment'), adjustForm.data, {
       preserveScroll: true,
-      headers: { 'X-Idempotency-Key': newIdempotencyKey() },
+      headers: { 'X-Idempotency-Key': adjustKeyRef.current },
       onSuccess: () => {
         adjustForm.reset()
         setAdjustOpen(false)
+        adjustKeyRef.current = newIdempotencyKey()
       },
       onError: (errors) => adjustForm.setError(errors as never),
     })

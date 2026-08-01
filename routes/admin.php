@@ -153,6 +153,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // Verifikasi top-up wali (Fase 16, T-098) — tab saudara dari Deposit.
     Route::middleware('can:topup.view')->group(function () {
         Route::get('/topup-requests', [TopupRequestController::class, 'index'])->name('topup-requests.index');
+        Route::get('/topup-requests/{topupRequest}/proof', [TopupRequestController::class, 'proof'])->name('topup-requests.proof');
     });
     Route::put('/topup-requests/{topupRequest}/approve', [TopupRequestController::class, 'approve'])->name('topup-requests.approve')->middleware('can:topup.approve');
     Route::put('/topup-requests/{topupRequest}/reject', [TopupRequestController::class, 'reject'])->name('topup-requests.reject')->middleware('can:topup.approve');

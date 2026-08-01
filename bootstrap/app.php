@@ -8,6 +8,7 @@ use App\Http\Middleware\ThrottlePasswordReset;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -34,5 +35,18 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // Temuan audit keamanan: handler ini sebelumnya kosong total —
+        // DomainException dari service yang TIDAK di-try/catch eksplisit
+        // di controller (mis. Wali\TopupController::store() memanggil
+        // TopupRequestService::submit() langsung) jatuh jadi 500 mentah.
+        // Buruk khususnya untuk wali (pengguna awam di HP) yang seharusnya
+        // melihat pesan error biasa, bukan halaman crash. Controller yang
+        // SUDAH menangkap DomainException sendiri (mayoritas) tidak
+        // terpengaruh — catch block mereka jalan duluan, closure ini cuma
+        // jaring pengaman untuk yang lolos.
+        $exceptions->renderable(function (DomainException $e, Request $request) {
+            if ($request->header('X-Inertia')) {
+                return back()->with('error', $e->getMessage());
+            }
+        });
     })->create();
