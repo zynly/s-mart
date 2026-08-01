@@ -23,8 +23,14 @@
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
+        <!-- T-105: sengaja MySQL (bukan sqlite default Laravel) — proyek
+             ini konsisten pakai fitur MySQL-spesifik di banyak migration
+             (mis. `ALTER TABLE ... MODIFY COLUMN ... ENUM(...)`, belum
+             pernah ditulis portable ke SQLite). Test DB TERPISAH
+             (`s_mart_test`) dari dev (`s_mart_dev`) — RefreshDatabase
+             reset isinya tiap run, jangan pernah dipakai untuk data asli. -->
+        <env name="DB_CONNECTION" value="mysql"/>
+        <env name="DB_DATABASE" value="s_mart_test"/>
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>

@@ -1153,12 +1153,49 @@ menunggu gilirannya):
   ("Target class [env] does not exist") karena config dimuat sebelum
   container sepenuhnya siap — diperbaiki baca `env('APP_ENV')` langsung.
 
-- [ ] ⬜ T-105 — Test suite Pest: aturan bisnis kritis (revert kupon, konsinyasi no-jurnal, retur non-tunai, `receivable_limit`, floor HPP, ISO days_of_week)
+- [x] ✅ T-105 — Test suite Pest: aturan bisnis kritis (revert kupon, konsinyasi no-jurnal, retur non-tunai, `receivable_limit`, floor HPP, ISO days_of_week) — lihat catatan di bawah
 - [ ] ⬜ T-106 — Hardening keamanan (CSP, 2FA Fortify, audit log lengkap semua model) *(rate limit reset password + security headers dasar + audit log Topup/Guardian/DepositTransaction sudah — lihat catatan di atas & Fase 17-Darurat)*
-- [ ] ⬜ T-107 — Optimasi query + index MySQL (lihat `CATATAN-PERBAIKAN.md` § Field Indexing)
+- [ ] ⬜ T-107 — Optimasi query + index MySQL (lihat `CATATAN-PERBAIKAN.md` § Field Indexing) *(index `sales`/`activity_log`/`sale_items.promo_id` + fix N+1 checkout + lock contention `ReferenceGenerator` sudah — lihat "Audit Performa Menyeluruh Lintas-Fase — Phase C"; sisa: cache PromoEngine/JournalService, sargability `whereDate()`, agregasi laporan di SQL)
 - [ ] ⬜ T-108 — Uji beban k6/wrk (30 concurrent user, target <800ms p95 — ADR-0008)
 - [ ] ⬜ T-109 — Deploy Hostinger (langkah shared hosting, cron scheduler) *(`.env.production.example` sudah — lihat catatan di atas)*
 - [ ] ⬜ T-110 — Seeder demo lengkap untuk onboarding tim non-teknis
+
+**Catatan T-105:** `tests/Pest.php` **TIDAK PERNAH ADA** sejak Fase 0
+meski `pestphp/pest-plugin-laravel` sudah ter-install — tanpa file ini,
+test bergaya fungsional (`it(...)`) jatuh ke `PHPUnit\Framework\TestCase`
+polos (bukan `Tests\TestCase`), aplikasi Laravel tidak pernah ter-boot,
+dan pemanggilan facade apa pun langsung "A facade root has not been
+set." Ditambal: `tests/Pest.php` (`pest()->extend(Tests\TestCase::class)
+->in('Feature','Unit')`), `tests/TestCase.php` (`protected $seed = true`
+— seed sekali per RUN, bukan per test, sebelumnya nyaris dicoba manual
+`$this->seed()` per test = 1 file 2 test jadi >6 menit). `phpunit.xml`
+diganti dari SQLite `:memory:` (driver `pdo_sqlite` bahkan tidak
+aktif di php.ini environment ini) ke MySQL `s_mart_test` terpisah dari
+dev (`s_mart_dev`) — proyek ini konsisten pakai fitur MySQL-spesifik
+di banyak migration (`ALTER ... MODIFY COLUMN ... ENUM(...)`) yang
+tidak portable ke SQLite tanpa penulisan ulang luas.
+
+Perbaikan ini juga membongkar bug NYATA di `ReferenceGenerator` (Phase
+C) — koneksi `reference_counters` di-hardcode driver `mysql`, gagal
+total di bawah SQLite; sekarang ikut `env('DB_CONNECTION')` + SQL
+upsert dicabang per driver (`ON DUPLICATE KEY UPDATE` MySQL vs
+`ON CONFLICT DO UPDATE` SQLite) — portable tanpa mengorbankan fix
+lock contention Phase C.
+
+6 aturan bisnis diuji (lewat service nyata — `SaleService::complete()`,
+`VoidService`, `SaleReturnService`, `PromoEngine` — bukan mock):
+revert kupon saat void (termasuk kasus kupon yang sudah dibatalkan
+admin TIDAK boleh hidup lagi), konsinyasi murni (terima & retur TIDAK
+ada jurnal, jual ADA jurnal tapi ke Utang Konsinyasi bukan Penjualan
+biasa), retur non-tunai (refund deposit balik ke `balance_cache`
+member), `receivable_limit` (tolak kalau piutang aktif+baru melebihi
+limit, kecuali ada approver), floor HPP (diskon promo tidak boleh
+menembus `avg_cost`, dipotong + warning bukan ditolak), ISO
+`days_of_week` (Senin=1..Minggu=7, bukan konvensi Carbon default).
+13 test, 31 assertion, seluruhnya hijau termasuk 2 `ExampleTest`
+boilerplate lama (tidak regresi). Total run ~58 detik (migrasi+seed
+sekali ~45-50 detik, tiap test individual <1 detik lewat transaksi+
+rollback RefreshDatabase).
 
 **Blocking:** Fase 17 selesai (semua fase bisnis selesai).
 

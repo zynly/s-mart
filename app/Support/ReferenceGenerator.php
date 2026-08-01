@@ -89,18 +89,34 @@ class ReferenceGenerator
      * trik itu mengembalikan nilai yang salah.) Transaksi counter jadi
      * top-level SENDIRI — commit dalam hitungan milidetik, tidak ikut
      * menunggu transaksi checkout.
+     *
+     * SQL upsert-nya sengaja dicabang per driver (BUKAN cuma dialek
+     * MySQL) — `phpunit.xml` (T-105) menjalankan test suite di atas
+     * SQLite in-memory, dan koneksi `reference_counters` sengaja ikut
+     * driver aktif (lihat `config/database.php`) supaya test tidak
+     * perlu MySQL sungguhan. `ON DUPLICATE KEY UPDATE` (MySQL) dan
+     * `ON CONFLICT ... DO UPDATE` (SQLite, didukung sejak 3.24) sama-
+     * sama upsert atomik native — bukan emulasi rawan race.
      */
     private static function increment(string $prefix, int $outletId, string $dateKey): int
     {
         $connection = DB::connection('reference_counters');
+        $now = now();
 
-        return $connection->transaction(function () use ($connection, $prefix, $outletId, $dateKey) {
-            $connection->statement(
-                'INSERT INTO reference_counters (prefix, outlet_id, date, last_number, created_at, updated_at)
-                 VALUES (?, ?, ?, 1, NOW(), NOW())
-                 ON DUPLICATE KEY UPDATE last_number = last_number + 1, updated_at = NOW()',
-                [$prefix, $outletId, $dateKey]
-            );
+        return $connection->transaction(function () use ($connection, $prefix, $outletId, $dateKey, $now) {
+            $sql = $connection->getDriverName() === 'sqlite'
+                ? 'INSERT INTO reference_counters (prefix, outlet_id, date, last_number, created_at, updated_at)
+                   VALUES (?, ?, ?, 1, ?, ?)
+                   ON CONFLICT(prefix, outlet_id, date) DO UPDATE SET last_number = last_number + 1, updated_at = excluded.updated_at'
+                : 'INSERT INTO reference_counters (prefix, outlet_id, date, last_number, created_at, updated_at)
+                   VALUES (?, ?, ?, 1, ?, ?)
+                   ON DUPLICATE KEY UPDATE last_number = last_number + 1, updated_at = ?';
+
+            $bindings = $connection->getDriverName() === 'sqlite'
+                ? [$prefix, $outletId, $dateKey, $now, $now]
+                : [$prefix, $outletId, $dateKey, $now, $now, $now];
+
+            $connection->statement($sql, $bindings);
 
             return (int) $connection->selectOne(
                 'SELECT last_number FROM reference_counters WHERE prefix = ? AND outlet_id = ? AND date = ?',

@@ -84,12 +84,21 @@ return [
         // karena counter global (outlet_id=0). Dengan koneksi
         // independen, transaksi counter selalu jadi top-level sendiri:
         // commit dalam hitungan milidetik, tidak ikut menunggu apa pun.
+        //
+        // `driver` sengaja ikut `env('DB_CONNECTION')` (BUKAN hardcode
+        // 'mysql') — phpunit.xml men-set DB_CONNECTION=sqlite untuk
+        // test suite (T-105); kalau di-hardcode mysql, SEMUA test yang
+        // menyentuh SaleService::complete() (hampir semua business
+        // rule) akan gagal connect ke MySQL yang tidak ada di CI/test.
+        // Key sqlite & mysql digabung sengaja — tiap connector Laravel
+        // cuma membaca key yang relevan untuknya, sisanya diabaikan.
         'reference_counters' => [
-            'driver' => 'mysql',
+            'driver' => env('DB_CONNECTION', 'mysql'),
             'url' => env('DB_URL'),
+            'database' => env('DB_DATABASE', database_path('database.sqlite')),
+            'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '3306'),
-            'database' => env('DB_DATABASE', 'laravel'),
             'username' => env('DB_USERNAME', 'root'),
             'password' => env('DB_PASSWORD', ''),
             'unix_socket' => env('DB_SOCKET', ''),
