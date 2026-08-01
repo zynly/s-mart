@@ -53,7 +53,19 @@ class SaleService
                 throw new DomainException('Sesi kasir tidak aktif — tidak bisa memproses transaksi.');
             }
 
-            $outlet = Outlet::findOrFail($cart['outlet_id']);
+            // Temuan audit keamanan (Phase B): sebelumnya cashier_session_id
+            // & outlet_id cuma divalidasi exists:... — kasir A bisa
+            // memasukkan penjualan ke sesi kasir B (uang di laci A, selisih
+            // muncul di laporan tutup sesi B), dan outlet_id sembarang bisa
+            // memotong stok outlet lain dari terminal yang tidak berhak.
+            // Sesi HARUS milik aktor yang login, dan outlet SELALU diambil
+            // dari sesi (bukan dari input klien) — outlet_id di $cart tidak
+            // lagi dipakai untuk apa pun yang berpengaruh ke data.
+            if ($session->user_id !== auth()->id()) {
+                throw new DomainException('Sesi kasir ini bukan milik Anda — tidak bisa memproses transaksi di sesi kasir lain.');
+            }
+
+            $outlet = Outlet::findOrFail($session->outlet_id);
             $memberId = $cart['member_id'] ?? null;
             $member = $memberId !== null ? Member::findOrFail($memberId) : null;
 
@@ -257,8 +269,16 @@ class SaleService
      */
     public function hold(array $cart): SaleHold
     {
+        $session = CashierSession::findOrFail($cart['cashier_session_id']);
+
+        // Temuan audit keamanan (Phase B) — pola sama seperti complete():
+        // sesi harus milik aktor yang login, outlet diambil dari sesi.
+        if ($session->user_id !== auth()->id()) {
+            throw new DomainException('Sesi kasir ini bukan milik Anda — tidak bisa menahan transaksi di sesi kasir lain.');
+        }
+
         $maxHold = (int) config('pos.max_hold_per_cashier', 5);
-        $activeHolds = SaleHold::where('cashier_session_id', $cart['cashier_session_id'])->count();
+        $activeHolds = SaleHold::where('cashier_session_id', $session->id)->count();
 
         if ($activeHolds >= $maxHold) {
             throw MaxHoldExceededException::make($maxHold);
@@ -267,9 +287,9 @@ class SaleService
         $total = array_sum(array_map(fn (array $i) => (float) $i['qty'] * (int) ($i['unit_price'] ?? 0), $cart['items']));
 
         return SaleHold::create([
-            'reference' => ReferenceGenerator::generate('HOLD', $cart['outlet_id']),
-            'outlet_id' => $cart['outlet_id'],
-            'cashier_session_id' => $cart['cashier_session_id'],
+            'reference' => ReferenceGenerator::generate('HOLD', $session->outlet_id),
+            'outlet_id' => $session->outlet_id,
+            'cashier_session_id' => $session->id,
             'user_id' => auth()->id(),
             'member_id' => $cart['member_id'] ?? null,
             'cart_data' => $cart,
@@ -282,8 +302,17 @@ class SaleService
     /**
      * @return array<string, mixed>
      */
-    public function recall(SaleHold $hold): array
+    public function recall(SaleHold $hold, User $actor): array
     {
+        // Temuan audit keamanan (Phase B): sebelumnya siapa pun ber-
+        // sale.create bisa recall (dan menghapus permanen) hold kasir
+        // lain hanya dengan menebak ID berurutan. Pemilik hold ATAU
+        // pemegang pos.approve (supervisor/admin/owner, mis. serah
+        // terima shift) boleh mengambilnya.
+        if ($hold->user_id !== $actor->id && ! $actor->can('pos.approve')) {
+            throw new DomainException('Hold ini milik kasir lain — tidak bisa diambil tanpa otorisasi supervisor.');
+        }
+
         $cart = $hold->cart_data;
         $hold->delete();
 

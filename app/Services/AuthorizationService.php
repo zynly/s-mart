@@ -60,7 +60,14 @@ class AuthorizationService
 
     private function throttleKey(string $permission): string
     {
-        return "authorization-override:{$permission}";
+        // Temuan audit keamanan (Phase B): sebelumnya key GLOBAL per
+        // permission — 3 PIN salah dari SATU terminal mengunci override
+        // permission itu untuk SEMUA orang di SEMUA terminal selama masa
+        // lockout (kasir bisa memicu ini sengaja untuk memblokir void/
+        // approve selisih kas/dll di seluruh toko). Di-key per (permission,
+        // aktor yang meminta override) supaya satu kasir tidak bisa
+        // mengunci toko — kasir lain tetap bisa minta override normal.
+        return "authorization-override:{$permission}:".(auth()->id() ?? request()->ip());
     }
 
     private function logAttempt(string $permission, ?User $approver, bool $success): void

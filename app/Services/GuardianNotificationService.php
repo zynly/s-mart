@@ -47,6 +47,18 @@ class GuardianNotificationService
         $this->dispatch($guardian, 'topup_verified', "Top-up {$member->name} sebesar Rp".number_format($amount, 0, ',', '.').' sudah diverifikasi dan masuk ke saldo.');
     }
 
+    /**
+     * Temuan audit keamanan (Phase B): sebelumnya admin bisa reset
+     * password wali kapan saja tanpa wali diberi tahu sama sekali —
+     * satu-satunya sinyal bagi wali (kalau bukan dia yang minta) adalah
+     * tiba-tiba tidak bisa login. Sekarang selalu dikabari lewat kanal
+     * yang sama seperti notifikasi lain.
+     */
+    public function passwordReset(Guardian $guardian): void
+    {
+        $this->dispatch($guardian, 'password_reset', 'Password Portal Wali Anda baru saja direset oleh admin sekolah. Kalau ini bukan permintaan Anda, segera hubungi admin.');
+    }
+
     private function dispatch(Guardian $guardian, string $template, string $message): void
     {
         $sent = $this->gateway->send($guardian->phone, $message);

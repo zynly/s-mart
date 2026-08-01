@@ -926,17 +926,11 @@ dikonfirmasi lewat query DB langsung (`no_pin_threshold=999999999`
 TIDAK tersimpan sama sekali, bukan cuma dicek dari tampilan form).
 DB dibersihkan dari seluruh data uji setelah verifikasi.
 
-**Backlog eksplisit, TIDAK dikerjakan di Phase A** (supaya ~38 temuan
-sisanya tidak hilang dari tracking):
+**Backlog Phase A** (supaya ~38 temuan sisanya tidak hilang dari
+tracking):
 
-- **Phase B (security, MEDIUM)** — `cashier_session_id`/`outlet_id` di
-  request sale tidak diverifikasi milik aktor yang login;
-  `SaleController::hold()` pakai `$request->all()` tanpa validasi,
-  `recall()` bisa hapus hold kasir lain tanpa cek kepemilikan; throttle
-  PIN override supervisor di-key per-permission GLOBAL (1 kasir bisa
-  kunci seluruh toko 15 menit) — perlu di-key per user/terminal; reset
-  password wali kembalikan plaintext ke siapa pun ber-`member.update`
-  tanpa notifikasi ke wali.
+- **Phase B (security, MEDIUM)** — lihat bagian tersendiri di bawah,
+  **SUDAH DIKERJAKAN**.
 - **Phase C (performa)** — urutan rekomendasi: lock contention
   `ReferenceGenerator::increment()` (SATU-SATUNYA temuan yang bikin
   "30 concurrent user" ADR-0008 tidak tercapai berapa pun cepatnya
@@ -975,6 +969,68 @@ sisanya tidak hilang dari tracking):
   Stok bisa tampilkan angka kritis berbeda); `Lib/api.ts` wrapper
   `fetch()` (token XSRF di-copy-paste 4× — kelas bug yang sudah 2×
   menggigit proyek ini).
+
+## Audit Keamanan Menyeluruh Lintas-Fase — Phase B `[SELESAI]`
+
+Lanjutan Phase A, mengambil 4 temuan security MEDIUM yang didokumentasikan
+sebagai backlog eksplisit di atas.
+
+**B1 — `cashier_session_id`/`outlet_id` tidak diverifikasi milik aktor.**
+`SaleService::complete()` & `hold()` sebelumnya cuma `exists:...` untuk
+kedua field — kasir A bisa memasukkan penjualan ke sesi kasir B (uang
+di laci A, selisih muncul di laporan tutup sesi B), dan `outlet_id`
+sembarang bisa memotong stok outlet lain dari terminal yang tidak
+berhak. Ditambal: sesi HARUS `user_id`-nya sama dengan aktor yang
+login, dan `outlet` SELALU diambil dari sesi (`$session->outlet_id`) —
+bukan dari input klien. `outlet_id` di request tidak lagi berpengaruh
+ke data apa pun (sisanya field kosmetik untuk request shape).
+
+**B2 — `hold()`/`recall()` tanpa validasi & tanpa cek kepemilikan.**
+`SaleController::hold()` sebelumnya `$this->saleService->hold($request->all())`
+mentah — item non-array bisa memicu TypeError 500. `recall()` bisa
+mengambil SEKALIGUS menghapus permanen hold kasir lain hanya dengan
+menebak ID berurutan, tanpa cek apa pun. Ditambal: `HoldSaleRequest`
+(FormRequest baru, validasi penuh shape cart); `SaleService::hold()`
+verifikasi kepemilikan sesi (pola sama B1); `SaleService::recall()`
+sekarang butuh `User $actor` — pemilik hold ATAU pemegang `pos.approve`
+(supervisor/admin/owner, untuk skenario serah terima shift) yang boleh
+mengambil. Frontend `Pos/Index.tsx` diperbarui menampilkan pesan error
+kalau recall ditolak (sebelumnya diam-diam jadi keranjang kosong).
+
+**B3 — Throttle PIN override supervisor di-key GLOBAL per-permission.**
+`AuthorizationService::throttleKey()` sebelumnya cuma
+`"authorization-override:{permission}"` — 3 PIN salah dari SATU
+terminal mengunci override permission itu untuk SEMUA orang di SEMUA
+terminal selama 15 menit (kasir bisa memicu ini sengaja untuk
+memblokir void/approve selisih kas/dll di seluruh toko). Ditambal:
+key sekarang menyertakan `auth()->id()` (fallback IP kalau somehow
+tidak ada) — satu kasir yang mengunci dirinya sendiri tidak lagi
+memengaruhi kasir lain. (Catatan: karakteristik "satu tebakan PIN
+diuji terhadap semua user pemegang permission" TIDAK diubah — itu
+konsekuensi dari alur "cukup masukkan PIN" tanpa identifikasi
+username, perubahan itu di luar skop perbaikan ini.)
+
+**B4 — Reset password wali tanpa notifikasi ke wali.**
+`GuardianController::resetPassword()` sebelumnya mengubah password
+tanpa wali diberi tahu sama sekali — satu-satunya sinyal bagi wali
+(kalau bukan dia yang minta) adalah tiba-tiba tidak bisa login.
+Ditambal: `GuardianNotificationService::passwordReset()` (kanal WA
+sama seperti notifikasi lain) selalu dikirim setelah reset, plus baris
+`activity_log` eksplisit (`log_name=security`) mencatat admin mana
+yang mereset password wali mana — beda dari log "updated Guardian"
+generik yang tidak jelas menyebut ini reset password.
+
+**Verifikasi:** `pint --test`/`tsc --noEmit`/`eslint`/`build` bersih.
+Tinker (2 kasir + 1 admin, sesi & stok nyata): B1 — kasir B kirim
+`cashier_session_id` milik kasir A → ditolak; B2 — kasir B `hold()` ke
+sesi kasir A → ditolak, kasir B `recall()` hold milik kasir A →
+ditolak, admin (`pos.approve`) `recall()` hold yang sama → berhasil;
+B3 — kasir A dikunci setelah 3x PIN salah, kasir B tetap dapat respons
+"PIN tidak cocok" normal (BUKAN "terlalu banyak percobaan") di
+permission yang sama; B4 — `NotificationLog` berisi baris
+`template=password_reset status=sent`, `activity_log` berisi baris
+`log_name=security` dengan nama admin & wali. DB dibersihkan dari
+data uji setelah verifikasi.
 
 ## Fase 18 — Pengujian, Keamanan & Penyiapan
 

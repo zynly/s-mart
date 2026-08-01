@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Guardian;
 use App\Models\Member;
+use App\Services\GuardianNotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -19,6 +20,8 @@ use Illuminate\Support\Str;
  */
 class GuardianController extends Controller
 {
+    public function __construct(private readonly GuardianNotificationService $notificationService) {}
+
     public function store(Request $request, Member $member): RedirectResponse
     {
         $data = $request->validate([
@@ -73,10 +76,23 @@ class GuardianController extends Controller
         return back()->with('success', "Wali {$guardian->name} dilepas dari {$member->name}.");
     }
 
-    public function resetPassword(Guardian $guardian): RedirectResponse
+    public function resetPassword(Request $request, Guardian $guardian): RedirectResponse
     {
         $newPassword = Str::random(10);
         $guardian->forceFill(['password' => $newPassword])->save();
+
+        // Temuan audit keamanan (Phase B): wali sekarang selalu dikabari
+        // (kanal WA yang sama seperti notifikasi lain) supaya reset yang
+        // bukan permintaannya sendiri tidak lolos tanpa jejak baginya.
+        // Dicatat eksplisit dengan aktor & target — beda dari log
+        // "updated Guardian" generik yang tidak jelas menyebut ini reset
+        // password.
+        $this->notificationService->passwordReset($guardian);
+
+        activity('security')
+            ->causedBy($request->user())
+            ->withProperties(['guardian_id' => $guardian->id, 'guardian_name' => $guardian->name])
+            ->log("Password wali {$guardian->name} direset oleh {$request->user()->name}");
 
         return back()->with('success', "Password wali {$guardian->name} direset ke: {$newPassword}");
     }

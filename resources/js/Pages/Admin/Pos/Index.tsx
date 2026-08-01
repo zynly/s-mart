@@ -207,8 +207,16 @@ export default function Index({ session, outlet, paymentMethods, favoriteProduct
 
   function recallHold(hold: HoldRow) {
     fetch(route('pos.holds.recall', hold.id))
-      .then((res) => res.json())
+      .then(async (res) => {
+        const data = await res.json()
+        if (!res.ok) {
+          setHoldError(data.message ?? 'Tidak bisa mengambil hold ini.')
+          return null
+        }
+        return data
+      })
       .then((data) => {
+        if (!data) return
         const recalledItems = (data.cart?.items ?? []) as { product_id: number; unit_id: number; qty: number; unit_price?: number; product_name?: string; unit_code?: string }[]
         setCart(
           recalledItems.map((it, index) => ({

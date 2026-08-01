@@ -12,6 +12,7 @@ use App\Exceptions\MemberPinNotSetException;
 use App\Exceptions\PaymentMismatchException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CompleteSaleRequest;
+use App\Http\Requests\Admin\HoldSaleRequest;
 use App\Http\Requests\Admin\VoidSaleRequest;
 use App\Models\Member;
 use App\Models\Outlet;
@@ -174,20 +175,28 @@ class SaleController extends Controller
         return redirect()->route('pos.sales.receipt', $sale)->with('success', "Transaksi {$sale->reference} selesai.");
     }
 
-    public function hold(Request $request): RedirectResponse
+    public function hold(HoldSaleRequest $request): RedirectResponse
     {
         try {
-            $this->saleService->hold($request->all());
+            $this->saleService->hold($request->validated());
         } catch (MaxHoldExceededException $e) {
             throw ValidationException::withMessages(['items' => $e->getMessage()]);
+        } catch (DomainException $e) {
+            throw ValidationException::withMessages(['cashier_session_id' => $e->getMessage()]);
         }
 
         return back()->with('success', 'Transaksi ditahan (hold).');
     }
 
-    public function recall(SaleHold $saleHold): JsonResponse
+    public function recall(Request $request, SaleHold $saleHold): JsonResponse
     {
-        return response()->json(['cart' => $this->saleService->recall($saleHold)]);
+        try {
+            $cart = $this->saleService->recall($saleHold, $request->user());
+        } catch (DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 403);
+        }
+
+        return response()->json(['cart' => $cart]);
     }
 
     public function void(VoidSaleRequest $request, Sale $sale): RedirectResponse
