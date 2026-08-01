@@ -13,6 +13,7 @@ import { Badge } from '@/Components/ui/badge'
 import { Card, CardContent } from '@/Components/ui/card'
 import { Checkbox } from '@/Components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
+import { newIdempotencyKey } from '@/Lib/idempotency'
 
 type SessionInfo = { id: number; reference: string } | null
 
@@ -178,10 +179,6 @@ export default function Create({ session }: SaleReturnCreateProps) {
     } finally {
       setPreviewLoading(false)
     }
-  }
-
-  function newIdempotencyKey() {
-    return crypto.randomUUID()
   }
 
   function selectedItems() {

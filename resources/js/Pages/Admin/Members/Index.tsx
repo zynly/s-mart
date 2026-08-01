@@ -25,6 +25,8 @@ type Ref = { id: number; name: string }
 type Level = { id: number; name: string; color?: string | null }
 type ActiveCard = { id: number; card_number: string; status: string } | null
 
+type GuardianRow = { id: number; name: string; phone: string; is_active: boolean; pivot: { is_primary: boolean } }
+
 type MemberRow = {
   id: number
   member_number: string
@@ -38,6 +40,7 @@ type MemberRow = {
   balance_cache: number
   receivable_limit: number
   active_card: ActiveCard
+  guardians: GuardianRow[]
 }
 
 type MembersIndexProps = {
@@ -104,6 +107,7 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
   const [deactivateTarget, setDeactivateTarget] = useState<MemberRow | null>(null)
   const [reissueTarget, setReissueTarget] = useState<MemberRow | null>(null)
   const [reissueReason, setReissueReason] = useState('')
+  const [newGuardian, setNewGuardian] = useState({ name: '', phone: '', relation: '', is_primary: false })
   const form = useForm(emptyForm)
 
   function applyFilter() {
@@ -165,6 +169,28 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
   function printCards(ids: number[]) {
     const params = ids.map((id) => `ids[]=${id}`).join('&')
     window.open(`${route('admin.members.print-cards')}?${params}`, '_blank')
+  }
+
+  function addGuardian() {
+    if (!editing || !newGuardian.name.trim() || !newGuardian.phone.trim()) return
+
+    router.post(route('admin.members.guardians.store', editing.id), newGuardian, {
+      preserveScroll: true,
+      onSuccess: () => setNewGuardian({ name: '', phone: '', relation: '', is_primary: false }),
+    })
+  }
+
+  function unlinkGuardian(guardianId: number) {
+    if (!editing) return
+    router.delete(route('admin.members.guardians.destroy', [editing.id, guardianId]), { preserveScroll: true })
+  }
+
+  function resetGuardianPassword(guardianId: number) {
+    router.put(route('admin.guardians.reset-password', guardianId), {}, { preserveScroll: true })
+  }
+
+  function toggleGuardianActive(guardianId: number) {
+    router.put(route('admin.guardians.toggle-active', guardianId), {}, { preserveScroll: true })
   }
 
   const columns: ColumnDef<MemberRow, unknown>[] = [
@@ -403,6 +429,48 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
                     onChange={(e) => form.setData('guardian_relation', e.target.value)}
                   />
                 </div>
+
+                {editing && (
+                  <div className="flex flex-col gap-3 border-t border-border pt-4">
+                    <Label className="text-xs font-semibold uppercase tracking-wide text-content-muted">
+                      Akun Login Portal Wali
+                    </Label>
+
+                    {editing.guardians.length === 0 && (
+                      <p className="text-sm text-content-muted">Belum ada akun wali terhubung.</p>
+                    )}
+                    {editing.guardians.map((g) => (
+                      <div key={g.id} className="flex items-center justify-between rounded-md border border-border p-2 text-sm">
+                        <div>
+                          <p className="text-content">
+                            {g.name} {Boolean(g.pivot.is_primary) && <Badge variant="outline" className="ml-1">Utama</Badge>}
+                            {!g.is_active && <Badge className="ml-1 bg-danger text-white">Nonaktif</Badge>}
+                          </p>
+                          <p className="text-xs text-content-muted">{g.phone}</p>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button type="button" size="sm" variant="ghost" onClick={() => resetGuardianPassword(g.id)}>Reset Password</Button>
+                          <Button type="button" size="sm" variant="ghost" onClick={() => toggleGuardianActive(g.id)}>
+                            {g.is_active ? 'Nonaktifkan' : 'Aktifkan'}
+                          </Button>
+                          <Button type="button" size="sm" variant="ghost" className="text-danger" onClick={() => unlinkGuardian(g.id)}>Lepas</Button>
+                        </div>
+                      </div>
+                    ))}
+
+                    <div className="flex flex-col gap-2 rounded-md border border-dashed border-border p-3">
+                      <p className="text-xs text-content-muted">Tambah/hubungkan akun wali (nomor HP yang sudah punya akun akan dihubungkan, bukan dibuat baru)</p>
+                      <Input placeholder="Nama wali" value={newGuardian.name} onChange={(e) => setNewGuardian((s) => ({ ...s, name: e.target.value }))} />
+                      <Input placeholder="No. HP (untuk login)" value={newGuardian.phone} onChange={(e) => setNewGuardian((s) => ({ ...s, phone: e.target.value }))} />
+                      <Input placeholder="Hubungan (opsional)" value={newGuardian.relation} onChange={(e) => setNewGuardian((s) => ({ ...s, relation: e.target.value }))} />
+                      <label className="flex items-center gap-2 text-xs text-content-muted">
+                        <input type="checkbox" checked={newGuardian.is_primary} onChange={(e) => setNewGuardian((s) => ({ ...s, is_primary: e.target.checked }))} />
+                        Wali utama
+                      </label>
+                      <Button type="button" size="sm" onClick={addGuardian}>Hubungkan Wali</Button>
+                    </div>
+                  </div>
+                )}
               </TabsContent>
 
               <TabsContent value="level" className="flex flex-col gap-4">

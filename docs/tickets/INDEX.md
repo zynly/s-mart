@@ -467,14 +467,132 @@ bersih (`migrate:fresh --seed`) setelah verifikasi.
 
 **Blocking:** Fase 14 selesai (reuse query `BaseReport`).
 
-## Fase 16 — Portal Wali & Notifikasi
+## Fase 16 — Portal Wali & Notifikasi `[SELESAI]`
 
-- [ ] ⬜ T-095 — Migration `guardians` + `topup_requests` (`payment_provider` manual — ADR-0010)
-- [ ] ⬜ T-096 — Login wali (HP + password, rate limit 5x/menit)
-- [ ] ⬜ T-097 — `WaliLayout`: lihat saldo & riwayat anak, ajukan top-up (upload bukti)
-- [ ] ⬜ T-098 — Verifikasi top-up oleh admin/treasurer (tanpa sesi kasir aktif)
-- [ ] ⬜ T-099 — `NullGateway` notifikasi WhatsApp (log only, Fonnte/Wablas menyusul)
-- [ ] ⬜ T-100 — Command reminder wali (piutang jatuh tempo, saldo rendah)
+Spec asli (`skillage-mart/prompts/fase-16.md`) + ADR-0010 + CATATAN-
+PERBAIKAN.md §Fase16 dibaca penuh dulu. Ditemukan `TopupRequest`
+(model+migration) SUDAH ADA sejak sebelum fase ini (kemungkinan
+disiapkan bareng Fase 4) tapi TIDAK PERNAH disambungkan ke controller/
+route apa pun, dan belum punya `guardian_id`/`payment_provider`/
+`payment_reference` yang diwajibkan ADR-0010 — dipakai ulang &
+dilengkapi, bukan dibangun dari nol.
+
+- [x] ✅ T-095 — Migration `guardians` (akun login terpisah dari kolom
+      `members.guardian_name/guardian_phone/guardian_relation` yang
+      SUDAH ADA sejak Fase 3 — kolom lama itu tetap sebagai data
+      kontak kartu anggota, TIDAK dimigrasikan otomatis), pivot
+      `guardian_member` (many-to-many + `is_primary`, satu wali bisa
+      punya banyak anak), `notification_logs` (channel/template/
+      payload/status — beda dari tabel `notifications` bawaan Laravel
+      yang dipakai bel in-app Fase 15), `notification_settings` (toggle
+      per-wali). Alter `topup_requests`: tambah `payment_provider`
+      (default 'manual'), `payment_reference` (ADR-0010 — struktur
+      disiapkan untuk Midtrans/Xendit Fase 19+, BUKAN diaktifkan) +
+      `guardian_id` (di luar spec tertulis eksplisit, perlu untuk tahu
+      wali MANA yang mengajukan saat satu anak punya >1 wali).
+- [x] ✅ T-096 — Login HP+password (BUKAN OTP WhatsApp — spec asli
+      masih menulis itu sebagai opsi, CATATAN-PERBAIKAN.md sudah
+      putuskan definitif password). **TIDAK lewat Fortify** — Fortify
+      terikat satu guard (`config/fortify.php: 'guard' => 'web'`),
+      Portal Wali pakai guard `guardian` terpisah (`config/auth.php`,
+      provider `guardians` → model `Guardian`), jadi `Wali\AuthController`
+      ditulis manual (login/logout). Rate limiter `wali-login` (5x/menit
+      per nomor HP, bukan per IP — wali sekeluarga bisa berbagi
+      jaringan) **sudah disiapkan sejak awal** di
+      `FortifyServiceProvider` dengan komentar eksplisit menunjuk ke
+      tiket ini — tinggal dipasang ke route. `AdjustSessionLifetime`
+      diperluas: guard `guardian` dapat timeout 2 jam (CATATAN-
+      PERBAIKAN.md §Fase16), guard-aware supaya tidak bentrok dengan
+      role Spatie yang cuma ada di guard `web`.
+- [x] ✅ T-097 — `WaliLayout.tsx` (scaffold kosong sejak Fase 0) diisi
+      penuh: header baca `guardianAuth` dari shared props (bukan prop
+      manual), bottom-nav 4 tab. Halaman: `Wali/Dashboard.tsx` (kartu
+      per anak + saldo), `Wali/Members/Show.tsx` (saldo + riwayat
+      belanja & top-up digabung satu timeline, diurutkan tanggal),
+      `Wali/Topup/Create.tsx` (pilih anak, nominal, upload bukti —
+      `Storage::disk('public')`, pola sama dengan avatar upload di
+      `ProfileController`). **Dilingkupi ke isi tiket literal** ("lihat
+      saldo & riwayat anak, ajukan top-up") — grafik pemakaian 30 hari,
+      pola belanja per kategori, dan pengajuan limit harian dari spec
+      Livewire asli SENGAJA tidak dibangun (di luar cakupan tiket
+      resmi, bisa disusulkan terpisah).
+      **Gap nyata ditemukan**: T-095..T-100 sama sekali tidak menyebut
+      cara ADMIN membuat akun Guardian — tanpa itu sistem login tidak
+      bisa dipakai. Ditambahkan `Admin\GuardianController` (buat/
+      hubungkan akun dari tab "Wali" yang sudah ada di sheet ubah
+      anggota `Members/Index.tsx`, reset password, aktif/nonaktifkan),
+      digabung ke gate `member.update` yang sudah ada — bukan modul
+      permission baru.
+- [x] ✅ T-098 — `Admin/TopupRequests/Index.tsx` (halaman baru, tab
+      saudara "Deposit" via `PageTabs` — pola Fase UI-01) +
+      `TopupRequestService` (submit/approve/reject). Approve memanggil
+      `DepositService::record()` LANGSUNG (bukan wrapper `topup()` yang
+      terikat `payment_method_id`/sesi kasir) — top-up wali tidak
+      pernah lewat laci kasir (ADR-0010). Bug nyata: **role treasurer
+      TIDAK punya satu pun permission `topup`** padahal T-098 eksplisit
+      minta "admin/treasurer" — `RolePermissionSeeder` diperbaiki
+      (`topup.view`+`topup.approve`).
+- [x] ✅ T-099 — `WhatsAppGatewayInterface` + `NullGateway` (log-only,
+      binding config-driven di `AppServiceProvider` lewat
+      `services.whatsapp.gateway` — ganti ke Fonnte/Wablas nanti tanpa
+      ubah kode pemanggil, ADR-0010) + `GuardianNotificationService`
+      (satu tempat semua template pesan + pencatatan `notification_logs`,
+      command tidak pernah panggil gateway langsung).
+- [x] ✅ T-100 — **Rekonsiliasi 2 sumber yang tidak identik**: judul
+      tiket resmi bilang "piutang jatuh tempo, saldo rendah" (2 item),
+      spec Livewire asli bilang low-balance + weekly-summary + birthday
+      (3 command lain). Keduanya tidak kontradiktif — dibangun SEMUA
+      (4 command): `notify:low-balance` (07:00, ambang PER-WALI dari
+      `notification_settings`, bukan satu ambang global), `notify:
+      receivable-due` (08:00, sesuai kata tiket resmi, spec asli tidak
+      punya command terpisah untuk ini), `notify:weekly-summary`
+      (Ahad 19:00), `notify:birthday` (06:05 — TEPAT SETELAH
+      `member:birthday-bonus` 06:00 yang sudah ada sejak fase awal,
+      supaya pesan mereferensikan bonus yang BENAR-BENAR sudah
+      diberikan, mode-aware deposit/kupon).
+
+**Bug lain ditemukan & diperbaiki di luar 6 tiket, semua lewat
+verifikasi Playwright browser sungguhan (bukan cuma tinker)**:
+- `HandleInertiaRequests::share()` crash 500 (`Call to undefined
+  method Guardian::getRoleNames()`) — `$request->user()` (guard
+  default) resolve ke instance `Guardian` setelah login wali, karena
+  `Authenticate` middleware memanggil `Auth::shouldUse('guardian')`
+  saat guard itu berhasil autentikasi (perilaku standar Laravel
+  multi-guard, bukan bug framework). Diperbaiki: eksplisit
+  `$request->user('web')`.
+- `crypto.randomUUID()` (dipakai `newIdempotencyKey()` di Deposit/Pos/
+  SaleReturns) butuh secure context (HTTPS/localhost) — di
+  `http://s-mart.test` method itu TIDAK ADA sama sekali di
+  `window.crypto`, melempar TypeError yang menggagalkan SELURUH submit
+  (bukan cuma kehilangan idempotency). Disentralkan ke
+  `resources/js/Lib/idempotency.ts` dengan fallback non-crypto, dipakai
+  ulang di 4 halaman (termasuk `Wali/Topup/Create.tsx`).
+- Prop `flash.success/error/warning/info` dibagikan dari SETIAP
+  controller sejak Fase 1 tapi TIDAK PERNAH dibaca di frontend mana pun
+  (grep `flash` di `resources/js` hanya muncul di deklarasi tipe) — user
+  tidak pernah melihat konfirmasi aksi lewat toast. `useFlashToast()`
+  (baru, dipakai `AdminLayout` & `WaliLayout`) memperbaikinya untuk
+  SELURUH aplikasi, bukan cuma Fase 16.
+- `Admin\GuardianController::store()` membuat password acak untuk akun
+  wali baru tapi tidak pernah menampilkannya ke admin — tidak ada cara
+  menyampaikannya ke orang tua. Diperbaiki: disertakan di flash
+  message, sama seperti pola `resetPassword()`.
+- Render React `{g.pivot.is_primary && <Badge/>}` menampilkan teks
+  literal "0" saat `is_primary` bernilai `0` (tinyint mentah dari
+  pivot Eloquent, bukan boolean) — diperbaiki `Boolean(...)`.
+
+**Verifikasi:** alur end-to-end penuh via Playwright browser
+sungguhan (bukan cuma tinker) — admin buat & hubungkan akun wali →
+lihat password awal di toast → wali login → beranda tampil anak yang
+terhubung → detail anak (saldo+riwayat) → ajukan top-up dengan unggah
+bukti (file PNG asli) → admin lihat pengajuan status Menunggu di tab
+Verifikasi Top-Up Wali → setujui → saldo wali bertambah tepat sesuai
+nominal → akses `/wali/anak/{id}` milik anak LAIN (bukan miliknya) →
+404 (bukan 403 — route model binding + `NotFoundHttpException`
+eksplisit, supaya tidak membocorkan keberadaan record ke wali yang
+tidak berhak). `pint --test`/`tsc --noEmit`/`eslint`/`build` bersih.
+4 command notifikasi dijalankan manual, tidak error. DB direset ke
+seed bersih (`migrate:fresh --seed`) setelah verifikasi.
 
 **Blocking:** Fase 4 selesai (independen dari Fase 5–15, bisa paralel).
 

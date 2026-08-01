@@ -1,5 +1,7 @@
 <?php
 
+use App\Services\WhatsApp\NullGateway;
+
 return [
 
     /*
@@ -33,6 +35,13 @@ return [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
+    ],
+
+    // T-099 (Fase 16): default NullGateway (log-only) — isi dengan
+    // App\Services\WhatsApp\FonnteGateway::class dkk. saat kredensial
+    // sungguhan sudah ada (ADR-0010), tanpa ubah kode.
+    'whatsapp' => [
+        'gateway' => env('WHATSAPP_GATEWAY', NullGateway::class),
     ],
 
 ];

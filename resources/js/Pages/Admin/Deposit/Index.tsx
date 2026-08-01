@@ -5,6 +5,7 @@ import type { DateRange } from 'react-day-picker'
 import { format } from 'date-fns'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
+import { PageTabs } from '@/Components/common/PageTabs'
 import { DataTable } from '@/Components/common/DataTable'
 import { Money } from '@/Components/common/Money'
 import { MoneyInput } from '@/Components/common/MoneyInput'
@@ -17,6 +18,7 @@ import { Badge } from '@/Components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
+import { newIdempotencyKey } from '@/Lib/idempotency'
 import type { Paginated } from '@/Types'
 
 type MemberOption = { id: number; name: string; member_number: string; nis: string | null; balance_cache: number }
@@ -36,6 +38,7 @@ type TransactionRow = {
 }
 
 type DepositIndexProps = {
+  tab: string
   transactions: Paginated<TransactionRow>
   members: MemberOption[]
   paymentMethods: PaymentMethodOption[]
@@ -60,11 +63,7 @@ const TYPE_LABELS: Record<string, string> = {
   closing: 'Tutup Akun',
 }
 
-function newIdempotencyKey() {
-  return crypto.randomUUID()
-}
-
-export default function Index({ transactions, members, paymentMethods, outlets, filters, canWithdraw, canAdjust }: DepositIndexProps) {
+export default function Index({ tab, transactions, members, paymentMethods, outlets, filters, canWithdraw, canAdjust }: DepositIndexProps) {
   const [selectedMemberId, setSelectedMemberId] = useState('')
   const [memberSearch, setMemberSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState(filters.type ?? '')
@@ -156,6 +155,10 @@ export default function Index({ transactions, members, paymentMethods, outlets, 
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title="Deposit" breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Deposit' }]} />
+      <PageTabs current={tab} tabs={[
+        { key: 'deposit', label: 'Deposit', href: route('admin.deposit.index'), permission: 'deposit.view' },
+        { key: 'topup-requests', label: 'Verifikasi Top-Up Wali', href: route('admin.topup-requests.index'), permission: 'topup.view' },
+      ]} />
 
       <Tabs defaultValue="topup">
         <TabsList>

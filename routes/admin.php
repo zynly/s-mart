@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\CouponController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DebtController;
 use App\Http\Controllers\Admin\DepositController;
+use App\Http\Controllers\Admin\GuardianController;
 use App\Http\Controllers\Admin\JournalController;
 use App\Http\Controllers\Admin\LedgerController;
 use App\Http\Controllers\Admin\MemberController;
@@ -33,6 +34,7 @@ use App\Http\Controllers\Admin\SaleReturnController;
 use App\Http\Controllers\Admin\StockAdjustmentController;
 use App\Http\Controllers\Admin\StockController;
 use App\Http\Controllers\Admin\SupplierController;
+use App\Http\Controllers\Admin\TopupRequestController;
 use App\Http\Controllers\Admin\TransferController;
 use App\Http\Controllers\Admin\TrialBalanceController;
 use App\Http\Controllers\Admin\UnitController;
@@ -129,6 +131,15 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::post('/members/{member}/reissue-card', [MemberController::class, 'reissueCard'])->name('members.reissue-card')->middleware('can:card.create');
     Route::get('/members/print-cards', [MemberController::class, 'printCards'])->name('members.print-cards')->middleware('can:member.print');
 
+    // Portal Wali — kelola akun wali (Fase 16, T-095/T-096). Gap yang
+    // tidak ditulis eksplisit di spec: tanpa ini tidak ada cara admin
+    // membuat akun Guardian. Digabung ke gate member.update, bukan
+    // modul permission baru.
+    Route::post('/members/{member}/guardians', [GuardianController::class, 'store'])->name('members.guardians.store')->middleware('can:member.update');
+    Route::delete('/members/{member}/guardians/{guardian}', [GuardianController::class, 'destroy'])->name('members.guardians.destroy')->middleware('can:member.update');
+    Route::put('/guardians/{guardian}/reset-password', [GuardianController::class, 'resetPassword'])->name('guardians.reset-password')->middleware('can:member.update');
+    Route::put('/guardians/{guardian}/toggle-active', [GuardianController::class, 'toggleActive'])->name('guardians.toggle-active')->middleware('can:member.update');
+
     // Deposit & Saldo (Fase 4)
     Route::middleware('can:deposit.view')->group(function () {
         Route::get('/deposit', [DepositController::class, 'index'])->name('deposit.index');
@@ -136,6 +147,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::post('/deposit/topup', [DepositController::class, 'storeTopup'])->name('deposit.topup')->middleware(['can:topup.create', 'idempotent']);
     Route::post('/deposit/withdrawal', [DepositController::class, 'storeWithdrawal'])->name('deposit.withdrawal')->middleware(['can:withdrawal.create', 'idempotent']);
     Route::post('/deposit/adjustment', [DepositController::class, 'storeAdjustment'])->name('deposit.adjustment')->middleware(['can:deposit.adjust', 'idempotent']);
+
+    // Verifikasi top-up wali (Fase 16, T-098) — tab saudara dari Deposit.
+    Route::middleware('can:topup.view')->group(function () {
+        Route::get('/topup-requests', [TopupRequestController::class, 'index'])->name('topup-requests.index');
+    });
+    Route::put('/topup-requests/{topupRequest}/approve', [TopupRequestController::class, 'approve'])->name('topup-requests.approve')->middleware('can:topup.approve');
+    Route::put('/topup-requests/{topupRequest}/reject', [TopupRequestController::class, 'reject'])->name('topup-requests.reject')->middleware('can:topup.approve');
 
     // Inventory & Stock Layer FEFO (Fase 5)
     Route::middleware('can:stock.view')->group(function () {

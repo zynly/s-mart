@@ -8,9 +8,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class TopupRequest extends Model
 {
     protected $fillable = [
-        'reference', 'member_id', 'amount', 'proof_image', 'bank_name',
+        'reference', 'member_id', 'guardian_id', 'amount', 'proof_image', 'bank_name',
         'sender_name', 'transfer_date', 'status', 'verified_by',
-        'verified_at', 'reject_reason',
+        'verified_at', 'reject_reason', 'payment_provider', 'payment_reference',
     ];
 
     protected function casts(): array
@@ -25,6 +25,11 @@ class TopupRequest extends Model
     public function member(): BelongsTo
     {
         return $this->belongsTo(Member::class);
+    }
+
+    public function guardian(): BelongsTo
+    {
+        return $this->belongsTo(Guardian::class);
     }
 
     public function verifier(): BelongsTo

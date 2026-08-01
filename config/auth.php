@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Guardian;
 use App\Models\User;
 
 return [
@@ -42,6 +43,14 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        // T-096 (Fase 16). Guard terpisah dari 'web' — Fortify (login
+        // admin/kasir) terikat satu guard saja, jadi Portal Wali TIDAK
+        // lewat Fortify, pakai controller sendiri (Wali\AuthController).
+        'guardian' => [
+            'driver' => 'session',
+            'provider' => 'guardians',
+        ],
     ],
 
     /*
@@ -71,6 +80,11 @@ return [
         //     'driver' => 'database',
         //     'table' => 'users',
         // ],
+
+        'guardians' => [
+            'driver' => 'eloquent',
+            'model' => Guardian::class,
+        ],
     ],
 
     /*

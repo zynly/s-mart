@@ -119,6 +119,10 @@ class RolePermissionSeeder extends Seeder
             ...$this->permissionsFor(['receivable'], ['view', 'create', 'update', 'approve', 'export', 'print']),
             ...$this->permissionsFor(['stock', 'member', 'sale', 'purchase'], ['view']),
             ...$this->permissionsFor(['report'], self::ACTIONS),
+            // Bug nyata ditemukan Fase 16: treasurer TIDAK punya satu pun
+            // permission topup, padahal T-098 eksplisit minta "verifikasi
+            // top-up oleh admin/treasurer".
+            ...$this->permissionsFor(['topup'], ['view', 'approve']),
         ]);
     }
 

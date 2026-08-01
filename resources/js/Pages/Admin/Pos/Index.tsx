@@ -12,6 +12,7 @@ import { Label } from '@/Components/ui/label'
 import { Badge } from '@/Components/ui/badge'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
+import { newIdempotencyKey } from '@/Lib/idempotency'
 import type { PageProps } from '@/Types'
 
 type PaymentMethodRow = {
@@ -176,10 +177,6 @@ export default function Index({ session, outlet, paymentMethods, favoriteProduct
     setMemberQuery('')
     setMemberResults([])
     focusScan()
-  }
-
-  function newIdempotencyKey() {
-    return crypto.randomUUID()
   }
 
   const doHold = useCallback(() => {

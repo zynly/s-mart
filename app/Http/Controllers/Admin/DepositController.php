@@ -35,6 +35,7 @@ class DepositController extends Controller
             ->withQueryString();
 
         return Inertia::render('Admin/Deposit/Index', [
+            'tab' => 'deposit',
             'transactions' => $transactions,
             'members' => Member::where('status', 'active')->orderBy('name')->get(['id', 'name', 'member_number', 'nis', 'balance_cache']),
             'paymentMethods' => PaymentMethod::whereIn('type', ['cash', 'transfer'])->where('is_active', true)->orderBy('sort_order')->get(['id', 'name', 'type']),

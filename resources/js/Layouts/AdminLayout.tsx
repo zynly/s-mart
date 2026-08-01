@@ -16,6 +16,7 @@ import { CommandDialog, CommandInput, CommandList, CommandEmpty } from '@/Compon
 import { ThemeToggle } from '@/Components/common/ThemeToggle'
 import { NotificationBell } from '@/Components/common/NotificationBell'
 import { useSidebarStore } from '@/Store/useSidebarStore'
+import { useFlashToast } from '@/Lib/useFlashToast'
 import { cn } from '@/Lib/utils'
 import type { NavigationGroup, NavigationItem, PageProps } from '@/Types'
 
@@ -139,6 +140,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const { auth } = usePage<PageProps>().props
+
+  useFlashToast()
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {

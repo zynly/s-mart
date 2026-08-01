@@ -8,6 +8,12 @@ export type AuthUser = {
   permissions: string[]
 }
 
+export type AuthGuardian = {
+  id: number
+  name: string
+  phone: string
+}
+
 export type Paginated<T> = {
   data: T[]
   current_page: number
@@ -34,6 +40,9 @@ export type NavigationGroup = {
 export type PageProps<T extends Record<string, unknown> = Record<string, unknown>> = T & {
   auth: {
     user: AuthUser | null
+  }
+  guardianAuth: {
+    guardian: AuthGuardian | null
   }
   flash: {
     success: string | null

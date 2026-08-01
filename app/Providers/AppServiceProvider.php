@@ -30,6 +30,8 @@ use App\Observers\SaleReturnObserver;
 use App\Observers\StockAdjustmentObserver;
 use App\Observers\StockOpnameObserver;
 use App\Observers\StockWriteOffObserver;
+use App\Services\WhatsApp\NullGateway;
+use App\Services\WhatsApp\WhatsAppGatewayInterface;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -39,7 +41,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // T-099 (Fase 16): config-driven — ganti ke FonnteGateway/
+        // WablasGateway lewat services.whatsapp.gateway nanti (ADR-0010)
+        // tanpa menyentuh kode pemanggil.
+        $this->app->bind(WhatsAppGatewayInterface::class, config('services.whatsapp.gateway', NullGateway::class));
     }
 
     /**

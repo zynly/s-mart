@@ -30,7 +30,7 @@ class MemberController extends Controller
     public function index(Request $request): Response
     {
         $members = Member::query()
-            ->with(['level:id,name,color', 'activeCard'])
+            ->with(['level:id,name,color', 'activeCard', 'guardians:id,name,phone,is_active'])
             ->when($request->string('search')->toString(), fn ($q, $search) => $q->where(
                 fn ($sub) => $sub->where('name', 'like', "%{$search}%")
                     ->orWhere('member_number', 'like', "%{$search}%")

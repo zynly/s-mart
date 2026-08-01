@@ -10,7 +10,6 @@ class AdjustSessionLifetime
 {
     /**
      * Timeout per role dalam menit (CATATAN-PERBAIKAN.md § Fase 1).
-     * Wali (guardian) belum jadi model User — diatur terpisah di Fase 16.
      *
      * @var array<string, int>
      */
@@ -24,10 +23,23 @@ class AdjustSessionLifetime
     ];
 
     /**
+     * Wali (guard 'guardian', T-096 Fase 16): 2 jam — CATATAN-
+     * PERBAIKAN.md §Fase16, guard terpisah dari 'web' jadi tidak
+     * punya role Spatie sama sekali.
+     */
+    private const GUARDIAN_LIFETIME_MINUTES = 120;
+
+    /**
      * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
+        if ($request->user('guardian') !== null) {
+            config(['session.lifetime' => self::GUARDIAN_LIFETIME_MINUTES]);
+
+            return $next($request);
+        }
+
         $role = $request->user()?->getRoleNames()->first();
 
         if ($role !== null && isset(self::LIFETIME_MINUTES[$role])) {

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Traits\LogsActivityCustom;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -61,5 +62,15 @@ class Member extends Model
     public function receivables(): HasMany
     {
         return $this->hasMany(Receivable::class);
+    }
+
+    /**
+     * T-095 (Fase 16). Wali dengan akun login Portal Wali — beda dari
+     * kolom `guardian_name`/`guardian_phone`/`guardian_relation` di
+     * atas yang murni data kontak (bukan akun).
+     */
+    public function guardians(): BelongsToMany
+    {
+        return $this->belongsToMany(Guardian::class, 'guardian_member')->withPivot('is_primary')->withTimestamps();
     }
 }

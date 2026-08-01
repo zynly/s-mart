@@ -37,7 +37,13 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
-        $user = $request->user();
+        // T-096 (Fase 16): eksplisit guard 'web' — sejak guard 'guardian'
+        // ada, $request->user() (guard default) bisa resolve ke instance
+        // Guardian saat request datang lewat sesi wali, meledak di
+        // ->getRoleNames() (method Spatie, tidak ada di model Guardian).
+        // Bug nyata ditemukan lewat 500 error saat verifikasi Playwright.
+        $user = $request->user('web');
+        $guardian = $request->user('guardian');
 
         return [
             ...parent::share($request),
@@ -47,6 +53,11 @@ class HandleInertiaRequests extends Middleware
                     'roles' => $user->getRoleNames(),
                     'permissions' => $user->getAllPermissions()->pluck('name'),
                 ] : null,
+            ],
+            // T-096 (Fase 16): identitas wali di guard terpisah — dibaca
+            // WaliLayout, TIDAK dicampur ke 'auth.user' (guard 'web').
+            'guardianAuth' => [
+                'guardian' => $guardian ? $guardian->only('id', 'name', 'phone') : null,
             ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),

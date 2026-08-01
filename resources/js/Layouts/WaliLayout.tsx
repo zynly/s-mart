@@ -1,29 +1,33 @@
 import type { ReactNode } from 'react'
-import { Link } from '@inertiajs/react'
+import { Link, router, usePage } from '@inertiajs/react'
 import { Home, User, UserRound, Wallet } from 'lucide-react'
 import { Button } from '@/Components/ui/button'
+import { useFlashToast } from '@/Lib/useFlashToast'
 import { cn } from '@/Lib/utils'
+import type { PageProps } from '@/Types'
 
 type WaliLayoutProps = {
   children: ReactNode
-  guardianName?: string
-  onLogout?: () => void
   active?: 'beranda' | 'anak' | 'topup' | 'akun'
 }
 
 const bottomNav = [
   { key: 'beranda', label: 'Beranda', href: '/wali', icon: Home },
-  { key: 'anak', label: 'Anak', href: '/wali/anak', icon: UserRound },
+  { key: 'anak', label: 'Anak', href: '/wali', icon: UserRound },
   { key: 'topup', label: 'Top-Up', href: '/wali/topup', icon: Wallet },
   { key: 'akun', label: 'Akun', href: '/wali/akun', icon: User },
 ] as const
 
-export default function WaliLayout({ children, guardianName = 'Wali Santri', onLogout, active }: WaliLayoutProps) {
+export default function WaliLayout({ children, active }: WaliLayoutProps) {
+  const { guardianAuth } = usePage<PageProps>().props
+
+  useFlashToast()
+
   return (
     <div className="flex min-h-screen flex-col bg-bg pb-16">
       <header className="flex h-14 items-center justify-between border-b border-border bg-surface px-4">
-        <p className="text-sm font-medium text-content">{guardianName}</p>
-        <Button size="sm" variant="ghost" onClick={onLogout}>
+        <p className="text-sm font-medium text-content">{guardianAuth.guardian?.name ?? 'Wali Santri'}</p>
+        <Button size="sm" variant="ghost" onClick={() => router.post(route('wali.logout'))}>
           Keluar
         </Button>
       </header>
