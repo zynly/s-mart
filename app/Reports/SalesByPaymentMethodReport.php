@@ -5,6 +5,8 @@ namespace App\Reports;
 use App\Models\SalePayment;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class SalesByPaymentMethodReport extends BaseReport
 {
@@ -44,8 +46,8 @@ class SalesByPaymentMethodReport extends BaseReport
             ->join('payment_methods', 'payment_methods.id', '=', 'sale_payments.payment_method_id')
             ->where('sales.status', 'completed')
             ->where('sale_payments.status', 'settled')
-            ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->whereDate('sales.sale_date', '>=', $v))
-            ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->whereDate('sales.sale_date', '<=', $v))
+            ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->where('sales.sale_date', '>=', $v))
+            ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->where('sales.sale_date', '<', Carbon::parse($v)->addDay()->toDateString()))
             ->when($filters['outlet_id'] ?? null, fn ($q, $v) => $q->where('sales.outlet_id', $v))
             ->selectRaw('payment_methods.id as payment_method_id, payment_methods.name as metode, COUNT(*) as transaksi, SUM(sale_payments.amount) as total, SUM(sale_payments.mdr_amount) as mdr')
             ->groupBy('payment_methods.id', 'payment_methods.name')
@@ -64,12 +66,14 @@ class SalesByPaymentMethodReport extends BaseReport
 
     public function summary(Builder $query, User $user): array
     {
-        $rows = $query->get();
+        $totals = DB::query()->fromSub($query, 'agg')->selectRaw(
+            'COALESCE(SUM(transaksi),0) as transaksi, COALESCE(SUM(total),0) as total, COALESCE(SUM(mdr),0) as mdr'
+        )->first();
 
         return [
-            'transaksi' => (int) $rows->sum('transaksi'),
-            'total' => (int) $rows->sum('total'),
-            'mdr' => (int) $rows->sum('mdr'),
+            'transaksi' => (int) $totals->transaksi,
+            'total' => (int) $totals->total,
+            'mdr' => (int) $totals->mdr,
         ];
     }
 

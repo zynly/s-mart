@@ -5,6 +5,8 @@ namespace App\Reports;
 use App\Models\CashTransaction;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Buku Kas — mutasi semua akun kas (spec item 16). Beda dari Buku
@@ -47,8 +49,8 @@ class CashLedgerReport extends BaseReport
     {
         return CashTransaction::query()
             ->join('cash_accounts', 'cash_accounts.id', '=', 'cash_transactions.cash_account_id')
-            ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->whereDate('cash_transactions.transaction_date', '>=', $v))
-            ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->whereDate('cash_transactions.transaction_date', '<=', $v))
+            ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->where('cash_transactions.transaction_date', '>=', $v))
+            ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->where('cash_transactions.transaction_date', '<', Carbon::parse($v)->addDay()->toDateString()))
             ->when($filters['outlet_id'] ?? null, fn ($q, $v) => $q->where('cash_transactions.outlet_id', $v))
             ->selectRaw("cash_transactions.id, cash_transactions.transaction_date as tanggal, cash_transactions.reference as referensi, cash_accounts.name as akun, cash_transactions.type as tipe, (CASE WHEN cash_transactions.type = 'out' THEN -cash_transactions.amount ELSE cash_transactions.amount END) as jumlah, cash_transactions.balance_after as saldo, cash_transactions.description as keterangan")
             ->orderByDesc('cash_transactions.transaction_date')
@@ -70,11 +72,13 @@ class CashLedgerReport extends BaseReport
 
     public function summary(Builder $query, User $user): array
     {
-        $rows = $query->get();
+        $totals = DB::query()->fromSub($query, 'agg')->selectRaw(
+            'COALESCE(SUM(CASE WHEN jumlah > 0 THEN jumlah ELSE 0 END),0) as masuk, COALESCE(SUM(CASE WHEN jumlah < 0 THEN jumlah ELSE 0 END),0) as keluar'
+        )->first();
 
         return [
-            'masuk' => (int) $rows->where('jumlah', '>', 0)->sum('jumlah'),
-            'keluar' => (int) abs($rows->where('jumlah', '<', 0)->sum('jumlah')),
+            'masuk' => (int) $totals->masuk,
+            'keluar' => (int) abs($totals->keluar),
         ];
     }
 }

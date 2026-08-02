@@ -29,7 +29,7 @@ class NotifyReceivableDue extends Command
         $threshold = now()->addDays(3)->toDateString();
 
         Receivable::whereIn('status', ['unpaid', 'partial'])
-            ->whereDate('due_date', '<=', $threshold)
+            ->where('due_date', '<=', $threshold)
             ->with(['member.guardians' => fn ($q) => $q->where('is_active', true)])
             ->chunkById(200, function ($receivables) use (&$sent) {
                 foreach ($receivables as $receivable) {

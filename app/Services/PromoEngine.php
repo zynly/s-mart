@@ -52,8 +52,20 @@ class PromoEngine
         $warnings = [];
         $totalItemDiscount = 0;
 
+        // T-107: getEligiblePromos() dulu di-query ULANG per baris (3x per
+        // baris: stage1, buy_x_get_y, bundle) walau (types, $at) SAMA untuk
+        // setiap baris di keranjang yang sama — N baris = 3N query redundan
+        // ke tabel promos+products+categories. Ambil sekali di sini per
+        // kombinasi types, sisanya (matchesProduct/matchesTime/checkQuota)
+        // tetap difilter di PHP per baris seperti semula.
+        $pools = [
+            'stage1' => $this->fetchActivePromos(self::STAGE1_TYPES, $at),
+            'buy_x_get_y' => $this->fetchActivePromos(['buy_x_get_y'], $at),
+            'bundle' => $this->fetchActivePromos(['bundle'], $at),
+        ];
+
         foreach ($lines as $line) {
-            $result = $this->applyToLine($line, $member, $at, $outlet);
+            $result = $this->applyToLine($line, $member, $at, $outlet, $pools);
             $itemResults[$line['key']] = $result;
             $totalItemDiscount += $result['discount'];
 
@@ -79,9 +91,10 @@ class PromoEngine
 
     /**
      * @param  array{key:string, product: Product, qty: float, unit_price: int, subtotal: int}  $line
+     * @param  array{stage1: Collection, buy_x_get_y: Collection, bundle: Collection}  $pools
      * @return array{applied_promos: array<int,string>, discount: int, warnings: array<int,string>}
      */
-    private function applyToLine(array $line, ?Member $member, Carbon $at, ?Outlet $outlet): array
+    private function applyToLine(array $line, ?Member $member, Carbon $at, ?Outlet $outlet, array $pools): array
     {
         $product = $line['product'];
         $appliedPromos = [];
@@ -91,7 +104,7 @@ class PromoEngine
         $floor = $this->hppFloor($product, $line['qty'], $outlet);
         $maxDiscount = max(0, $line['subtotal'] - $floor);
 
-        $stage1 = $this->resolveStage1($product, $member, $at, $line);
+        $stage1 = $this->resolveStage1($product, $member, $at, $line, $pools['stage1']);
 
         if ($stage1 !== null) {
             [$promo, $amount] = $stage1;
@@ -105,7 +118,7 @@ class PromoEngine
             $appliedPromos[] = $promo->code;
         }
 
-        foreach ($this->resolveStage2($product, $member, $at, $line) as [$promo, $rawAmount]) {
+        foreach ($this->resolveStage2($product, $member, $at, $line, $pools) as [$promo, $rawAmount]) {
             $remainingRoom = max(0, $maxDiscount - $discount);
             $amount = min($rawAmount, $remainingRoom);
 
@@ -128,9 +141,9 @@ class PromoEngine
      * @param  array{key:string, product: Product, qty: float, unit_price: int, subtotal: int}  $line
      * @return array{0: Promo, 1: int}|null
      */
-    private function resolveStage1(Product $product, ?Member $member, Carbon $at, array $line): ?array
+    private function resolveStage1(Product $product, ?Member $member, Carbon $at, array $line, Collection $pool): ?array
     {
-        $candidates = $this->getEligiblePromos($product, $member, $at, self::STAGE1_TYPES)
+        $candidates = $this->getEligiblePromos($pool, $product, $member, $at)
             ->filter(fn (Promo $p) => $this->matchesMinQty($p, $line['qty']));
 
         if ($candidates->isEmpty()) {
@@ -154,13 +167,14 @@ class PromoEngine
 
     /**
      * @param  array{key:string, product: Product, qty: float, unit_price: int, subtotal: int}  $line
+     * @param  array{stage1: Collection, buy_x_get_y: Collection, bundle: Collection}  $pools
      * @return array<int, array{0: Promo, 1: int}>
      */
-    private function resolveStage2(Product $product, ?Member $member, Carbon $at, array $line): array
+    private function resolveStage2(Product $product, ?Member $member, Carbon $at, array $line, array $pools): array
     {
         $results = [];
 
-        foreach ($this->getEligiblePromos($product, $member, $at, ['buy_x_get_y']) as $promo) {
+        foreach ($this->getEligiblePromos($pools['buy_x_get_y'], $product, $member, $at) as $promo) {
             if ($line['qty'] < (float) $promo->buy_qty) {
                 continue;
             }
@@ -173,7 +187,7 @@ class PromoEngine
             }
         }
 
-        foreach ($this->getEligiblePromos($product, $member, $at, ['bundle']) as $promo) {
+        foreach ($this->getEligiblePromos($pools['bundle'], $product, $member, $at) as $promo) {
             // Interpretasi bundle disederhanakan: diskon berlaku bila qty
             // baris memenuhi ambang min_qty promo (kombinasi lintas-produk
             // penuh memerlukan konteks seluruh keranjang — di luar cakupan
@@ -204,10 +218,15 @@ class PromoEngine
     }
 
     /**
-     * @param  array<string, mixed>  $types
+     * Ambil promo aktif dari DB untuk sekelompok `type` pada tanggal $at —
+     * SATU kali per kombinasi (types, $at) per checkout (lihat pemanggil di
+     * applyToCart()), bukan per baris keranjang. Filter product/time/quota
+     * (spesifik per baris) tetap dilakukan di getEligiblePromos().
+     *
+     * @param  array<int, string>  $types
      * @return Collection<int, Promo>
      */
-    public function getEligiblePromos(Product $product, ?Member $member, Carbon $at, array $types): Collection
+    private function fetchActivePromos(array $types, Carbon $at): Collection
     {
         return Promo::query()
             ->where('is_active', true)
@@ -215,7 +234,15 @@ class PromoEngine
             ->where(fn ($q) => $q->whereNull('start_date')->orWhere('start_date', '<=', $at->toDateString()))
             ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', $at->toDateString()))
             ->with('products', 'categories')
-            ->get()
+            ->get();
+    }
+
+    /**
+     * @return Collection<int, Promo>
+     */
+    public function getEligiblePromos(Collection $pool, Product $product, ?Member $member, Carbon $at): Collection
+    {
+        return $pool
             ->filter(fn (Promo $p) => $this->matchesProduct($p, $product))
             ->filter(fn (Promo $p) => $this->matchesTime($p, $at))
             ->filter(fn (Promo $p) => $this->checkQuota($p, $member));

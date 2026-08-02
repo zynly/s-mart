@@ -5,6 +5,8 @@ namespace App\Reports;
 use App\Models\Sale;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class SalesByCashierReport extends BaseReport
 {
@@ -42,8 +44,8 @@ class SalesByCashierReport extends BaseReport
         return Sale::query()
             ->join('users', 'users.id', '=', 'sales.user_id')
             ->where('sales.status', 'completed')
-            ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->whereDate('sales.sale_date', '>=', $v))
-            ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->whereDate('sales.sale_date', '<=', $v))
+            ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->where('sales.sale_date', '>=', $v))
+            ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->where('sales.sale_date', '<', Carbon::parse($v)->addDay()->toDateString()))
             ->when($filters['outlet_id'] ?? null, fn ($q, $v) => $q->where('sales.outlet_id', $v))
             ->selectRaw('users.id as user_id, users.name as kasir, COUNT(*) as transaksi, SUM(sales.grand_total) as omzet, AVG(sales.grand_total) as rata_rata_nota')
             ->groupBy('users.id', 'users.name')
@@ -62,12 +64,17 @@ class SalesByCashierReport extends BaseReport
 
     public function summary(Builder $query, User $user): array
     {
-        $rows = $query->get();
+        $totals = DB::query()->fromSub($query, 'agg')->selectRaw(
+            'COALESCE(SUM(transaksi),0) as transaksi, COALESCE(SUM(omzet),0) as omzet'
+        )->first();
+
+        $transaksi = (int) $totals->transaksi;
+        $omzet = (int) $totals->omzet;
 
         return [
-            'transaksi' => (int) $rows->sum('transaksi'),
-            'omzet' => (int) $rows->sum('omzet'),
-            'rata_rata_nota' => $rows->sum('transaksi') > 0 ? (int) round($rows->sum('omzet') / $rows->sum('transaksi')) : 0,
+            'transaksi' => $transaksi,
+            'omzet' => $omzet,
+            'rata_rata_nota' => $transaksi > 0 ? (int) round($omzet / $transaksi) : 0,
         ];
     }
 

@@ -28,8 +28,8 @@ class DepositController extends Controller
             ->with(['member:id,name,member_number', 'paymentMethod:id,name'])
             ->when($request->integer('member_id'), fn ($q, $memberId) => $q->where('member_id', $memberId))
             ->when($request->string('type')->toString(), fn ($q, $type) => $q->where('type', $type))
-            ->when($request->date('from'), fn ($q, $from) => $q->whereDate('created_at', '>=', $from))
-            ->when($request->date('to'), fn ($q, $to) => $q->whereDate('created_at', '<=', $to))
+            ->when($request->date('from'), fn ($q, $from) => $q->where('created_at', '>=', $from->copy()->startOfDay()))
+            ->when($request->date('to'), fn ($q, $to) => $q->where('created_at', '<', $to->copy()->addDay()->startOfDay()))
             ->orderByDesc('created_at')
             ->paginate(20)
             ->withQueryString();

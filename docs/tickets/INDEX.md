@@ -1155,7 +1155,7 @@ menunggu gilirannya):
 
 - [x] ✅ T-105 — Test suite Pest: aturan bisnis kritis (revert kupon, konsinyasi no-jurnal, retur non-tunai, `receivable_limit`, floor HPP, ISO days_of_week) — lihat catatan di bawah
 - [x] ✅ T-106 — Hardening keamanan (CSP, 2FA Fortify, audit log lengkap semua model) — lihat catatan di bawah
-- [ ] ⬜ T-107 — Optimasi query + index MySQL (lihat `CATATAN-PERBAIKAN.md` § Field Indexing) *(index `sales`/`activity_log`/`sale_items.promo_id` + fix N+1 checkout + lock contention `ReferenceGenerator` sudah — lihat "Audit Performa Menyeluruh Lintas-Fase — Phase C"; sisa: cache PromoEngine/JournalService, sargability `whereDate()`, agregasi laporan di SQL)
+- [x] ✅ T-107 — Optimasi query + index MySQL (lihat `CATATAN-PERBAIKAN.md` § Field Indexing) — lihat catatan di bawah
 - [ ] ⬜ T-108 — Uji beban k6/wrk (30 concurrent user, target <800ms p95 — ADR-0008)
 - [ ] ⬜ T-109 — Deploy Hostinger (langkah shared hosting, cron scheduler) *(`.env.production.example` sudah — lihat catatan di atas)*
 - [ ] ⬜ T-110 — Seeder demo lengkap untuk onboarding tim non-teknis
@@ -1264,6 +1264,69 @@ rollback RefreshDatabase).
    level proses) — hilang total setelah restart Apache. Dicatat di
    sini karena bisa terulang kalau env production pernah disimulasikan
    lagi tanpa restart Apache sesudahnya.
+
+**Catatan T-107:** penyelesaian sisa temuan Phase C (lock contention,
+N+1 checkout, index, queue worker — sudah ditambal sebelumnya). 4
+area terakhir:
+
+1. **Sargability `whereDate()`** — 19 lokasi di 11 file (`whereDate('sale_date', ...)`
+   dkk) mengubungi fungsi `DATE()` ke kolom di WHERE clause, membuat
+   MySQL tidak bisa memakai index atas kolom itu (full/range scan
+   walau ada index) — termasuk melawan index Phase C
+   `sales(status, sale_date)` yang baru ditambah DAN index
+   `activity_log(created_at)`, keduanya jadi tidak terpakai efektif
+   oleh `DashboardController` (3 pemakaian `sale_date` harian),
+   6 laporan (`sale_date`/`transaction_date`/`created_at`),
+   `ActivityLogController`, `DepositController`, dan 2 command
+   terjadwal (`due_date`). Diganti pola range eksplisit
+   (`>= $awal`, `< $akhir+1hari`) yang sargable — semantik identik
+   (inklusif per-hari), diverifikasi tidak berubah lewat 8 laporan +
+   dashboard di Playwright (0 error).
+2. **Agregasi laporan di SQL** — 8 method `summary()`
+   (`SalesSummaryReport`, `SalesByProductReport`,
+   `SalesByCashierReport`, `SalesByPaymentMethodReport`,
+   `StockSummaryReport`, `CashLedgerReport`, `ReceivableAgingReport`,
+   `DebtAgingReport`) semula `$query->get()->reduce(...)` — tarik
+   SEMUA baris (bisa ribuan untuk rentang tanggal panjang/piutang
+   menumpuk) ke PHP Collection cuma untuk dijumlah. Diganti
+   `DB::query()->fromSub($query, 'agg')->selectRaw('SUM(...)')` — SQL
+   menjumlah, PHP cuma terima 1 baris (atau 1 baris per bucket untuk
+   2 laporan aging). Diverifikasi lewat `StockSummaryReport` dengan
+   data riil (qty/nilai stok cocok) dan seluruh 8 laporan render
+   bersih via Playwright.
+3. **`PromoEngine` — query redundan per baris** — `getEligiblePromos()`
+   di-query ULANG ke tabel `promos` (+eager load `products`,
+   `categories`) untuk kombinasi (types, tanggal) yang PERSIS SAMA di
+   setiap baris keranjang (3x per baris: stage1, buy_x_get_y,
+   bundle) — keranjang N baris = 3N query redundan. Diambil SEKALI di
+   `applyToCart()` per kombinasi types (bukan per baris), sisanya
+   (filter produk/waktu/kuota, spesifik per baris) tetap di PHP
+   seperti semula. TIDAK ditambah cache lintas-request (`Cache::remember`)
+   — dipertimbangkan tapi sengaja dilewati: driver cache proyek ini
+   `database` (ADR-0008, tanpa Redis/tag), staleness diskon aktif di
+   luar TTL adalah risiko kebenaran finansial (promo yang baru
+   dinonaktifkan admin masih "hidup" beberapa detik) yang tidak
+   sepadan untuk POS uang sungguhan — hoist per-request sudah
+   menghilangkan sumber N+1 utamanya tanpa risiko itu.
+4. **`JournalService` — lookup akun & insert per baris** — `resolveEntries()`
+   query `Account::where('code',...)` SATU per baris entri jurnal
+   (tiap nota minimal 4-6 baris) PLUS `isLeaf()` query terpisah
+   (`children()->exists()`) per baris; `writeEntries()`/`reverse()`
+   insert `JournalEntry::create()` satu-per-satu. Chart of account
+   kecil (puluhan baris) & jarang berubah — di-cache penuh
+   (`Cache::remember('accounts.by_code', 3600, ...)`, dibatalkan
+   otomatis lewat `Account::booted()` saat create/update/delete),
+   status leaf dihitung dari situ juga (teknik yang sama seperti
+   `leafAccounts()` yang sudah ada, bukan pendekatan baru). Insert
+   entri dibungkus `JournalEntry::insert()` batch (dicek dulu: tidak
+   ada Observer terdaftar di model ini, aman melewati event Eloquent).
+   Diverifikasi lewat `ConsignmentJournalTest` (memeriksa kode akun
+   riil di baris jurnal hasil sale sungguhan lewat `SaleService::complete()`
+   — bukan mock) tetap hijau.
+
+Full Pest suite (13 test) tetap hijau setelah keempatnya, plus
+verifikasi manual: dashboard + 8 halaman laporan render bersih (0
+console error, 0 HTTP 5xx) lewat Playwright.
 
 **Blocking:** Fase 17 selesai (semua fase bisnis selesai).
 

@@ -89,7 +89,7 @@ class GenerateAlertNotifications extends Command
     private function debtAlerts(): int
     {
         $debts = Debt::whereIn('status', ['unpaid', 'partial'])
-            ->whereDate('due_date', '<=', now()->addDays(7))
+            ->where('due_date', '<=', now()->addDays(7)->toDateString())
             ->with('supplier:id,name')
             ->get();
 

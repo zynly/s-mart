@@ -53,7 +53,8 @@ class DashboardController extends Controller
 
         $todaySales = Sale::where('user_id', $user->id)
             ->where('status', 'completed')
-            ->whereDate('sale_date', $today)
+            ->where('sale_date', '>=', $today)
+            ->where('sale_date', '<', Carbon::parse($today)->addDay()->toDateString())
             ->selectRaw('COUNT(*) as transaksi, COALESCE(SUM(grand_total), 0) as omzet')
             ->first();
 
@@ -172,7 +173,8 @@ class DashboardController extends Controller
             ->join('products', 'products.id', '=', 'sale_items.product_id')
             ->leftJoin('categories', 'categories.id', '=', 'products.category_id')
             ->where('sales.status', 'completed')
-            ->whereDate('sales.sale_date', $today)
+            ->where('sales.sale_date', '>=', $today)
+            ->where('sales.sale_date', '<', Carbon::parse($today)->addDay()->toDateString())
             ->selectRaw("COALESCE(categories.name, 'Tanpa Kategori') as kategori, SUM(sale_items.subtotal) as total")
             ->groupBy('kategori')
             ->orderByDesc('total');
@@ -197,7 +199,8 @@ class DashboardController extends Controller
     private function salesByHour($user, string $today): array
     {
         $query = Sale::where('status', 'completed')
-            ->whereDate('sale_date', $today)
+            ->where('sale_date', '>=', $today)
+            ->where('sale_date', '<', Carbon::parse($today)->addDay()->toDateString())
             ->selectRaw('HOUR(sale_date) as jam, COUNT(*) as transaksi')
             ->groupBy('jam')
             ->orderBy('jam');
@@ -280,7 +283,7 @@ class DashboardController extends Controller
     private function debtsDue(): int
     {
         return Debt::whereIn('status', ['unpaid', 'partial'])
-            ->whereDate('due_date', '<=', now()->addDays(7))
+            ->where('due_date', '<=', now()->addDays(7)->toDateString())
             ->count();
     }
 

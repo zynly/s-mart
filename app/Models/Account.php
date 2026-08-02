@@ -6,10 +6,23 @@ use App\Traits\LogsActivityCustom;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Cache;
 
 class Account extends Model
 {
     use LogsActivityCustom;
+
+    /**
+     * T-107: JournalService cache seluruh chart of accounts (kecil, jarang
+     * berubah) sekali per request-siklus TTL — batalkan cache begitu ada
+     * perubahan supaya posting jurnal berikutnya tidak memakai kode akun
+     * yang sudah dihapus/diubah.
+     */
+    protected static function booted(): void
+    {
+        static::saved(fn () => Cache::forget('accounts.by_code'));
+        static::deleted(fn () => Cache::forget('accounts.by_code'));
+    }
 
     protected $fillable = [
         'code', 'name', 'type', 'subtype', 'parent_id', 'level',

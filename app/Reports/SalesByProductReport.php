@@ -5,6 +5,8 @@ namespace App\Reports;
 use App\Models\SaleItem;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Qty/omzet/HPP/margin per produk (spec item 2, PROMPT-POS §Fase 14).
@@ -48,8 +50,8 @@ class SalesByProductReport extends BaseReport
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
             ->join('products', 'products.id', '=', 'sale_items.product_id')
             ->where('sales.status', 'completed')
-            ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->whereDate('sales.sale_date', '>=', $v))
-            ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->whereDate('sales.sale_date', '<=', $v))
+            ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->where('sales.sale_date', '>=', $v))
+            ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->where('sales.sale_date', '<', Carbon::parse($v)->addDay()->toDateString()))
             ->when($filters['outlet_id'] ?? null, fn ($q, $v) => $q->where('sales.outlet_id', $v))
             ->selectRaw('products.id as product_id, products.name as produk, products.sku as sku, SUM(sale_items.qty_base) as qty, SUM(sale_items.subtotal) as omzet, SUM(sale_items.total_cost) as hpp, SUM(sale_items.subtotal - sale_items.total_cost) as margin')
             ->groupBy('products.id', 'products.name', 'products.sku')
@@ -70,14 +72,16 @@ class SalesByProductReport extends BaseReport
 
     public function summary(Builder $query, User $user): array
     {
-        return $query->get()->reduce(function (array $carry, $r) {
-            $carry['qty'] += (float) $r->qty;
-            $carry['omzet'] += (int) $r->omzet;
-            $carry['hpp'] += (int) $r->hpp;
-            $carry['margin'] += (int) $r->margin;
+        $totals = DB::query()->fromSub($query, 'agg')->selectRaw(
+            'COALESCE(SUM(qty),0) as qty, COALESCE(SUM(omzet),0) as omzet, COALESCE(SUM(hpp),0) as hpp, COALESCE(SUM(margin),0) as margin'
+        )->first();
 
-            return $carry;
-        }, ['qty' => 0, 'omzet' => 0, 'hpp' => 0, 'margin' => 0]);
+        return [
+            'qty' => (float) $totals->qty,
+            'omzet' => (int) $totals->omzet,
+            'hpp' => (int) $totals->hpp,
+            'margin' => (int) $totals->margin,
+        ];
     }
 
     public function scopeForCashier(Builder $query, User $user): Builder

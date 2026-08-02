@@ -13,7 +13,9 @@ use App\Support\ReferenceGenerator;
 use Carbon\Carbon;
 use DomainException;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -145,15 +147,18 @@ class JournalService
                 'posted_at' => now(),
             ]);
 
-            foreach ($entries as $entry) {
-                JournalEntry::create([
-                    'journal_id' => $reversing->id,
-                    'account_id' => $entry->account_id,
-                    'debit' => $entry->credit,
-                    'credit' => $entry->debit,
-                    'description' => $entry->description !== null ? "Pembalik: {$entry->description}" : null,
-                ]);
-            }
+            $now = now();
+
+            JournalEntry::insert($entries->map(fn (JournalEntry $entry) => [
+                'journal_id' => $reversing->id,
+                'account_id' => $entry->account_id,
+                'debit' => $entry->credit,
+                'credit' => $entry->debit,
+                'description' => $entry->description !== null ? "Pembalik: {$entry->description}" : null,
+                'memo' => null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ])->all());
 
             $locked->update(['status' => 'reversed']);
 
@@ -446,11 +451,21 @@ class JournalService
         $totalDebit = 0;
         $totalCredit = 0;
         $resolved = [];
+        $accountsByCode = $this->accountsByCode();
+        // isLeaf() aslinya query children()->exists() per akun — dengan
+        // seluruh chart of accounts sudah di memori (kecil, di-cache),
+        // status leaf dihitung dari situ juga (sama teknik leafAccounts()
+        // di bawah), tanpa query tambahan per baris entri.
+        $parentIds = $accountsByCode->pluck('parent_id')->filter()->unique();
 
         foreach ($entries as $line) {
-            $account = Account::where('code', $line['account_code'])->firstOrFail();
+            $account = $accountsByCode->get($line['account_code']);
 
-            if (! $account->isLeaf()) {
+            if ($account === null) {
+                throw (new ModelNotFoundException)->setModel(Account::class);
+            }
+
+            if ($parentIds->contains($account->id)) {
                 throw new DomainException("Akun \"{$account->code} {$account->name}\" adalah akun header — tidak bisa diposting langsung.");
             }
 
@@ -478,15 +493,22 @@ class JournalService
      */
     private function writeEntries(Journal $journal, array $resolved): void
     {
-        foreach ($resolved as $line) {
-            JournalEntry::create([
-                'journal_id' => $journal->id,
-                'account_id' => $line['account']->id,
-                'debit' => $line['debit'],
-                'credit' => $line['credit'],
-                'description' => $line['description'],
-            ]);
-        }
+        $now = now();
+
+        // T-107: dulu N query INSERT (satu per baris entri, tiap nota
+        // penjualan minimal 4-6 baris) — tidak ada Observer terdaftar di
+        // JournalEntry (dicek app/Providers/*ServiceProvider), jadi aman
+        // dibungkus jadi 1 statement INSERT batch.
+        JournalEntry::insert(array_map(fn ($line) => [
+            'journal_id' => $journal->id,
+            'account_id' => $line['account']->id,
+            'debit' => $line['debit'],
+            'credit' => $line['credit'],
+            'description' => $line['description'],
+            'memo' => null,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ], $resolved));
     }
 
     private function assertPeriodOpen(Carbon $date): void
@@ -500,10 +522,23 @@ class JournalService
 
     private function leafAccounts(): Collection
     {
-        $accounts = Account::where('is_active', true)->get();
+        $accounts = $this->accountsByCode()->values()->filter(fn (Account $a) => $a->is_active);
         $parentIds = $accounts->pluck('parent_id')->filter()->unique();
 
         return $accounts->reject(fn (Account $a) => $parentIds->contains($a->id))->values();
+    }
+
+    /**
+     * T-107: seluruh chart of accounts di-cache sekali (tabel kecil, jarang
+     * berubah, tapi dibaca di SETIAP posting jurnal — 1-2x per baris
+     * transaksi sebelumnya). Cache dibatalkan otomatis lewat Account::booted()
+     * begitu ada akun dibuat/diubah/dihapus.
+     *
+     * @return Collection<string, Account>
+     */
+    private function accountsByCode(): Collection
+    {
+        return Cache::remember('accounts.by_code', 3600, fn () => Account::all()->keyBy('code'));
     }
 
     private function balancesUpTo(Carbon $asOf): Collection

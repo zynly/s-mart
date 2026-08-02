@@ -5,6 +5,7 @@ namespace App\Reports;
 use App\Models\StockMovement;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 
 /**
  * Kartu stok per produk — filter `product_id` diperlakukan sebagai
@@ -60,8 +61,8 @@ class StockCardReport extends BaseReport
         return $query
             ->where('stock_movements.product_id', $filters['product_id'])
             ->when($filters['outlet_id'] ?? null, fn ($q, $v) => $q->where('stock_movements.outlet_id', $v))
-            ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->whereDate('stock_movements.created_at', '>=', $v))
-            ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->whereDate('stock_movements.created_at', '<=', $v));
+            ->when($filters['date_from'] ?? null, fn ($q, $v) => $q->where('stock_movements.created_at', '>=', $v))
+            ->when($filters['date_to'] ?? null, fn ($q, $v) => $q->where('stock_movements.created_at', '<', Carbon::parse($v)->addDay()->toDateString()));
     }
 
     public function columns(User $user): array

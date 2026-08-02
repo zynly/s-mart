@@ -5,6 +5,7 @@ namespace App\Reports;
 use App\Models\Receivable;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Wrapper tipis di atas aturan bucket yang sama persis dengan
@@ -75,12 +76,15 @@ class ReceivableAgingReport extends BaseReport
 
     public function summary(Builder $query, User $user): array
     {
-        $rows = $query->get();
-        $byBucket = $rows->groupBy('bucket')->map(fn ($g) => (int) $g->sum('sisa'));
+        $perBucket = DB::query()->fromSub($query, 'agg')
+            ->selectRaw('bucket, SUM(sisa) as total')
+            ->groupBy('bucket')
+            ->pluck('total', 'bucket')
+            ->map(fn ($v) => (int) $v);
 
         return [
-            'total_sisa' => (int) $rows->sum('sisa'),
-            'per_bucket' => $byBucket,
+            'total_sisa' => (int) $perBucket->sum(),
+            'per_bucket' => $perBucket,
         ];
     }
 }

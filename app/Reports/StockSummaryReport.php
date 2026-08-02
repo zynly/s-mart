@@ -5,6 +5,7 @@ namespace App\Reports;
 use App\Models\Stock;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 class StockSummaryReport extends BaseReport
 {
@@ -60,11 +61,13 @@ class StockSummaryReport extends BaseReport
 
     public function summary(Builder $query, User $user): array
     {
-        $rows = $query->get();
+        $totals = DB::query()->fromSub($query, 'agg')->selectRaw(
+            'COALESCE(SUM(qty),0) as qty, COALESCE(SUM(nilai),0) as nilai'
+        )->first();
 
         return [
-            'qty' => (float) $rows->sum('qty'),
-            'nilai' => (int) $rows->sum('nilai'),
+            'qty' => (float) $totals->qty,
+            'nilai' => (int) $totals->nilai,
         ];
     }
 }
