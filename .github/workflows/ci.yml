@@ -45,11 +45,27 @@ jobs:
       - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install npm dependencies
+        run: npm ci
+
       - name: Copy .env
         run: cp .env.example .env
 
       - name: Generate app key
         run: php artisan key:generate
+
+      # ExampleTest (GET /) merender view Blade lengkap dengan @vite —
+      # tanpa manifest ini test gagal 500 (ViteManifestNotFoundException),
+      # bukan soal kualitas frontend (itu tugas job `frontend`), murni
+      # prasyarat supaya halaman bisa dirender sama sekali di test.
+      - name: Build frontend assets (dibutuhkan Blade @vite saat test)
+        run: npm run build
 
       - name: Wait for MySQL
         run: |
@@ -70,6 +86,26 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_mysql, bcmath, intl, gd, zip, sodium
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      # vite.config.ts alias `ziggy-js` -> vendor/tightenco/ziggy (paket
+      # Composer, bukan npm) — tanpa ini vite build gagal ENOENT walau
+      # tsc/eslint sudah lolos duluan.
+      - name: Install Composer dependencies (untuk alias ziggy-js)
+        run: composer install --no-interaction --prefer-dist --no-progress --no-scripts
 
       - name: Setup Node
         uses: actions/setup-node@v4
