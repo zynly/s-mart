@@ -1158,7 +1158,7 @@ menunggu gilirannya):
 - [x] ✅ T-107 — Optimasi query + index MySQL (lihat `CATATAN-PERBAIKAN.md` § Field Indexing) — lihat catatan di bawah
 - [ ] ⬜ T-108 — Uji beban k6/wrk (30 concurrent user, target <800ms p95 — ADR-0008)
 - [ ] ⬜ T-109 — Deploy Hostinger (langkah shared hosting, cron scheduler) *(`.env.production.example` sudah — lihat catatan di atas)*
-- [ ] ⬜ T-110 — Seeder demo lengkap untuk onboarding tim non-teknis
+- [x] ✅ T-110 — Seeder demo lengkap untuk onboarding tim non-teknis — lihat catatan di bawah
 
 **Catatan T-105:** `tests/Pest.php` **TIDAK PERNAH ADA** sejak Fase 0
 meski `pestphp/pest-plugin-laravel` sudah ter-install — tanpa file ini,
@@ -1327,6 +1327,52 @@ area terakhir:
 Full Pest suite (13 test) tetap hijau setelah keempatnya, plus
 verifikasi manual: dashboard + 8 halaman laporan render bersih (0
 console error, 0 HTTP 5xx) lewat Playwright.
+
+**Catatan T-110:** `database/seeders/DemoSeeder.php` — seeder OPSIONAL,
+TIDAK dipanggil dari `DatabaseSeeder` (yang dipakai `migrate:fresh --seed`
+biasa DAN oleh `tests/TestCase.php` `$seed = true` untuk suite Pest —
+mencampur data transaksional fiktif ke situ akan merusak asumsi test).
+Jalankan manual: `php artisan db:seed --class=DemoSeeder`.
+
+Beda dari seeder lain (isi master data lewat `firstOrCreate`), ini
+sengaja membuat data TRANSAKSIONAL — nota, sesi kasir, pembelian,
+piutang/hutang — lewat SERVICE ASLI (`SaleService`,
+`CashierSessionService`, `PurchaseService`, `DebtService`,
+`ReceivableService`), bukan INSERT mentah, supaya potong stok FEFO,
+posting jurnal, dan update saldo kas semuanya ikut jalan benar seperti
+transaksi sungguhan. `sales.sale_date` dimundurkan manual sesudah nota
+selesai supaya widget tren dashboard (7/30 hari) punya sebaran 14 hari
+yang realistis — kolom timestamp lain (activity_log, journals,
+stock_movements) tetap mencatat waktu seeder dijalankan, pergeseran
+kosmetik yang disengaja untuk kesederhanaan.
+
+Dijalankan sekali di dev (`s_mart_dev`): 60 nota lewat 25 sesi kasir
+(2 kasir × ~12 hari kerja, Minggu tutup), 1 promo aktif (diskon 10%
+Chitato/Oreo — sengaja dikecualikan dari pool produk acak transaksi
+lain supaya `payments.amount` yang dihitung di seeder tidak meleset
+dari `grand_total` hasil potongan PromoEngine di server), 2 santri
+diberi limit piutang lalu dipakai untuk kredit sungguhan, 1 pembelian
+kredit dari supplier (otomatis jadi hutang) dicicil 40%, 1 piutang
+dicicil 50%. Diverifikasi: `Journal::whereColumn('total_debit','!=','total_credit')`
+= 0, jumlah `journal_entries` per jurnal cocok persis dengan
+`journals.total_debit/credit` (mengonfirmasi batch insert T-107 benar),
+`Stock.qty` tidak pernah negatif, seluruh `CashierSession.difference`
+= 0 (lihat catatan bug di bawah), dashboard (tren 30 hari terisi
+grafik nyata) dan halaman hutang/piutang render bersih via Playwright.
+
+**Bug ditemukan & ditambal selama membangun seeder ini** (bukan bug
+lama, murni akibat pola pemakaian baru): `CashierSessionService::close()`
+menghitung ulang `calculateExpected()` dari baris `CashierSession`
+YANG DI-FETCH FRESH dari DB (`lockForUpdate()->findOrFail()`) — kalau
+pemanggil menghitung `$expected` dari objek `$session` lain di memori
+yang sudah basi (di seeder ini: berubah lewat instance
+`CashierSession` LAIN yang dipakai `SaleService`/`PaymentService`
+internal tiap kali `complete()` dipanggil), `actualCash` yang dikirim
+tidak lagi sama dengan `expected` versi terbaru → `CashDifferenceRequiresApprovalException`
+palsu walau sebenarnya tidak ada selisih sungguhan. Ditambal dengan
+`$session->refresh()` sebelum menghitung `calculateExpected()` di
+seeder — bukan perubahan di `CashierSessionService` itu sendiri (kelas
+service sudah benar, cuma pemanggil yang perlu data segar).
 
 **Blocking:** Fase 17 selesai (semua fase bisnis selesai).
 
