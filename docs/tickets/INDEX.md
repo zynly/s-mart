@@ -1156,7 +1156,7 @@ menunggu gilirannya):
 - [x] ✅ T-105 — Test suite Pest: aturan bisnis kritis (revert kupon, konsinyasi no-jurnal, retur non-tunai, `receivable_limit`, floor HPP, ISO days_of_week) — lihat catatan di bawah
 - [x] ✅ T-106 — Hardening keamanan (CSP, 2FA Fortify, audit log lengkap semua model) — lihat catatan di bawah
 - [x] ✅ T-107 — Optimasi query + index MySQL (lihat `CATATAN-PERBAIKAN.md` § Field Indexing) — lihat catatan di bawah
-- [ ] ⬜ T-108 — Uji beban k6/wrk (30 concurrent user, target <800ms p95 — ADR-0008)
+- [ ] ⬜ T-108 — Uji beban k6 (30 concurrent user, target <800ms p95 — ADR-0008) *(OPcache tidak aktif ditemukan & ditambal, ~7x lebih cepat — tapi p95@30-concurrent BELUM tervalidasi tuntas, butuh lingkungan Linux — lihat catatan di bawah)*
 - [ ] ⬜ T-109 — Deploy Hostinger (langkah shared hosting, cron scheduler) *(`.env.production.example` sudah — lihat catatan di atas)*
 - [x] ✅ T-110 — Seeder demo lengkap untuk onboarding tim non-teknis — lihat catatan di bawah
 
@@ -1373,6 +1373,61 @@ palsu walau sebenarnya tidak ada selisih sungguhan. Ditambal dengan
 `$session->refresh()` sebelum menghitung `calculateExpected()` di
 seeder — bukan perubahan di `CashierSessionService` itu sendiri (kelas
 service sudah benar, cuma pemanggil yang perlu data segar).
+
+**Catatan T-108 (SEBAGIAN — bukan dilewati, ada alasan teknis nyata):**
+k6 diinstal (`winget install GrafanaLabs.k6`), skenario campuran 30
+VU dibangun lewat login + cookie jar asli (bukan API test) — 22 VU
+baca dashboard+laporan berulang (peran owner/admin/supervisor
+digilir, pola pemakaian riil paling sering), 8 VU checkout POS
+sungguhan lewat `POST /pos/sales` (8 user kasir + sesi kasir yang
+sudah dibuka, produk dedicated stok 5000 unit supaya tidak kehabisan
+di tengah run).
+
+**Bug produksi NYATA ditemukan & ditambal** (bukan artefak
+lingkungan): OPcache **TIDAK PERNAH AKTIF** di php.ini yang dipakai
+Apache lokal (`;zend_extension=opcache` — bukan cuma
+`opcache.enable` yang mati, modulnya sendiri tidak dimuat sama
+sekali) sejak awal proyek. Setiap request PHP meng-compile ULANG
+seluruh Laravel + dependency Composer dari nol — baseline p95 3 VU
+sebelum fix: **3.7 detik**; sesudah `zend_extension=opcache` +
+`opcache.enable=1` diaktifkan & Apache di-restart: **557ms** (~7x
+lebih cepat, iterasi per detik naik ~4.75x). Ini genuinely
+mempengaruhi SEMUA pengguna lokal selama ini (termasuk saat
+verifikasi manual/Playwright fase-fase sebelumnya terasa "kadang
+lambat" — sekarang diketahui sebabnya, bukan cuma persepsi). Diubah
+di `C:\laragon\bin\php\php-8.2.32-Win32-vs16-x64\php.ini`
+(`[opcache]` section) — **file sistem di luar repo git**, dicatat di
+sini supaya tidak hilang dari institutional knowledge; PENTING
+dikonfirmasi ulang saat T-109 (kebanyakan shared hosting PHP modern
+sudah default aktif, tapi WAJIB dicek eksplisit, bukan diasumsikan).
+
+**Kenapa p95<800ms@30-concurrent BELUM bisa divalidasi tuntas di
+sesi ini**: setelah fix OPcache, baseline low-concurrency (3 VU)
+sudah comfortably di bawah target (557ms). Tapi skenario PENUH 30 VU
+tetap menunjukkan p95 puluhan detik. Diselidiki lewat
+`SHOW PROCESSLIST` MySQL live selama test berjalan — SEMUA koneksi
+`Sleep` (idle), tidak ada query lambat/lock — **membuktikan database
+BUKAN bottleneck-nya**. Kesimpulan: penyempitan terjadi di lapisan
+Apache **mod_php di Windows**, arsitektur yang secara terdokumentasi
+luas TIDAK menangani eksekusi PHP konkuren sebaik model
+worker-process Linux (prefork/FPM) — PHP-FPM sendiri tidak tersedia
+untuk Windows (Unix-only), dan WSL tidak terinstal di mesin ini untuk
+uji banding cepat. Target produksi Hostinger (T-109) adalah Linux
+dengan model concurrency yang berbeda sama sekali, jadi hasil 30-VU
+lokal ini **tidak representatif** untuk App-level readiness — beda
+akar penyebab dari (dan tidak boleh disalahartikan sebagai gagalnya)
+optimasi query T-107, yang sudah terbukti benar lewat
+`SHOW PROCESSLIST` kosong dan lewat baseline low-concurrency yang
+sudah cepat.
+
+**Rekomendasi tindak lanjut**: ulangi persis skenario k6 ini
+(disimpan sementara, tidak di-commit — lihat instruksi re-generate
+di bawah) langsung di lingkungan Linux — staging Hostinger begitu
+T-109 jalan, atau VM/WSL Linux lokal kalau perlu validasi sebelum
+deploy. Skenario & kredensial test (8 user kasir tambahan, produk
+stok besar) TIDAK disimpan permanen di seeder/repo (murni alat ukur
+sekali pakai) — script k6 dibangun ulang dari deskripsi di catatan
+ini kalau dibutuhkan lagi.
 
 **Blocking:** Fase 17 selesai (semua fase bisnis selesai).
 
