@@ -12,7 +12,11 @@ class ProfileController extends Controller
 {
     public function edit(): Response
     {
-        return Inertia::render('Profile/Edit');
+        $user = auth('web')->user();
+
+        return Inertia::render('Profile/Edit', [
+            'twoFactorEnabled' => $user->two_factor_confirmed_at !== null,
+        ]);
     }
 
     public function update(UpdateProfileRequest $request): RedirectResponse

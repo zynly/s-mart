@@ -42,6 +42,14 @@ class FortifyServiceProvider extends ServiceProvider
             'email' => $request->email,
             'token' => $request->route('token'),
         ]));
+        // T-106: dua view ini TIDAK PERNAH didaftarkan meski
+        // twoFactorAuthentication(['confirmPassword' => true]) sudah
+        // aktif sejak awal — tanpanya, mengaktifkan/mengelola 2FA
+        // (butuh konfirmasi password ulang) dan login sebagai user
+        // ber-2FA (butuh tantangan kode) sama-sama menabrak halaman
+        // yang tidak pernah ada.
+        Fortify::confirmPasswordView(fn () => Inertia::render('Auth/ConfirmPassword'));
+        Fortify::twoFactorChallengeView(fn () => Inertia::render('Auth/TwoFactorChallenge'));
 
         RateLimiter::for('login', function (Request $request) {
             $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());

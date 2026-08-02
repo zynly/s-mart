@@ -1154,7 +1154,7 @@ menunggu gilirannya):
   container sepenuhnya siap — diperbaiki baca `env('APP_ENV')` langsung.
 
 - [x] ✅ T-105 — Test suite Pest: aturan bisnis kritis (revert kupon, konsinyasi no-jurnal, retur non-tunai, `receivable_limit`, floor HPP, ISO days_of_week) — lihat catatan di bawah
-- [ ] ⬜ T-106 — Hardening keamanan (CSP, 2FA Fortify, audit log lengkap semua model) *(rate limit reset password + security headers dasar + audit log Topup/Guardian/DepositTransaction sudah — lihat catatan di atas & Fase 17-Darurat)*
+- [x] ✅ T-106 — Hardening keamanan (CSP, 2FA Fortify, audit log lengkap semua model) — lihat catatan di bawah
 - [ ] ⬜ T-107 — Optimasi query + index MySQL (lihat `CATATAN-PERBAIKAN.md` § Field Indexing) *(index `sales`/`activity_log`/`sale_items.promo_id` + fix N+1 checkout + lock contention `ReferenceGenerator` sudah — lihat "Audit Performa Menyeluruh Lintas-Fase — Phase C"; sisa: cache PromoEngine/JournalService, sargability `whereDate()`, agregasi laporan di SQL)
 - [ ] ⬜ T-108 — Uji beban k6/wrk (30 concurrent user, target <800ms p95 — ADR-0008)
 - [ ] ⬜ T-109 — Deploy Hostinger (langkah shared hosting, cron scheduler) *(`.env.production.example` sudah — lihat catatan di atas)*
@@ -1196,6 +1196,74 @@ menembus `avg_cost`, dipotong + warning bukan ditolak), ISO
 boilerplate lama (tidak regresi). Total run ~58 detik (migrasi+seed
 sekali ~45-50 detik, tiap test individual <1 detik lewat transaksi+
 rollback RefreshDatabase).
+
+**Catatan T-106:** tiga potong pekerjaan terpisah.
+
+1. **Audit log lengkap** (sudah di-commit terpisah, `9aea449`) — 26
+   model tambahan (Account, CashierSession, Sale, SaleReturn, User,
+   dst) dipasangi `LogsActivityCustom`, plus trait itu sendiri
+   ditambah `->logExcept(['password','pin','remember_token'])`
+   supaya field sensitif tidak pernah tercatat di `activity_log`
+   meski di-mass-assign lewat model yang belum diaudit sebelumnya.
+
+2. **CSP (Content-Security-Policy)** — `SecurityHeaders` middleware
+   ditulis ulang: generate nonce acak per-request (`Str::random(24)`),
+   di-share ke semua view lewat `View::share('cspNonce', ...)`, header
+   `script-src 'self' 'nonce-{nonce}'` (bukan `unsafe-inline`).
+   `style-src` tetap `'unsafe-inline'` sengaja — Radix UI (dasar
+   shadcn/ui) inject inline style lewat DOM manipulation JS untuk
+   positioning popover/portal, tidak bisa di-nonce karena bukan
+   server-rendered. Enforcement digerbang env: default ikut
+   `APP_ENV=production` (pola sama seperti `SESSION_SECURE_COOKIE`),
+   plus override eksplisit `CSP_ENFORCE` supaya bisa dites di lokal
+   tanpa memicu proteksi production lain yang akan merusak login HTTP
+   biasa. Diverifikasi lewat Playwright di 9 halaman admin dengan
+   `CSP_ENFORCE=true` sementara — 0 pelanggaran CSP, 0 console error
+   (satu 403 yang sempat muncul ternyata gerbang permission
+   `system.reset` yang benar, bukan CSP).
+
+3. **2FA (Laravel Fortify TOTP)** — fitur ini SUDAH "aktif" di
+   `config('fortify.features')` sejak awal proyek tapi TIDAK PERNAH
+   benar-benar berfungsi, 3 potong hilang sekaligus: (a) trait
+   `Laravel\Fortify\TwoFactorAuthenticatable` tidak pernah ditambahkan
+   ke model `User` — tanpanya method yang dipanggil controller Fortify
+   (forceFill secret, recoveryCodes(), dst) tidak ada sama sekali;
+   (b) `Fortify::confirmPasswordView()` dan
+   `Fortify::twoFactorChallengeView()` tidak pernah didaftarkan di
+   `FortifyServiceProvider` — halaman konfirmasi password & tantangan
+   2FA 404; (c) tidak ada UI sama sekali (halaman Auth maupun panel
+   di Profil). Ketiganya ditambal: trait di `User`, dua view
+   registration di `FortifyServiceProvider`, halaman baru
+   `Auth/ConfirmPassword.tsx` + `Auth/TwoFactorChallenge.tsx`, dan
+   panel "Autentikasi Dua Faktor" penuh di `Profile/Edit.tsx` (aktifkan
+   → scan QR/secret manual → konfirmasi kode → lihat & regenerasi kode
+   pemulihan → nonaktifkan).
+
+   Sisi teknis yang sempat jadi jebakan: Fortify's `RequirePassword`
+   middleware untuk request `expectsJson()` balas **423 Locked** (bukan
+   redirect) kalau konfirmasi password sudah basi (session baru/logout-
+   login ulang menghapus timestamp `password_confirmed_at`) — ditangani
+   terpusat di `Lib/api.ts` (fetch wrapper baru, sekalian konsolidasi
+   ekstraksi token XSRF yang tadinya copy-paste 4×) dengan navigasi
+   eksplisit ke `route('password.confirm')`.
+
+   Diverifikasi end-to-end via Playwright (bukan cuma tinker): login →
+   aktifkan 2FA → konfirmasi password → scan QR (kode TOTP dihitung
+   manual di Node, RFC 6238, dicocokkan byte-per-byte dengan
+   `pragmarx/google2fa` PHP) → konfirmasi & aktif → lihat 8 kode
+   pemulihan → logout → login ulang → **diarahkan ke halaman tantangan
+   2FA** (bukan langsung masuk) → masukkan kode TOTP → berhasil masuk
+   `/admin` → nonaktifkan 2FA → state akhir bersih (`two_factor_secret`
+   & `two_factor_confirmed_at` NULL). Sempat muncul 500 palsu
+   ("No application encryption key has been specified") di tengah
+   pengujian — bukan bug aplikasi, melainkan worker Apache (mod_php)
+   berumur panjang yang "terjebak" `APP_ENV=production` dari pengujian
+   Phase A berhari-hari sebelumnya (`putenv()` oleh Dotenv tidak
+   ditimpa ulang oleh `.env` yang sudah kembali ke `local`, karena
+   `Dotenv::createImmutable()` tidak menimpa env var yang sudah ada di
+   level proses) — hilang total setelah restart Apache. Dicatat di
+   sini karena bisa terulang kalau env production pernah disimulasikan
+   lagi tanpa restart Apache sesudahnya.
 
 **Blocking:** Fase 17 selesai (semua fase bisnis selesai).
 
@@ -1248,7 +1316,7 @@ benar alih-alih menambah utang refactor).
       Akuntansi (Bagan Akun·Jurnal·Buku Besar·Neraca Saldo·Laba Rugi·
       Neraca·Periode), Laporan (grid kartu, bukan tab — pola sendiri
       sejak Fase 14), Mitra & Outlet (Supplier·Outlet·Metode Bayar),
-      Pengguna & Sistem (Pengguna·Role & Izin·Log Aktivitas). Menu
+      Pengguna & Sistem (Pengguna·Role &  Izin·Log Aktivitas). Menu
       "Karyawan"/pengaturan lengkap (shift/absensi/backup) dari modul
       asli TIDAK dibuat sebagai menu kosong — belum ada satu route pun
       untuk itu (Fase 17 belum dikerjakan).

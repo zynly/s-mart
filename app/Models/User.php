@@ -9,12 +9,19 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Fortify\TwoFactorAuthenticatable;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasRoles, LogsActivityCustom, Notifiable, SoftDeletes;
+    // T-106: kolom two_factor_* sudah ada di migration & fitur sudah
+    // "aktif" di config('fortify.features') sejak awal proyek, tapi
+    // trait ini TIDAK PERNAH ditambahkan — tanpanya method yang
+    // dipanggil controller Fortify (forceFill two_factor_secret,
+    // recoveryCodes(), dst) tidak ada sama sekali di model ini, 2FA
+    // sepenuhnya tidak berfungsi meski terlihat "enabled".
+    use HasFactory, HasRoles, LogsActivityCustom, Notifiable, SoftDeletes, TwoFactorAuthenticatable;
 
     /**
      * The attributes that are mass assignable.
