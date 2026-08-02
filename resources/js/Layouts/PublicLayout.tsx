@@ -5,12 +5,14 @@ type PublicLayoutProps = {
   children: ReactNode
 }
 
+// T-111 (Fase 19): "Tentang" sengaja belum ada di sini — halaman itu
+// (& Kontak/FAQ) ditunda ke lanjutan Fase 19, lihat docs/tickets/INDEX.md.
+// Jangan pasang link ke route yang belum ada (404 di produksi).
 const navItems = [
   { label: 'Beranda', href: '/' },
   { label: 'Produk', href: '/produk' },
   { label: 'Promo', href: '/promo' },
   { label: 'Cek Saldo', href: '/cek-saldo' },
-  { label: 'Tentang', href: '/tentang' },
 ]
 
 export default function PublicLayout({ children }: PublicLayoutProps) {

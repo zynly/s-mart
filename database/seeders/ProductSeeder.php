@@ -71,6 +71,11 @@ class ProductSeeder extends Seeder
                     'min_stock' => 10,
                     'is_active' => true,
                     'is_visible_public' => true,
+                    // T-111 (Fase 19): beberapa produk ditandai favorit
+                    // supaya section "Produk Pilihan" storefront publik
+                    // tidak kosong di DB baru — bukan aturan bisnis,
+                    // murni data demo/onboarding.
+                    'is_favorite' => $index % 7 === 0,
                 ],
             );
 

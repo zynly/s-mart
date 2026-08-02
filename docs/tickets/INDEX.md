@@ -1516,15 +1516,123 @@ ini kalau dibutuhkan lagi.
 
 **Blocking:** Fase 17 selesai (semua fase bisnis selesai).
 
-## Fase 19 — Storefront Publik *(baru)*
+## Fase 19 — Storefront Publik *(MVP inti selesai, lanjutan ditunda)*
 
-- [ ] ⬜ T-111 — `ProductPublicData` DTO (saring HPP/margin/stok — ADR-0009)
-- [ ] ⬜ T-112 — Halaman katalog publik + detail produk
-- [ ] ⬜ T-113 — Halaman promo publik (`promos.is_public`)
-- [ ] ⬜ T-114 — Cek saldo publik (input nomor kartu, tanpa login)
-- [ ] ⬜ T-115 — Caching agresif (`cache_ttl_minutes`) + SEO dasar
+- [x] ✅ T-111 — `ProductPublicData` DTO (saring HPP/margin/stok — ADR-0009)
+- [x] ✅ T-112 — Halaman katalog publik + detail produk
+- [x] ✅ T-113 — Halaman promo publik (`promos.is_public`)
+- [x] ✅ T-114 — Cek saldo publik (input nomor anggota, tanpa login)
+- [ ] ⬜ T-115 — Caching agresif *(TTL polos sudah — lihat catatan; SEO
+      dasar DITUNDA)*
 
 **Blocking:** Fase 2 & Fase 10 selesai (independen dari Fase 3–9, 11–18).
+
+**Keputusan scope (dikonfirmasi user sebelum implementasi):** MVP inti
+dulu — Beranda+Katalog+Detail Produk+Promo+Cek Saldo+test keamanan
+anti-bocor (wajib). SKU TIDAK ditampilkan ke publik. Produk konsinyasi
+TIDAK ditandai (tidak relevan dari sisi pembeli). Storefront publik
+penuh tanpa login (ADR-0009, transparansi harga utk CALON santri/wali).
+
+**Ditunda ke sesi berikutnya** (bukan dihapus dari rencana): SEO
+(sitemap.xml, robots.txt, meta description/OG per halaman, JSON-LD
+produk), halaman Tentang/Kontak/FAQ (+ migration tabel `feedbacks` utk
+form kontak — belum ada sama sekali), integrasi admin (kolom "Publik"
++ bulk action di DataTable `/admin/produk`, tab "Storefront" di form
+produk & di Pengaturan), `CacheInvalidationService` aktif (lihat
+trade-off TTL di bawah).
+
+**Arsitektur (`app/Services/StorefrontService.php`):**
+- Pagar keamanan: `Product::scopePublic()` (is_visible_public=true,
+  is_active=true, slug not null) — WAJIB di setiap query, plus
+  `ProductPublicData` DTO (`app/Data/ProductPublicData.php`, pakai
+  `spatie/laravel-data` yang ternyata sudah ter-install tapi belum
+  pernah dipakai) sebagai SATU-SATUNYA bentuk data produk yang boleh
+  sampai ke React — field APAPUN di luar DTO ini tidak mungkin
+  terkirim tidak sengaja.
+- **Harga & stok di-batch** (satu query per halaman katalog, BUKAN
+  reuse `PriceService::getActivePrice()` per produk dalam loop) —
+  method itu (a) N+1 kalau dipanggil per baris dan (b) `throw
+  RuntimeException` kalau harga tidak ditemukan (masuk akal utk
+  checkout, TIDAK masuk akal utk katalog publik: satu produk tanpa
+  harga tidak boleh menjatuhkan seluruh halaman). Spec Fase 19
+  eksplisit mensyaratkan "< 10 query" di halaman katalog.
+- Badge stok REUSE pola T-088 (Phase D, sesi sama) — baca `stocks`
+  (cache teragregasi), bukan `stock_layers`, konsisten dengan
+  dashboard & halaman Stok admin.
+- Harga promo katalog: HANYA promo tipe `product`/`category` yang
+  dipertimbangkan (bukan reuse `PromoEngine` — method-nya privat &
+  didesain utk konteks baris keranjang saat checkout, bukan preview
+  harga statis di katalog publik). Tipe lain (buy_x_get_y, bundle,
+  tiered_qty, happy_hour, clearance, member_level, birthday) sengaja
+  dilewati — butuh konteks keranjang/waktu/member yang tidak masuk
+  akal untuk satu angka harga statis.
+- Cache TTL polos (`Cache::remember()`, `config('storefront.cache_ttl_minutes')`
+  = 15 menit) — BUKAN invalidasi aktif. Trade-off eksplisit: perubahan
+  produk/harga/promo di admin baru terlihat di storefront setelah
+  cache kedaluwarsa. Didokumentasikan sebagai keputusan sadar MVP,
+  bukan bug — `CacheInvalidationService` (Observer di
+  Product/ProductPrice/Promo) jadi backlog lanjutan.
+- Cek saldo (`CheckBalanceController`): input `members.member_number`
+  (BUKAN `member_cards.card_number` — UID RFID, tidak praktis diketik
+  manual). Respons GENERIK sama persis untuk "nomor tidak ditemukan"
+  vs "member ada tapi status tidak aktif" (cegah endpoint jadi alat
+  enumerasi status keanggotaan). Nama disamarkan (`maskName()` — kata
+  pertama utuh + sisanya "F*****") sebelum dikirim, bukan nama
+  lengkap (endpoint publik tanpa login, nomor anggota bisa dicoba-coba
+  walau di-throttle `throttle:10,1`). Throttle diverifikasi sungguhan
+  lewat Playwright: 10 percobaan lolos, percobaan ke-11 balas 429.
+
+**Bug ditemukan & ditambal selama verifikasi (bukan cuma kelihatan
+benar di kode):**
+- `formatPromoForDisplay()` ditambahkan di `StorefrontService` — Promo
+  model asli (kalau dikirim mentah ke Inertia) membawa field
+  operasional (`quota_total`, `created_by`, `outlet_ids`, dst) yang
+  tidak untuk konsumsi publik. Bukan rahasia dagang seperti HPP, tapi
+  tetap tidak pantas dikirim mentah.
+- `getActivePublicPromos()` awalnya dipakai untuk DUA kebutuhan
+  berbeda (harga promo katalog + daftar "Promo Berjalan" halaman
+  /promo) — dipisah jadi `getActivePublicPromos()` (start_date<=hari
+  ini, dipakai `resolvePromoPrice()`) vs `getUpcomingPublicPromos()`
+  (start_date>hari ini, section "Segera Hadir") — kalau digabung satu
+  method dengan flag, `resolvePromoPrice()` berisiko tidak sengaja
+  menerapkan harga promo yang belum berlaku.
+- Bug operator precedence PHP nyata: `$filters['sort'] ?? null === 'nama'`
+  ternyata di-parse `$filters['sort'] ?? (null === 'nama')` (precedence
+  `??` LEBIH RENDAH dari `===`) — bukan `($filters['sort'] ?? null) === 'nama'`
+  seperti maksud aslinya. Ditemukan saat review sendiri sebelum
+  sempat jadi bug produksi, ditambal dengan tanda kurung eksplisit.
+- **Select dropdown "Terbaru" (sort) tampil KOSONG di render pertama**
+  — ditemukan lewat Playwright (`allInnerTexts()` kosong), BUKAN
+  kelihatan dari baca kode. Root cause: `value={filters.sort ?? 'terbaru'}`
+  (fallback runtime di React) membuat Radix Select gagal resolve label
+  awal, padahal `value={filters.sort}` dengan `sort` SELALU diisi
+  eksplisit oleh backend (bukan absen lalu di-fallback client-side)
+  bekerja normal — dikonfirmasi lewat A/B test langsung (URL dengan
+  `?sort=harga_asc` eksplisit menampilkan label benar, tanpa param
+  sama sekali menampilkan kosong). Ditambal di server
+  (`ProductController::index()` selalu isi `sort` eksplisit), bukan
+  di-workaround di frontend — satu sumber kebenaran.
+
+**Diverifikasi:** `pint`/`tsc`/`eslint`/`vite build` bersih; full Pest
+suite hijau termasuk `StorefrontLeakTest` baru (5 test — cek produk
+`is_visible_public=false` 404 di detail & tidak muncul di katalog,
+produk `is_active=false` 404, response halaman detail/katalog TIDAK
+mengandung `unit_cost`/`avg_cost`/`hpp`/`margin`/`supplier`/`batch_no`/`sku`
+— test kedua sengaja HANYA cek props `product`/`products`, bukan
+seluruh page object, karena `ziggy` (daftar nama route, termasuk
+"admin.suppliers.index") bikin assert `not->toContain('supplier')`
+salah-positif kalau dicek dari seluruh halaman). Playwright end-to-end
+sungguhan: beranda (hero+promo+kategori+produk pilihan+info toko),
+katalog (search debounce+filter kategori/brand+sort+pagination, state
+di URL query — refresh & tombol back tetap terfilter), detail produk
+(harga promo strikethrough terbukti benar: Chitato Rp11.000→Rp9.900),
+halaman promo, cek saldo (nomor valid → saldo tampil, nomor tidak
+valid → pesan generik, 11 percobaan/menit → ditolak).
+
+Sekalian: `ProductSeeder` dapat field `is_favorite` (beberapa produk
+demo ditandai favorit) — section "Produk Pilihan" beranda storefront
+kosong tanpa ini (default seed data tidak pernah menandai favorit),
+diterapkan juga ke DB dev berjalan (bukan cuma seeder ke depan).
 
 ## Fase UI-01 — Fondasi UI `[SELESAI]`
 

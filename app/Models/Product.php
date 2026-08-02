@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Support\Str as SupportStr;
 use App\Traits\LogsActivityCustom;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -75,5 +76,18 @@ class Product extends Model
     public function unitConversions(): HasMany
     {
         return $this->hasMany(UnitConversion::class);
+    }
+
+    /**
+     * T-111 (Fase 19). Pagar keamanan utama storefront publik — SETIAP
+     * query dari `StorefrontService` wajib lewat scope ini, tanpa
+     * kecuali. Produk konsinyasi SENGAJA tidak dikecualikan (keputusan
+     * bisnis: dari sisi pembeli, asal-usul barang tidak relevan).
+     */
+    public function scopePublic(Builder $query): Builder
+    {
+        return $query->where('is_visible_public', true)
+            ->where('is_active', true)
+            ->whereNotNull('slug');
     }
 }

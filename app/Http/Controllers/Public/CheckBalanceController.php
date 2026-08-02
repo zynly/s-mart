@@ -1,0 +1,59 @@
+<?php
+
+namespace App\Http\Controllers\Public;
+
+use App\Http\Controllers\Controller;
+use App\Models\Member;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class CheckBalanceController extends Controller
+{
+    public function index(): Response
+    {
+        return Inertia::render('Public/CheckBalance');
+    }
+
+    public function check(Request $request): Response
+    {
+        $data = $request->validate(['member_number' => ['required', 'string', 'max:30']]);
+
+        $member = Member::where('member_number', $data['member_number'])
+            ->where('status', 'active')
+            ->first();
+
+        // Respons SAMA (generik) untuk "nomor tidak ditemukan" DAN "member
+        // ada tapi status tidak aktif" — kalau dibedakan, endpoint ini jadi
+        // alat enumerasi status keanggotaan orang lain.
+        if ($member === null) {
+            return Inertia::render('Public/CheckBalance', [
+                'error' => 'Nomor anggota tidak ditemukan.',
+                'submittedNumber' => $data['member_number'],
+            ]);
+        }
+
+        return Inertia::render('Public/CheckBalance', [
+            'result' => [
+                'name' => $this->maskName($member->name),
+                'balance' => $member->balance_cache,
+            ],
+            'submittedNumber' => $data['member_number'],
+        ]);
+    }
+
+    /**
+     * Nama santri TIDAK ditampilkan penuh — endpoint ini publik tanpa
+     * login, nomor anggota bisa dicoba-coba (walau di-throttle). Kata
+     * pertama utuh (konfirmasi "ini kartu saya") + sisanya disamarkan,
+     * bukan nama lengkap yang bisa dipanen lewat percobaan berurutan.
+     */
+    private function maskName(string $name): string
+    {
+        $words = explode(' ', trim($name));
+        $first = array_shift($words);
+        $masked = array_map(fn ($w) => mb_substr($w, 0, 1).str_repeat('*', max(1, mb_strlen($w) - 1)), $words);
+
+        return trim($first.' '.implode(' ', $masked));
+    }
+}
