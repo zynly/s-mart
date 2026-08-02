@@ -10,7 +10,6 @@ use App\Models\Receivable;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\StockLayer;
-use App\Reports\BaseReport;
 use App\Reports\SalesByCashierReport;
 use App\Reports\SalesByPaymentMethodReport;
 use App\Reports\SalesSummaryReport;
@@ -24,8 +23,8 @@ use Inertia\Response;
  * T-091/T-092 (Fase 15). Backlog resmi hanya punya 2 tiket dashboard
  * (Owner/Admin, Kasir) — bukan 4 dashboard terpisah per role seperti
  * spec Livewire asli (skillage-mart/prompts/fase-15.md). Satu halaman,
- * dua cabang: kasir (`hasRole('cashier')`, pola PERSIS sama dengan
- * `ReportController::visibleTo()`/`scopedQuery()` Fase 14) dapat widget
+ * dua cabang: kasir (`hasRole('cashier')`, lewat `BaseReport::scopedQuery()`
+ * Fase 14, dipakai bersama `ReportController` — Phase D) dapat widget
  * sesi berjalan; role lain dapat widget analitik yang masing-masing
  * baru muncul kalau user punya permission modul terkait — supervisor/
  * warehouse/treasurer otomatis dapat subset relevan tanpa halaman
@@ -133,8 +132,8 @@ class DashboardController extends Controller
     private function statCards($user, string $today, string $yesterday): array
     {
         $report = new SalesSummaryReport;
-        $todayRow = $this->scopedQuery($report, ['date_from' => $today, 'date_to' => $today], $user)->first();
-        $yesterdayRow = $this->scopedQuery($report, ['date_from' => $yesterday, 'date_to' => $yesterday], $user)->first();
+        $todayRow = $report->scopedQuery(['date_from' => $today, 'date_to' => $today], $user)->first();
+        $yesterdayRow = $report->scopedQuery(['date_from' => $yesterday, 'date_to' => $yesterday], $user)->first();
 
         $omzetToday = (int) ($todayRow->omzet ?? 0);
         $omzetYesterday = (int) ($yesterdayRow->omzet ?? 0);
@@ -155,7 +154,7 @@ class DashboardController extends Controller
     private function trend30d($user): array
     {
         $report = new SalesSummaryReport;
-        $rows = $this->scopedQuery($report, [
+        $rows = $report->scopedQuery([
             'date_from' => now()->subDays(29)->toDateString(),
             'date_to' => now()->toDateString(),
         ], $user)->get();
@@ -190,7 +189,7 @@ class DashboardController extends Controller
     {
         $report = new SalesByPaymentMethodReport;
 
-        return $this->scopedQuery($report, ['date_from' => $today, 'date_to' => $today], $user)
+        return $report->scopedQuery(['date_from' => $today, 'date_to' => $today], $user)
             ->get()
             ->map(fn ($r) => ['metode' => $r->metode, 'total' => (int) $r->total])
             ->values()->all();
@@ -255,7 +254,7 @@ class DashboardController extends Controller
     {
         $report = new SalesByCashierReport;
 
-        return $this->scopedQuery($report, ['date_from' => $today, 'date_to' => $today], $user)
+        return $report->scopedQuery(['date_from' => $today, 'date_to' => $today], $user)
             ->limit(5)
             ->get()
             ->map(fn ($r) => ['kasir' => $r->kasir, 'omzet' => (int) $r->omzet])
@@ -310,20 +309,5 @@ class DashboardController extends Controller
             })
             ->map(fn ($m) => ['name' => $m->name, 'birth_date' => $m->birth_date->format('Y-m-d')])
             ->values()->all();
-    }
-
-    /**
-     * Pola PERSIS sama dengan ReportController::scopedQuery() (Fase 14)
-     * — kasir hanya lihat data miliknya sendiri lewat scopeForCashier().
-     */
-    private function scopedQuery(BaseReport $report, array $filters, $user)
-    {
-        $query = $report->query($filters, $user);
-
-        if ($user->hasRole('cashier')) {
-            $query = $report->scopeForCashier($query, $user);
-        }
-
-        return $query;
     }
 }

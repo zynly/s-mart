@@ -100,4 +100,22 @@ abstract class BaseReport
     {
         return $query;
     }
+
+    /**
+     * T-084 punya `scopedQuery()` identik di DUA tempat (Phase D):
+     * `ReportController` (halaman laporan) dan `DashboardController`
+     * (widget dashboard, panggil laporan yang sama untuk angka ringkas)
+     * — query() + scopeForCashier() digabung satu sumber kebenaran di
+     * sini, bukan disalin-tempel ulang tiap ada pemanggil baru.
+     */
+    final public function scopedQuery(array $filters, User $user): Builder
+    {
+        $query = $this->query($filters, $user);
+
+        if ($user->hasRole('cashier')) {
+            $query = $this->scopeForCashier($query, $user);
+        }
+
+        return $query;
+    }
 }

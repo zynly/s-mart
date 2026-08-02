@@ -65,7 +65,7 @@ class ReportController extends Controller
         $report = $this->resolve($key, $user);
         $filters = $request->only(collect($report->filters())->pluck('key')->all());
 
-        $rows = $this->scopedQuery($report, $filters, $user)->paginate(50)->withQueryString();
+        $rows = $report->scopedQuery($filters, $user)->paginate(50)->withQueryString();
 
         return Inertia::render('Admin/Reports/Show', [
             'reportKey' => $report->key(),
@@ -73,7 +73,7 @@ class ReportController extends Controller
             'filterDefs' => $report->filters(),
             'columns' => $report->visibleColumns($user),
             'rows' => $rows,
-            'summary' => $report->visibleSummary($report->summary($this->scopedQuery($report, $filters, $user), $user), $user),
+            'summary' => $report->visibleSummary($report->summary($report->scopedQuery($filters, $user), $user), $user),
             'filters' => $filters,
             'outlets' => Outlet::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'cashiers' => User::role('cashier')->orderBy('name')->get(['id', 'name']),
@@ -103,7 +103,7 @@ class ReportController extends Controller
         // paginate()->total() sudah menangani ini dengan benar (dipakai
         // juga oleh show(), terverifikasi tinker), jadi dipakai ulang
         // di sini alih-alih reimplementasi count-aware groupBy sendiri.
-        $rowCount = $this->scopedQuery($report, $filters, $user)->paginate(1)->total();
+        $rowCount = $report->scopedQuery($filters, $user)->paginate(1)->total();
 
         if ($rowCount === 0) {
             return response()->json(['status' => 'empty', 'message' => 'Tidak ada data untuk diekspor.'], 422);
@@ -158,16 +158,5 @@ class ReportController extends Controller
         }
 
         return $user->can($report->requiredPermission());
-    }
-
-    private function scopedQuery(BaseReport $report, array $filters, User $user)
-    {
-        $query = $report->query($filters, $user);
-
-        if ($user->hasRole('cashier')) {
-            $query = $report->scopeForCashier($query, $user);
-        }
-
-        return $query;
     }
 }
