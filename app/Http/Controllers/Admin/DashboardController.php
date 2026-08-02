@@ -9,6 +9,7 @@ use App\Models\Member;
 use App\Models\Receivable;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\Stock;
 use App\Models\StockLayer;
 use App\Reports\SalesByCashierReport;
 use App\Reports\SalesByPaymentMethodReport;
@@ -264,13 +265,20 @@ class DashboardController extends Controller
     private function stockAlerts(): array
     {
         return [
-            'critical' => StockLayer::query()
-                ->join('products', 'products.id', '=', 'stock_layers.product_id')
-                ->where('stock_layers.qty_remaining', '>', 0)
-                ->selectRaw('products.id')
-                ->groupBy('products.id')
-                ->havingRaw('SUM(stock_layers.qty_remaining) <= MIN(products.min_stock)')
-                ->get()->count(),
+            // T-088 (Phase D): dulu SUM(stock_layers.qty_remaining) vs
+            // MIN(products.min_stock) lewat groupBy/having — sumber data
+            // BEDA dari StockController (yang pakai `stocks`, cache
+            // teragregasi yang disinkronkan transaksional oleh
+            // StockService::recalculateCache() di setiap mutasi layer,
+            // lihat app/Services/StockService.php). Disamakan ke `stocks`
+            // di sini juga: satu sumber, query lebih sederhana (tanpa
+            // groupBy/having), dan konsisten dengan angka yang dilihat
+            // user di halaman Stok.
+            'critical' => Stock::query()
+                ->join('products', 'products.id', '=', 'stocks.product_id')
+                ->where('stocks.qty', '>', 0)
+                ->whereColumn('stocks.qty', '<=', 'products.min_stock')
+                ->count(),
             'expiringSoon' => StockLayer::query()
                 ->where('qty_remaining', '>', 0)
                 ->whereNotNull('expired_at')

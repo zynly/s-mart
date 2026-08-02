@@ -2,6 +2,7 @@
 
 namespace App\Reports;
 
+use App\Models\Stock;
 use App\Models\StockLayer;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -14,6 +15,15 @@ use Illuminate\Support\Carbon;
  * granularitasnya sama (produk vs layer), tapi disatukan lewat UNION
  * SQL supaya tetap satu result-set yang bisa dipaginasi BaseReport
  * generik (getAging()-style Collection eager tidak dipakai di sini).
+ *
+ * "Kritis" (Phase D) sengaja baca `stocks` (cache teragregasi, satu
+ * baris per produk+outlet, disinkronkan transaksional oleh
+ * StockService::recalculateCache()) — BUKAN SUM(stock_layers.qty_remaining)
+ * langsung — supaya sama persis dengan angka yang dilihat user di
+ * halaman Stok & widget dashboard (T-088, konsolidasi 4 tempat yang
+ * dulu baca 2 sumber data berbeda). "Kadaluwarsa" TETAP baca
+ * `stock_layers` — granularitas per-batch (`expired_at` per layer),
+ * bukan sesuatu yang ada di tabel `stocks`.
  */
 class StockCriticalExpiryReport extends BaseReport
 {
@@ -50,14 +60,13 @@ class StockCriticalExpiryReport extends BaseReport
         $expiryDays = (int) ($filters['expiry_days'] ?? 30);
         $threshold = Carbon::now()->addDays($expiryDays)->toDateString();
 
-        $critical = StockLayer::query()
-            ->join('products', 'products.id', '=', 'stock_layers.product_id')
-            ->join('outlets', 'outlets.id', '=', 'stock_layers.outlet_id')
-            ->selectRaw("'Kritis' as kategori, products.sku as sku, products.name as produk, outlets.name as outlet, SUM(stock_layers.qty_remaining) as qty, MIN(products.min_stock) as batas, NULL as tanggal")
-            ->where('stock_layers.qty_remaining', '>', 0)
-            ->when($filters['outlet_id'] ?? null, fn ($q, $v) => $q->where('stock_layers.outlet_id', $v))
-            ->groupBy('products.id', 'products.sku', 'products.name', 'outlets.id', 'outlets.name')
-            ->havingRaw('SUM(stock_layers.qty_remaining) <= MIN(products.min_stock)');
+        $critical = Stock::query()
+            ->join('products', 'products.id', '=', 'stocks.product_id')
+            ->join('outlets', 'outlets.id', '=', 'stocks.outlet_id')
+            ->selectRaw("'Kritis' as kategori, products.sku as sku, products.name as produk, outlets.name as outlet, stocks.qty as qty, products.min_stock as batas, NULL as tanggal")
+            ->where('stocks.qty', '>', 0)
+            ->whereColumn('stocks.qty', '<=', 'products.min_stock')
+            ->when($filters['outlet_id'] ?? null, fn ($q, $v) => $q->where('stocks.outlet_id', $v));
 
         return StockLayer::query()
             ->join('products', 'products.id', '=', 'stock_layers.product_id')
