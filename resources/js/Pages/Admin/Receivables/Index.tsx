@@ -15,6 +15,7 @@ import { Label } from '@/Components/ui/label'
 import { Badge } from '@/Components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
+import { AGING_BUCKETS, AGING_BUCKET_LABELS } from '@/Lib/aging'
 import type { PageProps, Paginated } from '@/Types'
 
 type Ref = { id: number; name: string }
@@ -53,14 +54,6 @@ const STATUS_BADGE: Record<string, string> = {
   paid: 'bg-success text-white',
   overdue: 'bg-danger text-white',
   written_off: 'bg-slate-400 text-white',
-}
-
-const BUCKET_LABELS: Record<string, string> = {
-  current: 'Belum Jatuh Tempo',
-  '0-30': '0–30 Hari',
-  '31-60': '31–60 Hari',
-  '61-90': '61–90 Hari',
-  '90+': '> 90 Hari',
 }
 
 export default function Index({ tab, receivables, aging, cashAccounts, filters }: ReceivablesIndexProps) {
@@ -152,8 +145,8 @@ export default function Index({ tab, receivables, aging, cashAccounts, filters }
       ]} />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        {(['current', '0-30', '31-60', '61-90', '90+'] as const).map((bucket) => (
-          <StatCard key={bucket} label={BUCKET_LABELS[bucket] ?? bucket} value={new Intl.NumberFormat('id-ID').format(agingSummary[bucket] ?? 0)} />
+        {AGING_BUCKETS.map((bucket) => (
+          <StatCard key={bucket} label={AGING_BUCKET_LABELS[bucket]} value={new Intl.NumberFormat('id-ID').format(agingSummary[bucket] ?? 0)} />
         ))}
       </div>
 

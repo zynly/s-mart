@@ -4,23 +4,18 @@ namespace App\Reports;
 
 use App\Models\Debt;
 use App\Models\User;
+use App\Support\AgingBucket;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Wrapper tipis, sama alasan seperti ReceivableAgingReport — aturan
  * bucket sama persis dengan DebtService::getAging(), diekspresikan
- * ulang sebagai SQL supaya bisa dipaginasi.
+ * ulang sebagai SQL (lewat AgingBucket::sqlCase()) supaya bisa
+ * dipaginasi.
  */
 class DebtAgingReport extends BaseReport
 {
-    private const BUCKET_CASE = "CASE
-        WHEN DATEDIFF(CURDATE(), debts.due_date) <= 0 THEN 'current'
-        WHEN DATEDIFF(CURDATE(), debts.due_date) <= 30 THEN '0-30'
-        WHEN DATEDIFF(CURDATE(), debts.due_date) <= 60 THEN '31-60'
-        WHEN DATEDIFF(CURDATE(), debts.due_date) <= 90 THEN '61-90'
-        ELSE '90+' END";
-
     public function key(): string
     {
         return 'debt-aging';
@@ -54,7 +49,7 @@ class DebtAgingReport extends BaseReport
             ->join('suppliers', 'suppliers.id', '=', 'debts.supplier_id')
             ->whereIn('debts.status', ['unpaid', 'partial', 'overdue'])
             ->when($filters['outlet_id'] ?? null, fn ($q, $v) => $q->where('debts.outlet_id', $v))
-            ->selectRaw('debts.id, debts.reference as referensi, suppliers.name as supplier, debts.total_amount as total, debts.paid_amount as dibayar, debts.remaining_amount as sisa, debts.due_date as jatuh_tempo, ('.self::BUCKET_CASE.') as bucket')
+            ->selectRaw('debts.id, debts.reference as referensi, suppliers.name as supplier, debts.total_amount as total, debts.paid_amount as dibayar, debts.remaining_amount as sisa, debts.due_date as jatuh_tempo, ('.AgingBucket::sqlCase('debts.due_date').') as bucket')
             ->orderBy('debts.due_date');
     }
 

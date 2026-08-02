@@ -7,6 +7,7 @@ use App\Models\CashierSession;
 use App\Models\Receivable;
 use App\Models\ReceivablePayment;
 use App\Models\User;
+use App\Support\AgingBucket;
 use App\Support\ReferenceGenerator;
 use DomainException;
 use Illuminate\Support\Collection;
@@ -153,15 +154,7 @@ class ReceivableService
             ->map(function (Receivable $receivable) {
                 $daysOverdue = now()->diffInDays($receivable->due_date, false) * -1;
 
-                $bucket = match (true) {
-                    $daysOverdue <= 0 => 'current',
-                    $daysOverdue <= 30 => '0-30',
-                    $daysOverdue <= 60 => '31-60',
-                    $daysOverdue <= 90 => '61-90',
-                    default => '90+',
-                };
-
-                return ['receivable' => $receivable, 'bucket' => $bucket];
+                return ['receivable' => $receivable, 'bucket' => AgingBucket::forDaysOverdue($daysOverdue)];
             });
     }
 

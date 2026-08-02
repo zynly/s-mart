@@ -7,6 +7,7 @@ use App\Models\Debt;
 use App\Models\DebtPayment;
 use App\Models\Purchase;
 use App\Models\User;
+use App\Support\AgingBucket;
 use App\Support\ReferenceGenerator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -96,15 +97,7 @@ class DebtService
             ->map(function (Debt $debt) {
                 $daysOverdue = now()->diffInDays($debt->due_date, false) * -1;
 
-                $bucket = match (true) {
-                    $daysOverdue <= 0 => 'current',
-                    $daysOverdue <= 30 => '0-30',
-                    $daysOverdue <= 60 => '31-60',
-                    $daysOverdue <= 90 => '61-90',
-                    default => '90+',
-                };
-
-                return ['debt' => $debt, 'bucket' => $bucket];
+                return ['debt' => $debt, 'bucket' => AgingBucket::forDaysOverdue($daysOverdue)];
             });
     }
 
