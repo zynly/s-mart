@@ -7,6 +7,7 @@ import { Money } from '@/Components/common/Money'
 import { Label } from '@/Components/ui/label'
 import { Input } from '@/Components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
+import { formatDate } from '@/Lib/date'
 
 type AccountOption = { id: number; code: string; name: string }
 
@@ -99,7 +100,7 @@ export default function Index({ tab, accounts, account, entries, openingBalance,
               </tr>
               {rows.map(({ entry, balance }) => (
                 <tr key={entry.id} className="border-t border-border">
-                  <td className="p-2">{new Date(entry.journal_date).toLocaleDateString('id-ID')}</td>
+                  <td className="p-2">{formatDate(entry.journal_date)}</td>
                   <td className="p-2 font-mono">{entry.journal_reference}</td>
                   <td className="p-2 text-content-muted">{entry.description ?? entry.journal_description ?? '—'}</td>
                   <td className="p-2 text-right">{entry.debit > 0 && <Money amount={entry.debit} size="sm" />}</td>

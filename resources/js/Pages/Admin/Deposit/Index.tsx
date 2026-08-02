@@ -18,6 +18,7 @@ import { Badge } from '@/Components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
+import { formatMoney } from '@/Lib/money'
 import { newIdempotencyKey } from '@/Lib/idempotency'
 import type { Paginated } from '@/Types'
 
@@ -220,7 +221,7 @@ export default function Index({ tab, transactions, members, paymentMethods, outl
                 <div className="flex flex-wrap gap-2">
                   {QUICK_AMOUNTS.map((amt) => (
                     <Button key={amt} type="button" variant="outline" size="sm" onClick={() => topupForm.setData('amount', amt)}>
-                      Rp {amt.toLocaleString('id-ID')}
+                      {formatMoney(amt)}
                     </Button>
                   ))}
                 </div>

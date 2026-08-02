@@ -16,6 +16,8 @@ import { Badge } from '@/Components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
 import { AGING_BUCKETS, AGING_BUCKET_LABELS } from '@/Lib/aging'
+import { formatDate } from '@/Lib/date'
+import { formatMoney } from '@/Lib/money'
 import type { PageProps, Paginated } from '@/Types'
 
 type Ref = { id: number; name: string }
@@ -102,7 +104,7 @@ export default function Index({ tab, receivables, aging, cashAccounts, filters }
     { accessorKey: 'reference', header: 'Referensi' },
     { id: 'member', header: 'Anggota', cell: ({ row }) => `${row.original.member.name} (${row.original.member.member_number})` },
     { id: 'sale', header: 'Nota', cell: ({ row }) => row.original.sale?.reference ?? '—' },
-    { id: 'due', header: 'Jatuh Tempo', cell: ({ row }) => new Date(row.original.due_date).toLocaleDateString('id-ID') },
+    { id: 'due', header: 'Jatuh Tempo', cell: ({ row }) => formatDate(row.original.due_date) },
     { id: 'total', header: 'Total', cell: ({ row }) => <Money amount={row.original.total_amount} /> },
     { id: 'remaining', header: 'Sisa', cell: ({ row }) => <Money amount={row.original.remaining_amount} /> },
     {
@@ -223,7 +225,7 @@ export default function Index({ tab, receivables, aging, cashAccounts, filters }
         open={writeOffTarget !== null}
         onOpenChange={(open) => !open && setWriteOffTarget(null)}
         title="Hapus Piutang"
-        description={`Piutang ${writeOffTarget?.reference} sebesar Rp ${writeOffTarget?.remaining_amount.toLocaleString('id-ID')} akan dihapus permanen (write-off) dan dianggap tidak tertagih. Tindakan ini hanya untuk piutang yang sudah lewat jatuh tempo lebih dari 90 hari.`}
+        description={`Piutang ${writeOffTarget?.reference} sebesar ${formatMoney(writeOffTarget?.remaining_amount ?? 0)} akan dihapus permanen (write-off) dan dianggap tidak tertagih. Tindakan ini hanya untuk piutang yang sudah lewat jatuh tempo lebih dari 90 hari.`}
         confirmLabel="Ya, Hapus Piutang"
         variant="destructive"
         onConfirm={confirmWriteOff}

@@ -11,6 +11,7 @@ import { Badge } from '@/Components/ui/badge'
 import { Checkbox } from '@/Components/ui/checkbox'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
+import { formatDate } from '@/Lib/date'
 
 type ItemRow = {
   id: number
@@ -129,7 +130,7 @@ export default function Show({ purchase }: { purchase: PurchaseDetail }) {
                 <TableCell><Money amount={item.unit_price} size="sm" /></TableCell>
                 <TableCell><Money amount={item.final_unit_cost} size="sm" /></TableCell>
                 <TableCell>{item.batch_no ?? '—'}</TableCell>
-                <TableCell>{item.expired_at ? new Date(item.expired_at).toLocaleDateString('id-ID') : '—'}</TableCell>
+                <TableCell>{item.expired_at ? formatDate(item.expired_at) : '—'}</TableCell>
               </TableRow>
             ))}
           </TableBody>

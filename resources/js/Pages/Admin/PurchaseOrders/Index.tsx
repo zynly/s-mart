@@ -14,6 +14,7 @@ import { Label } from '@/Components/ui/label'
 import { Badge } from '@/Components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/Components/ui/sheet'
+import { formatDate } from '@/Lib/date'
 import type { Paginated } from '@/Types'
 
 type Ref = { id: number; name: string }
@@ -107,7 +108,7 @@ export default function Index({ tab, orders, suppliers, outlets, products, units
   const columns: ColumnDef<OrderRow, unknown>[] = [
     { accessorKey: 'reference', header: 'Referensi' },
     { id: 'supplier', header: 'Supplier', cell: ({ row }) => row.original.supplier.name },
-    { id: 'date', header: 'Tanggal', cell: ({ row }) => new Date(row.original.order_date).toLocaleDateString('id-ID') },
+    { id: 'date', header: 'Tanggal', cell: ({ row }) => formatDate(row.original.order_date) },
     { id: 'items', header: 'Item', cell: ({ row }) => row.original.items.length },
     { id: 'total', header: 'Total', cell: ({ row }) => <Money amount={row.original.total} /> },
     {

@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card'
 import { Button } from '@/Components/ui/button'
 import { Badge } from '@/Components/ui/badge'
 import { useChartColors } from '@/Lib/chartTheme'
+import { formatMoney } from '@/Lib/money'
 import type { PageProps } from '@/Types'
 
 type CashierSession = {
@@ -107,7 +108,7 @@ function CashierDashboard({ session, todayStats }: CashierViewProps) {
       </Card>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <StatCard label="Penjualan Saya Hari Ini" value={`Rp${todayStats.omzet.toLocaleString('id-ID')}`} icon={Wallet} />
+        <StatCard label="Penjualan Saya Hari Ini" value={formatMoney(todayStats.omzet)} icon={Wallet} />
         <StatCard label="Transaksi Saya Hari Ini" value={String(todayStats.transaksi)} icon={ShoppingCart} />
       </div>
 
@@ -138,7 +139,7 @@ function TrendChart({ data }: { data: Charts['trend30d'] }) {
         <Tooltip
           contentStyle={{ backgroundColor: colors.tooltipBg, border: `1px solid ${colors.tooltipBorder}`, fontSize: 12 }}
           labelFormatter={(v) => formatDateShort(String(v))}
-          formatter={(v) => [`Rp${Number(v).toLocaleString('id-ID')}`, 'Omzet']}
+          formatter={(v) => [formatMoney(Number(v)), 'Omzet']}
         />
         <Line type="monotone" dataKey="omzet" stroke={colors.palette[0]} strokeWidth={2} dot={false} />
       </LineChart>
@@ -161,7 +162,7 @@ function CategoryChart({ data }: { data: Charts['byCategory'] }) {
         </Pie>
         <Tooltip
           contentStyle={{ backgroundColor: colors.tooltipBg, border: `1px solid ${colors.tooltipBorder}`, fontSize: 12 }}
-          formatter={(v) => `Rp${Number(v).toLocaleString('id-ID')}`}
+          formatter={(v) => formatMoney(Number(v))}
         />
         <Legend wrapperStyle={{ fontSize: 11, color: colors.axisColor }} />
       </PieChart>
@@ -182,7 +183,7 @@ function PaymentMethodChart({ data }: { data: Charts['byPaymentMethod'] }) {
         <YAxis stroke={colors.axisColor} fontSize={11} tickFormatter={(v: number) => `${Math.round(v / 1000)}k`} />
         <Tooltip
           contentStyle={{ backgroundColor: colors.tooltipBg, border: `1px solid ${colors.tooltipBorder}`, fontSize: 12 }}
-          formatter={(v) => `Rp${Number(v).toLocaleString('id-ID')}`}
+          formatter={(v) => formatMoney(Number(v))}
         />
         <Bar dataKey="total" fill={colors.palette[0]} radius={[4, 4, 0, 0]} />
       </BarChart>
@@ -221,16 +222,16 @@ function ManagerDashboard({ statCards, charts, recentSales, topProducts, cashier
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatCard
             label="Penjualan Hari Ini"
-            value={`Rp${statCards.omzetHariIni.toLocaleString('id-ID')}`}
+            value={formatMoney(statCards.omzetHariIni)}
             icon={Wallet}
             trend={statCards.omzetTrend}
             trendLabel="vs kemarin"
           />
           {statCards.labaKotorHariIni !== null && (
-            <StatCard label="Laba Kotor Hari Ini" value={`Rp${statCards.labaKotorHariIni.toLocaleString('id-ID')}`} icon={HandCoins} />
+            <StatCard label="Laba Kotor Hari Ini" value={formatMoney(statCards.labaKotorHariIni)} icon={HandCoins} />
           )}
           <StatCard label="Jumlah Transaksi" value={String(statCards.transaksiHariIni)} icon={ShoppingCart} />
-          <StatCard label="Rata-rata per Transaksi" value={`Rp${statCards.rataRataNota.toLocaleString('id-ID')}`} />
+          <StatCard label="Rata-rata per Transaksi" value={formatMoney(statCards.rataRataNota)} />
         </div>
       )}
 

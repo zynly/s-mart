@@ -16,6 +16,7 @@ import { Switch } from '@/Components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/Components/ui/sheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs'
+import { formatDate } from '@/Lib/date'
 import type { Paginated } from '@/Types'
 
 type Ref = { id: number; name: string }
@@ -133,7 +134,7 @@ export default function Index({ tab, purchases, suppliers, outlets, products, un
       cell: ({ row }) => <Link href={route('admin.purchases.show', row.original.id)} className="text-primary hover:underline">{row.original.reference}</Link>,
     },
     { id: 'supplier', header: 'Supplier', cell: ({ row }) => row.original.supplier.name },
-    { id: 'date', header: 'Tanggal', cell: ({ row }) => new Date(row.original.purchase_date).toLocaleDateString('id-ID') },
+    { id: 'date', header: 'Tanggal', cell: ({ row }) => formatDate(row.original.purchase_date) },
     {
       id: 'type',
       header: 'Tipe',

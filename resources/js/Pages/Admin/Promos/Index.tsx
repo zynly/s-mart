@@ -14,6 +14,7 @@ import { Switch } from '@/Components/ui/switch'
 import { Checkbox } from '@/Components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
+import { formatMoney } from '@/Lib/money'
 import type { Paginated } from '@/Types'
 
 type Ref = { id: number; name: string }
@@ -176,7 +177,7 @@ export default function Index({ tab, promos, products, categories, filters }: Pr
       cell: ({ row }) => {
         const p = row.original
         if (p.discount_type === 'percent') return `${p.discount_value}%`
-        if (p.discount_type === 'amount') return `Rp ${p.discount_value.toLocaleString('id-ID')}`
+        if (p.discount_type === 'amount') return formatMoney(p.discount_value)
         return p.discount_type
       },
     },

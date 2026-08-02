@@ -9,6 +9,7 @@ import { Input } from '@/Components/ui/input'
 import { Badge } from '@/Components/ui/badge'
 import { Card, CardContent } from '@/Components/ui/card'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/Components/ui/alert-dialog'
+import { formatDate } from '@/Lib/date'
 
 type Ref = { id: number; name: string } | null
 
@@ -160,7 +161,7 @@ export default function Show({ opname, canApproveVariance, tolerancePercent }: O
       <Card>
         <CardContent className="grid grid-cols-2 gap-3 p-4 text-sm sm:grid-cols-4">
           <div><p className="text-content-muted">Outlet</p><p className="font-medium">{opname.outlet.name}</p></div>
-          <div><p className="text-content-muted">Tanggal</p><p className="font-medium">{new Date(opname.opname_date).toLocaleDateString('id-ID')}</p></div>
+          <div><p className="text-content-muted">Tanggal</p><p className="font-medium">{formatDate(opname.opname_date)}</p></div>
           <div><p className="text-content-muted">Dimulai Oleh</p><p className="font-medium">{opname.starter?.name ?? '—'}</p></div>
           <div><p className="text-content-muted">Progres</p><p className="font-medium">{opname.counted_items} dari {opname.total_items} item</p></div>
         </CardContent>

@@ -9,6 +9,7 @@ import { Input } from '@/Components/ui/input'
 import { Badge } from '@/Components/ui/badge'
 import { Card, CardContent } from '@/Components/ui/card'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
+import { formatDate } from '@/Lib/date'
 import { toast } from 'sonner'
 
 type Ref = { id: number; name: string } | null
@@ -75,7 +76,7 @@ export default function Show({ journal }: JournalShowProps) {
 
       <Card>
         <CardContent className="grid grid-cols-2 gap-3 p-4 text-sm sm:grid-cols-4">
-          <div><p className="text-content-muted">Tanggal</p><p className="font-medium">{new Date(journal.journal_date).toLocaleDateString('id-ID')}</p></div>
+          <div><p className="text-content-muted">Tanggal</p><p className="font-medium">{formatDate(journal.journal_date)}</p></div>
           <div><p className="text-content-muted">Tipe</p><p className="font-medium">{TYPE_LABELS[journal.type] ?? journal.type}</p></div>
           <div><p className="text-content-muted">Outlet</p><p className="font-medium">{journal.outlet?.name ?? '—'}</p></div>
           <div><p className="text-content-muted">Keterangan</p><p className="font-medium">{journal.description ?? '—'}</p></div>

@@ -14,6 +14,7 @@ import { Badge } from '@/Components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/Components/ui/sheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs'
+import { formatDate } from '@/Lib/date'
 import type { Paginated } from '@/Types'
 
 type Ref = { id: number; name: string }
@@ -242,7 +243,7 @@ export default function Index({ tab, stocks, categories, outlets, currentOutletI
                   <p className="font-medium">{layer.product.name}</p>
                   <p className="text-content-muted">{layer.batch_no ?? '—'} · {Number(layer.qty_remaining).toLocaleString('id-ID')} unit</p>
                 </div>
-                <Badge className="bg-warning text-white">{new Date(layer.expired_at).toLocaleDateString('id-ID')}</Badge>
+                <Badge className="bg-warning text-white">{formatDate(layer.expired_at)}</Badge>
               </div>
             ))}
           </div>
@@ -257,7 +258,7 @@ export default function Index({ tab, stocks, categories, outlets, currentOutletI
                   <p className="font-medium">{layer.product.name}</p>
                   <p className="text-content-muted">{layer.batch_no ?? '—'} · {Number(layer.qty_remaining).toLocaleString('id-ID')} unit</p>
                 </div>
-                <Badge className="bg-danger text-white">{new Date(layer.expired_at).toLocaleDateString('id-ID')}</Badge>
+                <Badge className="bg-danger text-white">{formatDate(layer.expired_at)}</Badge>
               </div>
             ))}
           </div>

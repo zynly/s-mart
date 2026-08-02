@@ -9,6 +9,7 @@ import { Badge } from '@/Components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/Components/ui/alert-dialog'
+import { formatDate } from '@/Lib/date'
 
 type PeriodRow = {
   id: number
@@ -77,7 +78,7 @@ export default function Index({ tab, periods }: AccountingPeriodsIndexProps) {
             {periods.map((period) => (
               <tr key={period.id} className="border-t border-border">
                 <td className="p-2 font-medium">{MONTH_NAMES[period.month - 1]} {period.year}</td>
-                <td className="p-2 text-content-muted">{new Date(period.start_date).toLocaleDateString('id-ID')} — {new Date(period.end_date).toLocaleDateString('id-ID')}</td>
+                <td className="p-2 text-content-muted">{formatDate(period.start_date)} — {formatDate(period.end_date)}</td>
                 <td className="p-2"><Badge className={STATUS_BADGE[period.status]}>{STATUS_LABELS[period.status]}</Badge></td>
                 <td className="p-2">{period.closer?.name ?? '—'}</td>
                 <td className="p-2">

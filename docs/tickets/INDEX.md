@@ -1147,12 +1147,52 @@ tuntas.
       kosong).
 - [x] ✅ (sudah selesai lebih dulu di T-106) `Lib/api.ts` — token XSRF
       yang tadinya di-copy-paste 4× sekarang satu wrapper `fetch()`.
-- [ ] ⬜ Sisa: pisah `JournalService` (write/read), ekstrak
-      `DashboardService`, konsolidasi format tanggal/uang, sambungkan
-      4 field Settings mati, konsolidasi bucket aging & "stok rendah",
-      keputusan `payroll_deductions`/`exchanges` (bereskan atau
-      dokumentasikan sebagai sengaja ditunda) — lihat progres lanjutan
-      di bawah kalau sudah dikerjakan pada sesi yang sama.
+- [x] ✅ Satukan `scopedQuery()` duplikat `DashboardController`/
+      `ReportController` (identik byte-per-byte) — dipindah jadi satu
+      method final di `BaseReport` (tempat yang tepat, sudah pegang
+      `query()`/`scopeForCashier()` sendiri).
+- [x] ✅ Konsolidasi aturan bucket aging (current/0-30/31-60/61-90/90+,
+      dulu 6 tempat identik: 2 PHP `match(true)`, 2 SQL `CASE WHEN`
+      string, 2 const label frontend) — sisi PHP ke
+      `app/Support/AgingBucket.php` (dipakai `DebtService`/
+      `ReceivableService::getAging()` & `DebtAgingReport`/
+      `ReceivableAgingReport`), sisi frontend ke
+      `resources/js/Lib/aging.ts` (dipakai `Debts`/`Receivables/Index.tsx`).
+- [x] ✅ Satukan sumber data "stok rendah" — dulu Dashboard widget &
+      `StockCriticalExpiryReport` hitung lewat
+      `SUM(stock_layers.qty_remaining)` (groupBy+having), `StockController`
+      (halaman Stok) pakai `stocks.qty` (cache teragregasi). Disamakan
+      ke `stocks` di ketiganya (disinkronkan transaksional oleh
+      `StockService::recalculateCache()` di setiap mutasi
+      `stock_layers` — bukan benar-benar 2 sumber independen, tapi
+      berisiko baca beda kalau ada jalur mutasi baru lupa memanggilnya).
+- [x] ✅ Konsolidasi format tanggal & uang — 15 halaman `toLocaleDateString('id-ID')`/
+      `toLocaleTimeString('id-ID')` manual (hasil visual beda dari
+      `Lib/date.ts`, mis. "2/8/2026" vs "2 Agu 2026") diganti
+      `formatDate()`/`formatDateTime()`/`formatTime()`; 8 lokasi format
+      uang manual (`` `Rp${x.toLocaleString('id-ID')}` `` tanpa spasi
+      di Dashboard, beda visual dari komponen `<Money>` yang dipakai 35
+      halaman lain) diganti `formatMoney()` dari `Lib/money.ts`.
+      Dikecualikan SENGAJA: `Components/ui/calendar.tsx` (widget date
+      picker shadcn, bukan tampilan data) dan 2 helper lokal
+      `Dashboard.tsx` (`formatDateShort`/`formatTime` untuk label
+      chart—short format, tujuan beda dari tampilan tanggal penuh).
+      Diverifikasi: tsc/eslint/build bersih, full Pest suite hijau,
+      Playwright 13+ halaman render 200 tanpa console error, sampel
+      nilai Rupiah dashboard terkonfirmasi konsisten berspasi
+      ("Rp 27.500").
+- [ ] ⬜ **Sengaja TIDAK dikerjakan sesi ini** (keputusan eksplisit
+      user saat ditanya, bukan lupa): pisah `JournalService`
+      (write/read) — refactor arsitektur murni tanpa bug/masalah
+      fungsional, risiko regresi di kelas paling sensitif (akuntansi)
+      tidak sepadan tanpa manfaat langsung yang terasa pengguna;
+      sambungkan 4 field Settings mati (`rounding_step`/`rounding_mode`/
+      `tax_percent`/`low_stock_threshold_percent`) — perlu keputusan
+      bisnis dulu (implementasikan logic rounding/pajak beneran, atau
+      sembunyikan field dari UI); keputusan `payroll_deductions`
+      (tabel write-only, 0 UI/laporan) & `exchanges` (backend lengkap,
+      0 UI, T-072 sengaja ditunda) — perlu keputusan bisnis bangun UI
+      atau dokumentasikan resmi sebagai ditunda.
 
 ## Fase 18 — Pengujian, Keamanan & Penyiapan
 

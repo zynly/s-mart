@@ -13,6 +13,7 @@ import { Input } from '@/Components/ui/input'
 import { Badge } from '@/Components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
+import { formatDate } from '@/Lib/date'
 import type { Paginated } from '@/Types'
 
 type CouponRow = {
@@ -95,7 +96,7 @@ export default function Index({ tab, coupons, filters }: CouponsIndexProps) {
     { id: 'usage', header: 'Pemakaian', cell: ({ row }) => `${row.original.used_count} / ${row.original.quota}` },
     { id: 'member', header: 'Personal Untuk', cell: ({ row }) => row.original.member ? `${row.original.member.name} (${row.original.member.member_number})` : 'Umum' },
     { id: 'source', header: 'Sumber', cell: ({ row }) => SOURCE_LABELS[row.original.source] ?? row.original.source },
-    { id: 'valid', header: 'Berlaku Sampai', cell: ({ row }) => new Date(row.original.valid_until).toLocaleDateString('id-ID') },
+    { id: 'valid', header: 'Berlaku Sampai', cell: ({ row }) => formatDate(row.original.valid_until) },
     {
       id: 'status',
       header: 'Status',

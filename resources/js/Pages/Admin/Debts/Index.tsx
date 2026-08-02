@@ -15,6 +15,7 @@ import { Badge } from '@/Components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
 import { AGING_BUCKETS, AGING_BUCKET_LABELS } from '@/Lib/aging'
+import { formatDate } from '@/Lib/date'
 import type { Paginated } from '@/Types'
 
 type Ref = { id: number; name: string }
@@ -85,7 +86,7 @@ export default function Index({ tab, debts, aging, paymentMethods, filters }: De
     { accessorKey: 'reference', header: 'Referensi' },
     { id: 'supplier', header: 'Supplier', cell: ({ row }) => row.original.supplier.name },
     { id: 'purchase', header: 'Pembelian', cell: ({ row }) => row.original.purchase.reference },
-    { id: 'due', header: 'Jatuh Tempo', cell: ({ row }) => new Date(row.original.due_date).toLocaleDateString('id-ID') },
+    { id: 'due', header: 'Jatuh Tempo', cell: ({ row }) => formatDate(row.original.due_date) },
     { id: 'total', header: 'Total', cell: ({ row }) => <Money amount={row.original.total_amount} /> },
     { id: 'remaining', header: 'Sisa', cell: ({ row }) => <Money amount={row.original.remaining_amount} /> },
     {

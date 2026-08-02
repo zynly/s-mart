@@ -13,6 +13,8 @@ import { Badge } from '@/Components/ui/badge'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { newIdempotencyKey } from '@/Lib/idempotency'
+import { formatTime } from '@/Lib/date'
+import { formatMoney } from '@/Lib/money'
 import type { PageProps } from '@/Types'
 
 type PaymentMethodRow = {
@@ -287,7 +289,7 @@ export default function Index({ session, outlet, paymentMethods, favoriteProduct
       const res = await fetch(`${route('pos.credit-check')}?member_id=${member.id}&amount=${amount}`)
       const data = await res.json()
       if (!data.allowed) {
-        setCreditWarning(`Limit piutang terlampaui: aktif Rp ${data.active.toLocaleString('id-ID')} dari limit Rp ${data.limit.toLocaleString('id-ID')}.`)
+        setCreditWarning(`Limit piutang terlampaui: aktif ${formatMoney(data.active)} dari limit ${formatMoney(data.limit)}.`)
       }
     }
   }
@@ -542,7 +544,7 @@ export default function Index({ session, outlet, paymentMethods, favoriteProduct
                         <div className="flex flex-wrap gap-1.5">
                           {[20000, 50000, 100000].map((amt) => (
                             <Button key={amt} type="button" variant="outline" size="sm" onClick={() => updatePaymentLine(line.key, { received_amount: line.amount + amt })}>
-                              +Rp {amt.toLocaleString('id-ID')}
+                              +{formatMoney(amt)}
                             </Button>
                           ))}
                         </div>
@@ -651,7 +653,7 @@ export default function Index({ session, outlet, paymentMethods, favoriteProduct
               <button key={h.id} type="button" onClick={() => recallHold(h)} className="flex items-center justify-between p-3 text-left text-sm hover:bg-bg">
                 <div>
                   <p className="font-medium">{h.reference}</p>
-                  <p className="text-xs text-content-muted">{h.item_count} item · {new Date(h.held_at).toLocaleTimeString('id-ID')}</p>
+                  <p className="text-xs text-content-muted">{h.item_count} item · {formatTime(h.held_at)}</p>
                 </div>
                 <Money amount={h.total} size="sm" />
               </button>

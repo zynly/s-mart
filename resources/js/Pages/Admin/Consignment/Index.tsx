@@ -12,6 +12,7 @@ import { Label } from '@/Components/ui/label'
 import { Badge } from '@/Components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/Components/ui/sheet'
+import { formatDate } from '@/Lib/date'
 import type { Paginated } from '@/Types'
 
 type Ref = { id: number; name: string }
@@ -71,7 +72,7 @@ export default function Index({ tab, settlements, suppliers, outlets }: Consignm
     {
       id: 'period',
       header: 'Periode',
-      cell: ({ row }) => `${new Date(row.original.period_start).toLocaleDateString('id-ID')} – ${new Date(row.original.period_end).toLocaleDateString('id-ID')}`,
+      cell: ({ row }) => `${formatDate(row.original.period_start)} – ${formatDate(row.original.period_end)}`,
     },
     { id: 'sold', header: 'Terjual', cell: ({ row }) => <Money amount={row.original.total_sold} size="sm" /> },
     { id: 'commission', header: 'Komisi', cell: ({ row }) => <Money amount={row.original.commission_amount} size="sm" /> },

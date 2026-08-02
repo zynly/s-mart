@@ -13,6 +13,7 @@ import { Badge } from '@/Components/ui/badge'
 import { Card, CardContent } from '@/Components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
+import { formatDate } from '@/Lib/date'
 import type { Paginated } from '@/Types'
 
 type Ref = { id: number; name: string } | null
@@ -133,7 +134,7 @@ export default function Index({ tab, journals, accounts, outlets, filters, valid
 
   const columns: ColumnDef<JournalRow, unknown>[] = [
     { id: 'reference', header: 'Referensi', cell: ({ row }) => <Link href={route('admin.journals.show', row.original.id)} className="font-medium text-navy-600 hover:underline">{row.original.reference}</Link> },
-    { id: 'date', header: 'Tanggal', cell: ({ row }) => new Date(row.original.journal_date).toLocaleDateString('id-ID') },
+    { id: 'date', header: 'Tanggal', cell: ({ row }) => formatDate(row.original.journal_date) },
     { id: 'type', header: 'Tipe', cell: ({ row }) => TYPE_LABELS[row.original.type] ?? row.original.type },
     { accessorKey: 'description', header: 'Keterangan' },
     { id: 'debit', header: 'Debit', cell: ({ row }) => <Money amount={row.original.total_debit} size="sm" /> },

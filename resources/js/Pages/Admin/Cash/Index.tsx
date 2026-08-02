@@ -14,6 +14,7 @@ import { Label } from '@/Components/ui/label'
 import { Badge } from '@/Components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs'
+import { formatDate } from '@/Lib/date'
 import type { Paginated } from '@/Types'
 
 type AccountRow = { id: number; name: string; type: string; current_balance: number; is_drawer: boolean }
@@ -77,7 +78,7 @@ export default function Index({ tab, transactions, accounts, categories, filters
     { id: 'amount', header: 'Nominal', cell: ({ row }) => <Money amount={row.original.type === 'out' ? -row.original.amount : row.original.amount} showSign /> },
     { id: 'balance', header: 'Saldo Akhir', cell: ({ row }) => <Money amount={row.original.balance_after} size="sm" /> },
     { id: 'desc', header: 'Keterangan', cell: ({ row }) => row.original.description ?? '—' },
-    { id: 'date', header: 'Tanggal', cell: ({ row }) => new Date(row.original.transaction_date).toLocaleDateString('id-ID') },
+    { id: 'date', header: 'Tanggal', cell: ({ row }) => formatDate(row.original.transaction_date) },
   ]
 
   return (

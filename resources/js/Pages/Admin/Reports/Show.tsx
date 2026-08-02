@@ -11,6 +11,7 @@ import { Label } from '@/Components/ui/label'
 import { Input } from '@/Components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { DateRangePicker } from '@/Components/common/DateRangePicker'
+import { formatDate, formatDateTime } from '@/Lib/date'
 import type { Paginated } from '@/Types'
 
 type FilterDef = { key: string; label: string; type: string }
@@ -51,9 +52,9 @@ function formatValue(value: string | number | null, type: string) {
       return <span className={`tabular-nums ${n < 0 ? 'text-danger' : n > 0 ? 'text-success' : ''}`}>{n > 0 ? '+' : ''}{value}</span>
     }
     case 'date':
-      return new Date(String(value)).toLocaleDateString('id-ID')
+      return formatDate(String(value))
     case 'datetime':
-      return new Date(String(value)).toLocaleString('id-ID')
+      return formatDateTime(String(value))
     default:
       return String(value)
   }
