@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivityCustom;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class StockWriteOff extends Model
 {
-    use SoftDeletes;
+    use LogsActivityCustom, SoftDeletes;
 
     protected $fillable = [
         'reference', 'outlet_id', 'product_id', 'stock_layer_id', 'sale_return_item_id',

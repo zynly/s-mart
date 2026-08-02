@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivityCustom;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AccountingPeriod extends Model
 {
+    use LogsActivityCustom;
+
     protected $fillable = [
         'year', 'month', 'start_date', 'end_date', 'status', 'closed_by', 'closed_at',
     ];

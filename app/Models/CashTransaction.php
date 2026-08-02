@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivityCustom;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class CashTransaction extends Model
 {
+    use LogsActivityCustom;
+
     const UPDATED_AT = null;
 
     protected $fillable = [

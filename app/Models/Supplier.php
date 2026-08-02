@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivityCustom;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Supplier extends Model
 {
-    use SoftDeletes;
+    use LogsActivityCustom, SoftDeletes;
 
     protected $fillable = [
         'code', 'name', 'contact_person', 'phone', 'email', 'address',

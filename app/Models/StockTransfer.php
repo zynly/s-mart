@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivityCustom;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class StockTransfer extends Model
 {
-    use SoftDeletes;
+    use LogsActivityCustom, SoftDeletes;
 
     protected $fillable = [
         'reference', 'from_outlet_id', 'to_outlet_id', 'transfer_date', 'expected_arrival',

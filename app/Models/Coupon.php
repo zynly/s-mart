@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivityCustom;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Coupon extends Model
 {
+    use LogsActivityCustom;
+
     protected $fillable = [
         'code', 'promo_id', 'name', 'discount_type', 'discount_value', 'max_discount',
         'min_purchase', 'valid_from', 'valid_until', 'quota', 'used_count', 'per_member_limit',

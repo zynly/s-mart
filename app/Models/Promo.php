@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivityCustom;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Promo extends Model
 {
-    use SoftDeletes;
+    use LogsActivityCustom, SoftDeletes;
 
     protected $fillable = [
         'code', 'name', 'description', 'type', 'scope', 'discount_type', 'discount_value',

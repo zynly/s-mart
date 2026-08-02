@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivityCustom;
 use Illuminate\Database\Eloquent\Model;
 
 class PaymentMethod extends Model
 {
+    use LogsActivityCustom;
+
     protected $fillable = [
         'code', 'name', 'type', 'cash_account_id', 'mdr_percent',
         'requires_reference', 'allows_change', 'sort_order', 'is_active',

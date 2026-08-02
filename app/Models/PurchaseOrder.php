@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivityCustom;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PurchaseOrder extends Model
 {
+    use LogsActivityCustom;
+
     protected $fillable = [
         'reference', 'supplier_id', 'outlet_id', 'order_date', 'expected_date',
         'status', 'subtotal', 'discount', 'tax', 'total', 'note',

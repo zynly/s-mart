@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivityCustom;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PurchaseReturn extends Model
 {
+    use LogsActivityCustom;
+
     protected $fillable = [
         'reference', 'purchase_id', 'supplier_id', 'outlet_id', 'return_date',
         'reason', 'total', 'status', 'approved_by', 'created_by',

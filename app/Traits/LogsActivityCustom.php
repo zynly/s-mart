@@ -13,6 +13,13 @@ trait LogsActivityCustom
     {
         return LogOptions::defaults()
             ->logFillable()
+            // T-106: hash password/PIN TIDAK ikut ke activity_log —
+            // logFillable() sebelumnya menyimpan nilai hash-nya (aman
+            // secara kriptografis, tapi tidak perlu menumpuk banyak
+            // hash di satu tabel yang kalau bocor mempermudah upaya
+            // brute-force offline). Model lama (Member, Guardian) yang
+            // sudah pakai trait ini otomatis ikut terlindungi.
+            ->logExcept(['password', 'pin', 'remember_token'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->useLogName(class_basename($this))

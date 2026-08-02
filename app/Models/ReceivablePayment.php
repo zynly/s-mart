@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivityCustom;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ReceivablePayment extends Model
 {
+    use LogsActivityCustom;
+
     protected $fillable = [
         'reference', 'receivable_id', 'cash_account_id', 'payment_date', 'amount',
         'payment_method', 'note', 'created_by',

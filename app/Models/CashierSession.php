@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivityCustom;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CashierSession extends Model
 {
+    use LogsActivityCustom;
+
     protected $fillable = [
         'reference', 'outlet_id', 'user_id', 'cash_account_id', 'opened_at',
         'closed_at', 'opening_cash', 'expected_cash', 'actual_cash', 'difference',

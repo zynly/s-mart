@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivityCustom;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CashAccount extends Model
 {
+    use LogsActivityCustom;
+
     protected $fillable = [
         'code', 'name', 'type', 'outlet_id', 'bank_name', 'account_number',
         'account_holder', 'opening_balance', 'is_default', 'is_drawer', 'is_active',

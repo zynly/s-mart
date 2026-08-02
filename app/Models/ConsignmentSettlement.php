@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivityCustom;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ConsignmentSettlement extends Model
 {
+    use LogsActivityCustom;
+
     protected $fillable = [
         'reference', 'supplier_id', 'outlet_id', 'period_start', 'period_end',
         'total_sold', 'commission_percent', 'commission_amount', 'payable_amount',

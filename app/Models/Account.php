@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivityCustom;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Account extends Model
 {
+    use LogsActivityCustom;
+
     protected $fillable = [
         'code', 'name', 'type', 'subtype', 'parent_id', 'level',
         'normal_balance', 'is_system', 'is_active', 'description',
