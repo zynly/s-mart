@@ -1125,6 +1125,19 @@ tuntas.
       tertinggi per-jam di seluruh Phase D — jadi rem otomatis untuk
       SEMUA temuan lain (gerbang kualitas sebelumnya 100% manual,
       gampang lupa dijalankan begitu ada developer kedua).
+      **Diverifikasi sungguhan lewat `gh run watch`** (bukan cuma "kelihatan
+      benar" di file YAML) — run pertama GAGAL di kedua job, 2 bug
+      config nyata ditemukan: (1) job `frontend` gagal `vite build`
+      ENOENT `vendor/tightenco/ziggy` — `vite.config.ts` meng-alias
+      `ziggy-js` ke paket Composer, bukan npm, job itu cuma jalankan
+      `npm ci` tanpa `composer install`; (2) job `php` gagal 1 test
+      (`ExampleTest`, `GET /`) dengan `ViteManifestNotFoundException` —
+      render Blade `@vite` butuh `public/build/manifest.json` yang
+      cuma ada sesudah `npm run build`, job itu cuma jalankan Composer
+      tanpa Node/build. Ditambal: kedua job saling melengkapi toolchain
+      (job `php` juga setup Node+build assets sebelum test; job
+      `frontend` juga `composer install --no-scripts` sebelum build).
+      Run kedua: kedua job hijau penuh.
 - [x] ✅ Hapus dead code: `app/Support/Money.php` (0 pemanggilan di
       luar filenya sendiri, `sales.rounding` selalu 0 — fitur T-004
       yang tidak pernah disambungkan), trait `HasReference` &
