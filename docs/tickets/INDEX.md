@@ -1109,6 +1109,38 @@ dan reference urut benar (`INV-20260801-0002`) — membuktikan C1+C2
 tidak merusak alur checkout normal. DB direset (`migrate:fresh --seed`)
 setelah verifikasi.
 
+## Audit Kualitas Kode & Arsitektur — Phase D `[SEBAGIAN]`
+
+Backlog dari audit menyeluruh awal sesi (lihat rincian temuan di
+"Audit Keamanan Menyeluruh Lintas-Fase" di atas), sengaja ditunda
+demi Fase 18 (fitur/keamanan/performa punya dampak finansial
+langsung; kualitas kode tidak) — dikerjakan sekarang setelah Fase 18
+tuntas.
+
+- [x] ✅ Setup CI (`.github/workflows/ci.yml`) — 2 job paralel: `php`
+      (Pint --test + Pest lewat MySQL 8.0 service container, bukan
+      SQLite — konsisten dengan alasan T-105 soal fitur MySQL-spesifik
+      di migration) dan `frontend` (`tsc --noEmit`, `eslint`,
+      `vite build`). Trigger push/PR ke `main`. Ini item bernilai
+      tertinggi per-jam di seluruh Phase D — jadi rem otomatis untuk
+      SEMUA temuan lain (gerbang kualitas sebelumnya 100% manual,
+      gampang lupa dijalankan begitu ada developer kedua).
+- [x] ✅ Hapus dead code: `app/Support/Money.php` (0 pemanggilan di
+      luar filenya sendiri, `sales.rounding` selalu 0 — fitur T-004
+      yang tidak pernah disambungkan), trait `HasReference` &
+      `BelongsToOutlet` (0 pemakai — dicek lewat grep sebelum hapus,
+      bukan asumsi), folder `app/Data/`/`app/Enums/` (kosong sejak
+      T-003, tidak pernah tercatat git karena git tidak melacak folder
+      kosong).
+- [x] ✅ (sudah selesai lebih dulu di T-106) `Lib/api.ts` — token XSRF
+      yang tadinya di-copy-paste 4× sekarang satu wrapper `fetch()`.
+- [ ] ⬜ Sisa: pisah `JournalService` (write/read), ekstrak
+      `DashboardService`, konsolidasi format tanggal/uang, sambungkan
+      4 field Settings mati, konsolidasi bucket aging & "stok rendah",
+      keputusan `payroll_deductions`/`exchanges` (bereskan atau
+      dokumentasikan sebagai sengaja ditunda) — lihat progres lanjutan
+      di bawah kalau sudah dikerjakan pada sesi yang sama.
+
 ## Fase 18 — Pengujian, Keamanan & Penyiapan
 
 **Catatan:** beberapa gap keamanan konkret di T-106/T-109 sudah
