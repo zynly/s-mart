@@ -154,5 +154,70 @@
         color: #333333;
         border-top: 0.25mm dashed rgba(122, 122, 122, 0.75);
         background-color: #FAFAF8;
+        z-index: 5;
+    }
+
+    /* ================== SISI BELAKANG ================== */
+
+    /* Ornamen emas bertumpuk kanan-atas — palet `mustard` aplikasi
+       (resources/css/app.css §2 REVISI-R1), bukan amber terpisah,
+       supaya kartu tetap satu identitas visual dengan seluruh
+       aplikasi. Bentuk sama seperti .card-ornament (elips miring)
+       supaya depan/belakang terasa senada. */
+    .card-ornament-gold {
+        position: absolute;
+        top: -13mm;
+        right: -9mm;
+        width: 32mm;
+        height: 28mm;
+        background: linear-gradient(135deg, #EBC95D 0%, #E0B02F 40%, #C9A227 75%, #A8831F 100%);
+        border-radius: 42% 48% 58% 38%;
+        transform: rotate(-14deg);
+        opacity: 0.95;
+    }
+
+    /* Aksen navy diagonal kiri-bawah — bidang tipis miring, referensi
+       "ribbon" navy di pojok kartu (lihat docs/member.vue, elemen
+       murni inspirasi visual, bukan kode yang dipakai). */
+    .card-ornament-navy-strip {
+        position: absolute;
+        bottom: -3mm;
+        left: -6mm;
+        width: 26mm;
+        height: 7mm;
+        background: #152E56;
+        transform: skewX(-28deg);
+    }
+
+    .card-back-content {
+        position: absolute;
+        top: 4.5mm;
+        left: 3.5mm;
+        right: 5mm;
+        bottom: 6mm;
+    }
+
+    .terms-title {
+        font-family: Helvetica, Arial, sans-serif;
+        font-weight: bold;
+        font-size: 7pt;
+        letter-spacing: 0.4pt;
+        text-transform: uppercase;
+        color: #0F1B33;
+        margin: 0 0 2mm;
+    }
+
+    .terms-list {
+        margin: 0;
+        padding-left: 3mm;
+        list-style: disc;
+    }
+
+    .terms-list li {
+        font-family: Helvetica, Arial, sans-serif;
+        font-size: 5.5pt;
+        line-height: 1.55;
+        color: #1B2A4A;
+        margin-bottom: 1mm;
     }
 </style>
