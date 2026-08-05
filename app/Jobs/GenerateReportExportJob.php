@@ -42,9 +42,12 @@ class GenerateReportExportJob implements ShouldQueue
 
         Excel::store($export, "exports/{$filename}", 'local');
 
+        // Audit Fase 7 (Temuan Rendah): lihat ReportController::download()
+        // — user_id disertakan supaya link cuma bisa dipakai pengekspor
+        // aslinya, bukan siapa pun yang mendapat link ini.
         $user->notify(new ReportExportReadyNotification(
             $report->title(),
-            URL::temporarySignedRoute('admin.reports.download', now()->addHours(24), ['filename' => $filename]),
+            URL::temporarySignedRoute('admin.reports.download', now()->addHours(24), ['filename' => $filename, 'user_id' => $this->userId]),
             $this->rowCount,
         ));
     }

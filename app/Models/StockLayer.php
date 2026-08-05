@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToOutlet;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class StockLayer extends Model
 {
+    use BelongsToOutlet;
+
     protected $fillable = [
         'product_id', 'outlet_id', 'qty_in', 'qty_remaining', 'unit_cost',
         'batch_no', 'expired_at', 'received_at', 'sourceable_type',

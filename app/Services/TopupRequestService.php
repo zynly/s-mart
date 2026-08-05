@@ -56,12 +56,30 @@ class TopupRequestService
         // (TopupRequestController::proof(), can:topup.view).
         $path = $proof?->store('topup-proofs', 'local');
 
+        // REVISI-R1-v2.md §6.3 Jalur B — "simpan hash gambar bukti →
+        // tolak bila bukti identik pernah dipakai". Hash isi FILE (bukan
+        // nama file) supaya foto yang persis sama tidak bisa dipakai
+        // ulang untuk pengajuan lain SETELAH sekali disetujui — dicek
+        // terhadap pengajuan yang SUDAH approved saja (bukan semua
+        // status) supaya wali yang diminta unggah ulang bukti yang sama
+        // setelah ditolak tidak ikut terblokir.
+        $hash = $proof !== null ? hash_file('sha256', $proof->getRealPath()) : null;
+
+        if ($hash !== null) {
+            $reused = TopupRequest::where('proof_hash', $hash)->where('status', 'approved')->exists();
+
+            if ($reused) {
+                throw new DomainException('Foto bukti transfer ini sudah pernah dipakai pada pengajuan top-up lain yang telah disetujui — unggah bukti transfer yang baru.');
+            }
+        }
+
         return TopupRequest::create([
             'reference' => ReferenceGenerator::generate('TRQ', 0),
             'member_id' => $member->id,
             'guardian_id' => $guardian->id,
             'amount' => $amount,
             'proof_image' => $path,
+            'proof_hash' => $hash,
             'bank_name' => $bankName,
             'sender_name' => $senderName,
             'transfer_date' => $transferDate,

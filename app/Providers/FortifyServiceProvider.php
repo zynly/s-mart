@@ -75,6 +75,17 @@ class FortifyServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by(Str::transliterate(Str::lower((string) $request->input('phone'))));
         });
 
+        // Gap G-09: ganti password mandiri Portal Wali — dikunci ke
+        // guardian yang sedang login (bukan sekadar IP) supaya satu wali
+        // tidak bisa dibrute-force lewat jaringan publik/warnet bersama
+        // dari sesi wali LAIN, sama pola dengan
+        // AuthorizationService::throttleKey() untuk PIN staf.
+        RateLimiter::for('wali-password-change', function (Request $request) {
+            $key = $request->user('guardian')?->id ?? $request->ip();
+
+            return Limit::perMinute(5)->by("wali-password-change:{$key}");
+        });
+
         // Rate limit route password.email/password.update (Fortify TIDAK
         // mendaftarkan throttle untuk keduanya sama sekali, beda dari
         // login/two-factor/passkeys di atas) ada di

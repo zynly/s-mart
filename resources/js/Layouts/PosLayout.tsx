@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { Wifi } from 'lucide-react'
 import { Button } from '@/Components/ui/button'
 
@@ -17,6 +17,23 @@ export default function PosLayout({
   sessionLabel = 'Belum ada sesi',
   onCloseSession,
 }: PosLayoutProps) {
+  // REVISI-R1-v2.md §2.5 — layar kasir SELALU navy-gelap, terlepas dari
+  // preferensi terang/gelap pengguna (dipakai berjam-jam, latar terang
+  // bikin mata cepat lelah & angka total tenggelam). Preferensi asli
+  // TIDAK diubah di localStorage (`setTheme`/`toggleTheme` tidak
+  // dipanggil) — hanya class `dark` di <html> yang dipaksa selama
+  // layar kasir terbuka, dikembalikan persis ke preferensi semula saat
+  // keluar (unmount).
+  useEffect(() => {
+    const root = document.documentElement
+    const wasDark = root.classList.contains('dark')
+    root.classList.add('dark')
+
+    return () => {
+      root.classList.toggle('dark', wasDark)
+    }
+  }, [])
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-bg">
       <header className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-navy-700 px-3 text-xs text-navy-50">

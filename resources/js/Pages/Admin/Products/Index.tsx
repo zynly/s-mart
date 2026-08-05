@@ -6,6 +6,7 @@ import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
 import { PageTabs } from '@/Components/common/PageTabs'
 import { DataTable } from '@/Components/common/DataTable'
+import { StatCard } from '@/Components/common/StatCard'
 import { Money } from '@/Components/common/Money'
 import { MoneyInput } from '@/Components/common/MoneyInput'
 import { Button } from '@/Components/ui/button'
@@ -35,6 +36,7 @@ type ProductRow = {
   is_visible_public: boolean
   barcodes: { id: number; barcode: string; is_primary: boolean }[]
   prices: { id: number; price: number; outlet_id: number }[]
+  image_url: string | null
 }
 
 type ProductsIndexProps = {
@@ -46,6 +48,7 @@ type ProductsIndexProps = {
   outlets: Ref[]
   filters: { search?: string; category_id?: string; brand_id?: string; status?: string }
   canViewCost: boolean
+  stats: { total: number; active: number; inactive: number }
 }
 
 type BarcodeField = { barcode: string; unit_id: string; is_primary: boolean }
@@ -70,7 +73,7 @@ const emptyForm = {
   price: { outlet_id: '', unit_id: '', price: 0, member_price: null as number | null },
 }
 
-export default function Index({ tab, products, categories, brands, units, outlets, filters, canViewCost }: ProductsIndexProps) {
+export default function Index({ tab, products, categories, brands, units, outlets, filters, canViewCost, stats }: ProductsIndexProps) {
   const [search, setSearch] = useState(filters.search ?? '')
   const [categoryFilter, setCategoryFilter] = useState(filters.category_id ?? '')
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -136,6 +139,19 @@ export default function Index({ tab, products, categories, brands, units, outlet
   }
 
   const columns: ColumnDef<ProductRow, unknown>[] = [
+    {
+      id: 'image',
+      header: '',
+      cell: ({ row }) => (
+        <div className="flex size-10 items-center justify-center overflow-hidden rounded-md bg-bg">
+          {row.original.image_url ? (
+            <img src={row.original.image_url} alt={row.original.name} className="size-full object-cover" />
+          ) : (
+            <span className="text-[9px] text-content-muted">Tidak ada</span>
+          )}
+        </div>
+      ),
+    },
     { accessorKey: 'sku', header: 'SKU' },
     { accessorKey: 'name', header: 'Nama' },
     { id: 'category', header: 'Kategori', cell: ({ row }) => row.original.category?.name ?? '—' },
@@ -149,7 +165,7 @@ export default function Index({ tab, products, categories, brands, units, outlet
       header: 'Tanda',
       cell: ({ row }) => (
         <div className="flex gap-1">
-          {row.original.is_favorite && <Badge className="bg-gold text-navy-900">Favorit</Badge>}
+          {row.original.is_favorite && <Badge className="bg-mustard-500 text-navy-900">Favorit</Badge>}
           {row.original.is_visible_public && <Badge className="bg-teal text-white">Publik</Badge>}
         </div>
       ),
@@ -171,13 +187,6 @@ export default function Index({ tab, products, categories, brands, units, outlet
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => openEdit(row.original)}>Ubah</DropdownMenuItem>
-            <DropdownMenuItem
-              className="text-danger"
-              disabled={!row.original.is_active}
-              onClick={() => router.delete(route('admin.products.destroy', row.original.id), { preserveScroll: true })}
-            >
-              Nonaktifkan
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -188,7 +197,6 @@ export default function Index({ tab, products, categories, brands, units, outlet
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Produk"
-        subtitle={canViewCost ? 'HPP & margin tampil (izin product.view_cost)' : undefined}
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Produk' }]}
         actions={<Button onClick={openCreate}>Tambah Produk</Button>}
       />
@@ -198,6 +206,12 @@ export default function Index({ tab, products, categories, brands, units, outlet
         { key: 'brands', label: 'Brand', href: route('admin.brands.index'), permission: 'brand.view' },
         { key: 'units', label: 'Satuan', href: route('admin.units.index'), permission: 'unit.view' },
       ]} />
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <StatCard label="Jumlah Produk" value={String(stats.total)} />
+        <StatCard label="Produk Aktif" value={String(stats.active)} />
+        <StatCard label="Produk Tidak Aktif" value={String(stats.inactive)} />
+      </div>
 
       <div className="flex flex-wrap gap-2">
         <Input

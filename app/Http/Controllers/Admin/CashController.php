@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Exceptions\InsufficientCashBalanceException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreCashAccountRequest;
 use App\Http\Requests\Admin\StoreCashTransactionRequest;
 use App\Http\Requests\Admin\TransferCashRequest;
 use App\Models\CashAccount;
 use App\Models\CashCategory;
+use App\Models\CashierSession;
 use App\Models\CashTransaction;
+use App\Models\Outlet;
 use App\Services\CashierSessionService;
 use App\Services\CashService;
 use Illuminate\Http\RedirectResponse;
@@ -39,8 +42,49 @@ class CashController extends Controller
             'transactions' => $transactions,
             'accounts' => CashAccount::where('is_active', true)->orderBy('name')->get(['id', 'name', 'type', 'current_balance', 'is_drawer']),
             'categories' => CashCategory::where('is_active', true)->orderBy('name')->get(['id', 'name', 'type']),
+            // REVISI-R1-v2.md §1.7 — Kelola Laci: SEMUA akun kas (termasuk
+            // yang nonaktif, supaya bisa diaktifkan kembali), lintas outlet
+            // (halaman ini sendiri yang jadi tempat kelola per-outlet).
+            'allAccounts' => CashAccount::withoutGlobalScope('outlet')->with('outlet:id,name')->orderBy('name')->get(),
+            'outlets' => Outlet::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'filters' => $request->only('cash_account_id', 'type'),
         ]);
+    }
+
+    /**
+     * REVISI-R1-v2.md §1.7 — Kelola Laci (tambah/ubah akun kas per outlet).
+     */
+    public function storeAccount(StoreCashAccountRequest $request): RedirectResponse
+    {
+        CashAccount::create($request->validated());
+
+        return back()->with('success', 'Akun kas berhasil dibuat.');
+    }
+
+    public function updateAccount(StoreCashAccountRequest $request, CashAccount $cashAccount): RedirectResponse
+    {
+        $wasActive = $cashAccount->is_active;
+        $data = $request->validated();
+
+        // Laci yang sedang dipakai sesi kasir TERBUKA tidak boleh
+        // dinonaktifkan — kasir yang sedang bertransaksi akan kehilangan
+        // rujukan lacinya di tengah shift.
+        if ($wasActive && ($data['is_active'] ?? true) === false) {
+            $hasOpenSession = CashierSession::withoutGlobalScope('outlet')
+                ->where('cash_account_id', $cashAccount->id)
+                ->where('status', 'open')
+                ->exists();
+
+            if ($hasOpenSession) {
+                throw ValidationException::withMessages([
+                    'is_active' => 'Laci ini sedang dipakai sesi kasir yang masih terbuka — tidak bisa dinonaktifkan.',
+                ]);
+            }
+        }
+
+        $cashAccount->update($data);
+
+        return back()->with('success', 'Akun kas berhasil diperbarui.');
     }
 
     public function storeIn(StoreCashTransactionRequest $request): RedirectResponse

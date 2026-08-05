@@ -12,15 +12,18 @@ class AuthorizationOverrideController extends Controller
 {
     public function __invoke(AuthorizationOverrideRequest $request, AuthorizationService $service): RedirectResponse
     {
+        $permission = $request->string('permission')->toString();
+
         try {
-            $approver = $service->requestOverride(
-                $request->string('permission')->toString(),
-                $request->string('pin')->toString(),
-            );
+            $approver = $service->requestOverride($permission, $request->string('pin')->toString());
         } catch (AuthorizationOverrideException $e) {
             throw ValidationException::withMessages(['pin' => $e->getMessage()]);
         }
 
-        return back()->with('success', "Disetujui oleh {$approver->name}.")->with('approverId', $approver->id);
+        // Audit Fase 1: TIDAK LAGI mengirim approver->id mentah ke
+        // client — lihat AuthorizationService::issueToken()/consumeToken().
+        $token = $service->issueToken($approver, $permission);
+
+        return back()->with('success', "Disetujui oleh {$approver->name}.")->with('overrideToken', $token);
     }
 }

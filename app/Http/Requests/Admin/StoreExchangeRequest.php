@@ -23,7 +23,9 @@ class StoreExchangeRequest extends FormRequest
             'return.cashier_session_id' => ['required', 'exists:cashier_sessions,id'],
             'return.reason' => ['required', Rule::in(['damaged', 'wrong_item', 'expired', 'customer_request', 'other'])],
             'return.reason_detail' => ['nullable', 'string', 'max:255'],
-            'return.approver_id' => ['nullable', 'exists:users,id'],
+            // Audit Fase 1 (Temuan Kritis #1) — token sekali-pakai, lihat
+            // AuthorizationService::consumeToken().
+            'return.approval_token' => ['nullable', 'string'],
             'return.items' => ['required', 'array', 'min:1'],
             'return.items.*.sale_item_id' => ['required', 'exists:sale_items,id'],
             'return.items.*.qty' => ['required', 'numeric', 'min:0.001'],

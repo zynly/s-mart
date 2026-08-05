@@ -4,6 +4,8 @@ use App\Exceptions\CreditLimitExceededException;
 use App\Models\Member;
 use App\Models\PaymentMethod;
 use App\Models\Unit;
+use App\Models\User;
+use App\Services\AuthorizationService;
 use App\Services\SaleService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -70,4 +72,49 @@ it('allows a credit sale within the member limit and records it as a receivable'
         'total_amount' => $price * 2,
         'status' => 'unpaid',
     ]);
+});
+
+/**
+ * Audit Fase 6 (Temuan Sedang): CreditHandler sebelumnya percaya
+ * `$payload['approver']` truthy MENTAH (tidak pernah ada jalur untuk
+ * mengisinya secara sah, dan seandainya ada tidak pernah dicek
+ * permission). Sekarang lewat token sekali-pakai — verifikasi jalur
+ * sah (token valid) benar-benar melewati limit, DAN token
+ * palsu/sembarangan tetap ditolak sama seperti tanpa token sama sekali.
+ */
+it('allows an over-limit credit sale ONLY with a valid receivable.approve token, not with a forged one', function () {
+    $fixture = posFixture();
+    $unit = Unit::find($fixture['product']->base_unit_id);
+    $creditMethod = PaymentMethod::where('type', 'credit')->firstOrFail();
+
+    $member = Member::first();
+    $member->update(['receivable_limit' => 10000]);
+
+    $price = activeBasePrice($fixture['product'], $fixture['outlet']);
+    $qty = (int) ceil(20000 / max(1, $price)) + 1;
+
+    $cart = fn (string $token) => [
+        'outlet_id' => $fixture['outlet']->id,
+        'cashier_session_id' => $fixture['session']->id,
+        'member_id' => $member->id,
+        'idempotency_key' => 'test-credit-token-'.uniqid(),
+        'items' => [['product_id' => $fixture['product']->id, 'unit_id' => $unit->id, 'qty' => $qty]],
+        'payments' => [[
+            'payment_method_id' => $creditMethod->id,
+            'amount' => $price * $qty,
+            'credit_approval_token' => $token,
+        ]],
+    ];
+
+    // Token palsu — HARUS tetap ditolak, bukan lolos begitu saja.
+    expect(fn () => app(SaleService::class)->complete($cart('forged-token')))
+        ->toThrow(CreditLimitExceededException::class);
+
+    // Token sah (treasurer memegang receivable.approve) — HARUS lolos.
+    $treasurer = User::role('treasurer')->firstOrFail();
+    $token = app(AuthorizationService::class)->issueToken($treasurer, 'receivable.approve');
+
+    $sale = app(SaleService::class)->complete($cart($token));
+
+    expect($sale->status)->toBe('completed');
 });

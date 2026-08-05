@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToOutlet;
 use App\Traits\LogsActivityCustom;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Sale extends Model
 {
-    use LogsActivityCustom, SoftDeletes;
+    use BelongsToOutlet, LogsActivityCustom, SoftDeletes;
 
     protected $fillable = [
         'reference', 'outlet_id', 'cashier_session_id', 'user_id', 'member_id',

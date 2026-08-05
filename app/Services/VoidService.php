@@ -44,7 +44,11 @@ class VoidService
                 throw new DomainException('Hanya nota berstatus selesai yang bisa dibatalkan.');
             }
 
-            $session = CashierSession::findOrFail($locked->cashier_session_id);
+            // Audit Fase 6 (Temuan Sedang): sebelumnya SELECT biasa tanpa
+            // lock — sesi bisa ditutup oleh transaksi lain (closePeriod
+            // sesi kasir) tepat di tengah void ini, dan void tetap lanjut
+            // menambah counter ke sesi yang sudah closed di database.
+            $session = CashierSession::lockForUpdate()->findOrFail($locked->cashier_session_id);
 
             if ($session->status !== 'open') {
                 throw new DomainException('Sesi kasir nota ini sudah tutup — void tidak diperbolehkan (gunakan retur).');
@@ -56,16 +60,42 @@ class VoidService
                     ->where('is_returned', false)
                     ->get();
 
+                // Audit Fase 6 (Temuan Tinggi): qty_before sebelumnya
+                // diambil SESUDAH returnToLayer() dijalankan (mencatat
+                // stok yang SUDAH bertambah sebagai "sebelum" — audit
+                // trail movement salah). Diambil di sini, sebelum mutasi,
+                // sama seperti pola SaleReturnService::restockItem().
+                $qtyBefore = $this->stockService->getAvailable($item->product, $locked->outlet);
+                $qtyReturnedNow = 0.0;
+
                 foreach ($consumptions as $consumption) {
-                    $this->stockService->returnToLayer($consumption, (float) $consumption->qty);
+                    // Audit Fase 6 (Temuan Tinggi): sebelumnya kirim qty
+                    // ASLI PENUH konsumsi, bukan sisa yang belum diretur —
+                    // untuk baris yang sudah pernah diretur SEBAGIAN
+                    // (qty_returned>0 tapi is_returned masih false),
+                    // returnToLayer() menolak (qty baru > qty konsumsi
+                    // asli) dan VOID jadi tidak bisa dipakai sama sekali
+                    // untuk nota yang pernah diretur sebagian — pesan
+                    // errornya pun menyesatkan (seolah user salah input).
+                    $remaining = (float) $consumption->qty - (float) $consumption->qty_returned;
+
+                    if ($remaining <= 0) {
+                        continue;
+                    }
+
+                    $this->stockService->returnToLayer($consumption, $remaining);
+                    $qtyReturnedNow += $remaining;
                 }
 
-                $qtyBefore = $this->stockService->getAvailable($item->product, $locked->outlet);
+                if ($qtyReturnedNow <= 0) {
+                    continue;
+                }
+
                 $this->stockService->recordMovement(
                     $item->product,
                     $locked->outlet,
                     'sale_return',
-                    (float) $item->qty_base,
+                    $qtyReturnedNow,
                     $qtyBefore,
                     $item->unit_cost,
                     $locked,

@@ -7,28 +7,42 @@ use App\Models\ConsignmentSettlement;
 use App\Models\ConsignmentSettlementItem;
 use App\Models\Outlet;
 use App\Models\Product;
+use App\Models\SaleItem;
 use App\Models\StockLayer;
 use App\Models\StockLayerConsumption;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Support\ReferenceGenerator;
+use DomainException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class ConsignmentService
 {
     public function __construct(
-        private readonly PriceService $priceService,
         private readonly StockService $stockService,
         private readonly CashService $cashService,
     ) {}
 
     /**
      * Hitung barang konsinyasi terjual (via stock_layer_consumptions pada
-     * layer is_consignment) dalam periode, pakai harga jual aktif produk
-     * (belum ada Sale/SaleItem sampai Fase 8 — ini pendekatan terbaik yang
-     * tersedia sekarang; bisa disempurnakan pakai harga baris nota asli
-     * begitu Fase 8/9 selesai).
+     * layer is_consignment) dalam periode.
+     *
+     * Audit Fase 6 (Temuan Sedang): sebelumnya pakai harga jual AKTIF
+     * SEKARANG (priceService->getActivePrice()) — kalau harga produk
+     * berubah antara transaksi terjadi dan settlement dibuat, supplier
+     * dibayar berdasarkan harga yang SALAH (bukan harga yang benar-benar
+     * berlaku saat barang terjual). Sekarang join langsung ke `sale_items`
+     * (via relasi polimorfik consumableable pada stock_layer_consumptions)
+     * untuk memakai `unit_price` yang benar-benar tercatat di nota asli.
+     *
+     * INNER JOIN ke sale_items juga SENGAJA mengecualikan konsumsi layer
+     * konsinyasi yang bukan dari penjualan (mis. StockTransferItem saat
+     * dipindah ke outlet lain, atau koreksi StockOpname) — perilaku LAMA
+     * ikut menghitungnya sebagai "terjual" (bug tambahan yang ikut
+     * tertutup di sini): barang yang dipindah/dikoreksi bukan barang yang
+     * terjual ke pelanggan, tidak seharusnya menghasilkan kewajiban
+     * komisi ke pemilik barang.
      *
      * @return array{items: array<int, array<string, mixed>>, total_sold: int, commission_amount: int, payable_amount: int}
      */
@@ -41,9 +55,13 @@ class ConsignmentService
 
         $consumptionsByProduct = StockLayerConsumption::query()
             ->join('stock_layers', 'stock_layers.id', '=', 'stock_layer_consumptions.stock_layer_id')
+            ->join('sale_items', function ($join) {
+                $join->on('sale_items.id', '=', 'stock_layer_consumptions.consumableable_id')
+                    ->where('stock_layer_consumptions.consumableable_type', SaleItem::class);
+            })
             ->whereIn('stock_layer_consumptions.stock_layer_id', $layerIds)
             ->whereBetween('stock_layer_consumptions.created_at', [$periodStart, $periodEnd])
-            ->select('stock_layer_consumptions.qty', 'stock_layers.product_id')
+            ->select('stock_layer_consumptions.qty', 'stock_layers.product_id', 'sale_items.unit_price')
             ->get()
             ->groupBy('product_id');
 
@@ -54,14 +72,19 @@ class ConsignmentService
         foreach ($consumptionsByProduct as $productId => $group) {
             $product = Product::findOrFail($productId);
             $qtySold = (float) $group->sum('qty');
-            $price = $this->priceService->getActivePrice($product, $outlet, $product->baseUnit);
-            $totalPrice = (int) round($qtySold * $price);
+            // Rata-rata tertimbang harga JUAL SEBENARNYA per baris —
+            // bisa berbeda antar transaksi dalam periode yang sama kalau
+            // harga produk sempat berubah, bukan satu harga "sekarang".
+            $totalPrice = (int) round($group->sum(fn ($row) => (float) $row->qty * $row->unit_price));
             $commission = (int) round($totalPrice * $commissionPercent / 100);
 
             $items[] = [
                 'product_id' => (int) $productId,
                 'qty_sold' => $qtySold,
-                'unit_price' => $price,
+                // Rata-rata (bisa beda dari harga produk saat ini kalau
+                // sudah berubah sejak transaksi) — bukan lagi single
+                // "harga aktif sekarang".
+                'unit_price' => $qtySold > 0 ? (int) round($totalPrice / $qtySold) : 0,
                 'total_price' => $totalPrice,
                 'commission' => $commission,
                 'payable' => $totalPrice - $commission,
@@ -82,6 +105,22 @@ class ConsignmentService
     public function settle(Supplier $supplier, Outlet $outlet, Carbon $periodStart, Carbon $periodEnd, float $commissionPercent): ConsignmentSettlement
     {
         return DB::transaction(function () use ($supplier, $outlet, $periodStart, $periodEnd, $commissionPercent) {
+            // Audit Fase 6 (Temuan Sedang): sebelumnya tidak ada proteksi
+            // periode overlap/duplikat sama sekali — settle() dua kali
+            // untuk rentang yang sama/tumpang tindih menghitung ULANG
+            // konsumsi yang SAMA dari stock_layer_consumptions, supplier
+            // bisa dibayar dobel via markPaid() untuk barang yang sama.
+            $overlapping = ConsignmentSettlement::where('supplier_id', $supplier->id)
+                ->where('outlet_id', $outlet->id)
+                ->whereIn('status', ['draft', 'approved', 'paid'])
+                ->where('period_start', '<=', $periodEnd)
+                ->where('period_end', '>=', $periodStart)
+                ->exists();
+
+            if ($overlapping) {
+                throw new DomainException('Sudah ada settlement lain (draft/approved/paid) yang periodenya tumpang tindih untuk supplier & outlet ini.');
+            }
+
             $calc = $this->calculateSettlement($supplier, $outlet, $periodStart, $periodEnd, $commissionPercent);
 
             $settlement = ConsignmentSettlement::create([
@@ -126,6 +165,17 @@ class ConsignmentService
     {
         return DB::transaction(function () use ($settlement, $cashAccount) {
             $locked = ConsignmentSettlement::lockForUpdate()->findOrFail($settlement->id);
+
+            // Audit Fase 4 (Temuan Tinggi): sebelumnya TIDAK ADA guard
+            // status di sini — klik ganda/retry submit memanggil
+            // recordOut() dua kali (kas keluar 2x sungguhan), padahal
+            // ConsignmentSettlementObserver hanya menjurnal SEKALI (di-
+            // guard wasChanged('status'), panggilan kedua status sudah
+            // sama). Selisih riil antara subsidiary cash ledger dan GL.
+            if ($locked->status !== 'approved') {
+                throw new DomainException("Settlement berstatus \"{$locked->status}\" tidak bisa ditandai lunas — wajib berstatus approved terlebih dulu.");
+            }
+
             $account = $cashAccount
                 ?? CashAccount::where('outlet_id', $locked->outlet_id)->where('is_default', true)->first()
                 ?? CashAccount::where('outlet_id', $locked->outlet_id)->first();

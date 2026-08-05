@@ -62,6 +62,14 @@ class SettingController extends Controller
                     // SEMUA transaksi deposit.
                     'no_pin_threshold' => ['label' => 'Bebas PIN di Bawah (Rp)', 'type' => 'integer', 'rules' => ['nullable', 'integer', 'min:0', 'max:1000000']],
                     'receivable_due_days' => ['label' => 'Tempo Piutang (hari)', 'type' => 'integer', 'rules' => ['nullable', 'integer', 'min:0', 'max:365']],
+                    // Gap G-03: sebelumnya hanya bisa diubah lewat config/server.
+                    // Batas atas SENGAJA ketat (bukan sekadar "integer positif")
+                    // — nilai ini menentukan berapa lama token approval PIN
+                    // supervisor (void/diskon/harga/tutup sesi/dst, lihat
+                    // AuthorizationService::issueToken()) tetap sah dipakai.
+                    // Terlalu longgar = jendela penyalahgunaan token yang bocor/
+                    // dipakai ulang makin lebar.
+                    'pin_override_ttl_minutes' => ['label' => 'Masa Berlaku Token PIN Supervisor (menit)', 'type' => 'integer', 'description' => 'Berapa lama token approval PIN supervisor (void, diskon, ubah harga, tutup sesi selisih kas, dll.) tetap berlaku setelah PIN benar dimasukkan.', 'rules' => ['nullable', 'integer', 'min:1', 'max:15']],
                 ],
             ],
             'struk' => [

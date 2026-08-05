@@ -28,3 +28,7 @@ desktop.ini
 9router-config.local.json
 _references/
 docs/private/
+
+# Dump database legacy (data bisnis nyata, dipakai lokal saja untuk
+# analisis/migrasi katalog — bukan source code, tidak untuk repo).
+/POS-OLD.sql

@@ -20,7 +20,12 @@ class StoreWriteOffRequest extends FormRequest
         return [
             'outlet_id' => ['required', 'exists:outlets,id'],
             'product_id' => ['required', 'exists:products,id'],
-            'stock_layer_id' => ['nullable', 'exists:stock_layers,id'],
+            // Audit Fase 6 (Temuan Tinggi): sebelumnya nullable — kalau
+            // kosong, WriteOffService::applyStockReduction() melewati
+            // reduceLayer() TOTAL tapi tetap mencatat StockMovement
+            // seolah stok berkurang ("stok fantom": laporan bilang
+            // berkurang, stocks.qty & stock_layers tidak pernah berubah).
+            'stock_layer_id' => ['required', 'exists:stock_layers,id'],
             'qty' => ['required', 'numeric', 'min:0.001'],
             'type' => ['required', Rule::in(['damaged', 'lost', 'expired', 'shrinkage'])],
             'reason' => ['required', 'string', 'max:255'],

@@ -125,7 +125,38 @@ export default function UjiKomponen() {
             <Badge className="bg-success text-white">Success</Badge>
             <Badge className="bg-warning text-white">Warning</Badge>
             <Badge className="bg-teal text-white">Teal</Badge>
-            <Badge className="bg-gold text-navy-900">Gold</Badge>
+            <Badge className="bg-mustard-500 text-navy-900">Mustard</Badge>
+          </CardContent>
+        </Card>
+
+        {/* REVISI-R1-v2.md §2.5 checklist — "/uji-komponen menampilkan
+            ketiga palet lengkap" (khaki 70% / navy 20% / mustard 10%). */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Palet Warna — Khaki 70% · Navy 20% · Mustard 10%</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            {/* Class Tailwind dinamis (`bg-${name}-${shade}`) TIDAK
+                terdeteksi scanner JIT Tailwind v4 (butuh string literal
+                utuh) — dipakai `var(--color-*)` lewat inline style
+                supaya swatch ini pasti berwarna benar tanpa perlu
+                menuliskan 30 nama class literal satu-satu. */}
+            {(['khaki', 'navy', 'mustard'] as const).map((name) => (
+              <div key={name}>
+                <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-content-muted">{name}</p>
+                <div className="grid grid-cols-10 gap-1">
+                  {['50', '100', '200', '300', '400', '500', '600', '700', '800', '900'].map((shade) => (
+                    <div
+                      key={shade}
+                      className="flex h-12 items-end justify-center rounded-sm pb-0.5"
+                      style={{ backgroundColor: `var(--color-${name}-${shade})` }}
+                    >
+                      <span className="text-[9px] font-mono text-white mix-blend-difference">{shade}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
       </section>

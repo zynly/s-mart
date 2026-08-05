@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Models\Journal;
 use App\Models\Receivable;
 use App\Services\JournalService;
 
@@ -24,6 +25,18 @@ class ReceivableObserver
         }
 
         if ($receivable->remaining_amount <= 0) {
+            return;
+        }
+
+        // Audit Fase 7 (Temuan Rendah): satu-satunya observer status-driven
+        // tanpa guard idempoten eksplisit seperti yang lain (Purchase/
+        // StockWriteOff/dst) — sebelumnya cuma terlindungi TIDAK LANGSUNG
+        // lewat soft-delete di ReceivableService::writeOff(). Pola sama
+        // seperti observer lain dipasang di sini juga, supaya tidak
+        // bergantung pada detail implementasi service yang bisa berubah.
+        $alreadyJournaled = Journal::where('sourceable_type', Receivable::class)->where('sourceable_id', $receivable->id)->exists();
+
+        if ($alreadyJournaled) {
             return;
         }
 

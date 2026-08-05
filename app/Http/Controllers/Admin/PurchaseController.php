@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exceptions\InsufficientCashBalanceException;
 use App\Exceptions\InsufficientStockException;
 use App\Exceptions\MissingExpiryDateException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StorePurchaseRequest;
 use App\Http\Requests\Admin\StorePurchaseReturnRequest;
+use App\Models\CashAccount;
 use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\Purchase;
@@ -44,6 +46,7 @@ class PurchaseController extends Controller
             'outlets' => Outlet::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'products' => Product::where('is_active', true)->with('baseUnit:id,code,name')->orderBy('name')->get(['id', 'name', 'sku', 'base_unit_id', 'is_expirable']),
             'units' => Unit::where('is_active', true)->orderBy('name')->get(['id', 'code', 'name']),
+            'cashAccounts' => CashAccount::where('is_active', true)->orderBy('name')->get(['id', 'name', 'outlet_id']),
             'filters' => $request->only('search', 'supplier_id'),
         ]);
     }
@@ -65,6 +68,8 @@ class PurchaseController extends Controller
             );
         } catch (MissingExpiryDateException $e) {
             throw ValidationException::withMessages(['items' => $e->getMessage()]);
+        } catch (InsufficientCashBalanceException $e) {
+            throw ValidationException::withMessages(['cash_account_id' => $e->getMessage()]);
         } catch (DomainException $e) {
             throw ValidationException::withMessages(['items' => $e->getMessage()]);
         }

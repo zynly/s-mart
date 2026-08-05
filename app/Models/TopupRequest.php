@@ -11,7 +11,7 @@ class TopupRequest extends Model
     use LogsActivityCustom;
 
     protected $fillable = [
-        'reference', 'member_id', 'guardian_id', 'amount', 'proof_image', 'bank_name',
+        'reference', 'member_id', 'guardian_id', 'amount', 'proof_image', 'proof_hash', 'bank_name',
         'sender_name', 'transfer_date', 'status', 'verified_by',
         'verified_at', 'reject_reason', 'payment_provider', 'payment_reference',
         'bank_verified_by', 'bank_verified_at',

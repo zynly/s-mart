@@ -21,8 +21,8 @@ export function useChartColors() {
     gridColor: isDark ? '#334155' : '#E2E8F0',
     tooltipBg: isDark ? '#1E293B' : '#FFFFFF',
     tooltipBorder: isDark ? '#334155' : '#E2E8F0',
-    // Persis token proyek (resources/css/app.css): navy-500, gold, teal,
-    // danger, warning, success — bukan hex sembarang.
+    // Persis token proyek (resources/css/app.css): navy-500, mustard-500,
+    // teal, danger, warning, success — bukan hex sembarang.
     palette: ['#2e5490', '#c9a227', '#0f8b8d', '#b3261e', '#c77700', '#1e7a4c'],
   }
 }

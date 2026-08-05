@@ -29,11 +29,13 @@ class SaleReturnService
 
     /**
      * @return array<int, array{sale_item_id:int, product_name:string, unit_code:string,
-     *     unit_price:int, qty_sold:float, qty_returned:float, qty_returnable:float}>
+     *     unit_price:int, unit_net_value:int, qty_sold:float, qty_returned:float, qty_returnable:float}>
      */
     public function getReturnableItems(Sale $sale): array
     {
-        return $sale->items->map(function (SaleItem $item) {
+        $netValues = $this->fullLineNetValues($sale);
+
+        return $sale->items->map(function (SaleItem $item) use ($netValues) {
             $qtyReturned = (float) SaleReturnItem::where('sale_item_id', $item->id)
                 ->whereHas('saleReturn', fn ($q) => $q->whereIn('status', ['approved', 'completed']))
                 ->sum('qty');
@@ -43,11 +45,46 @@ class SaleReturnService
                 'product_name' => $item->product->name,
                 'unit_code' => $item->unit->code,
                 'unit_price' => $item->unit_price,
+                // Audit Fase 2: nilai NET per unit (setelah SEMUA diskon,
+                // termasuk proporsi bill/promo/kupon nota) — dipakai
+                // frontend untuk estimasi refund yang akurat SEBELUM
+                // submit, bukan unit_price kotor. Sumber kebenaran final
+                // tetap calculateNetReturnValue() di server saat submit.
+                'unit_net_value' => (float) $item->qty > 0 ? (int) round($netValues[$item->id] / (float) $item->qty) : 0,
                 'qty_sold' => (float) $item->qty,
                 'qty_returned' => $qtyReturned,
                 'qty_returnable' => max(0, (float) $item->qty - $qtyReturned),
             ];
         })->all();
+    }
+
+    /**
+     * Nilai net (setelah proporsi diskon level-nota) untuk SELURUH qty
+     * tiap baris — dipakai bersama oleh getReturnableItems() (estimasi
+     * per-unit) dan calculateNetReturnValue() (nilai retur sungguhan).
+     * Lihat penjelasan formula lengkap di calculateNetReturnValue().
+     *
+     * @return array<int, int> sale_item_id => nilai net baris penuh
+     */
+    private function fullLineNetValues(Sale $sale): array
+    {
+        $saleItems = $sale->items()->get()->keyBy('id');
+        $sumLineSubtotal = (int) $saleItems->sum('subtotal');
+        $headerOnlyDiscount = $sale->bill_discount + $sale->promo_discount + $sale->coupon_discount;
+
+        if ($sumLineSubtotal <= 0 || $headerOnlyDiscount <= 0) {
+            return $saleItems->map(fn (SaleItem $item) => $item->subtotal)->all();
+        }
+
+        $ids = $saleItems->keys()->all();
+        $shares = $this->allocateProportionally($headerOnlyDiscount, $saleItems->pluck('subtotal')->all());
+        $result = [];
+
+        foreach ($ids as $index => $id) {
+            $result[$id] = $saleItems[$id]->subtotal - $shares[$index];
+        }
+
+        return $result;
     }
 
     public function assertReturnable(Sale $sale): void
@@ -198,6 +235,70 @@ class SaleReturnService
     }
 
     /**
+     * Audit independen (2026-08-02), Fase 2 — Temuan Kritis #2: nilai
+     * retur sebelumnya dihitung `unit_price * qty` (harga KOTOR,
+     * sebelum diskon) — retur penuh nota berdiskon selalu ditolak
+     * ("melebihi nominal refundable"), dan retur sebagian item berpromo
+     * mengembalikan lebih banyak uang dari yang sebenarnya dibayar.
+     *
+     * SATU-SATUNYA sumber kebenaran nilai retur, dipakai baik untuk
+     * preview (SaleReturnController::refundPreview) maupun eksekusi
+     * (createAndProcess) — supaya keduanya selalu konsisten, dan
+     * frontend tidak pernah perlu (atau bisa) mengirim total mentah.
+     *
+     * Formula: `sale_items.subtotal` sudah net dari diskon ITEM/PROMO
+     * per-baris (lihat SaleService::complete()), tapi diskon level NOTA
+     * (bill_discount manual + promo_discount header + coupon_discount)
+     * hanya pernah dikurangkan di header, tidak pernah dialokasikan ke
+     * baris. Di sini dialokasikan proporsional dari situ (largest-
+     * remainder, method yang SAMA seperti allocateProportionally() yang
+     * sudah dipakai alokasi refund per metode bayar — bukan pembulatan
+     * baru) supaya SUM(nilai net semua baris) == grand_total PERSIS,
+     * termasuk saat retur 100% semua baris (retur penuh).
+     *
+     * @param  array<int, array{sale_item_id:int, qty:float}>  $items
+     * @return array{subtotal:int, lines: array<int, array{sale_item_id:int, qty:float, value:int, sale_item: SaleItem}>}
+     */
+    public function calculateNetReturnValue(Sale $sale, array $items): array
+    {
+        $saleItems = $sale->items()->get()->keyBy('id');
+        $lineNetValues = $this->fullLineNetValues($sale);
+        $returnableItems = collect($this->getReturnableItems($sale))->keyBy('sale_item_id');
+        $lines = [];
+        $subtotal = 0;
+
+        foreach ($items as $input) {
+            $saleItem = $saleItems->get($input['sale_item_id']);
+
+            if ($saleItem === null) {
+                throw new DomainException('Item retur tidak ditemukan pada nota ini.');
+            }
+
+            $returnable = $returnableItems->get($input['sale_item_id']);
+
+            if ($returnable === null || $input['qty'] > $returnable['qty_returnable'] + 1e-9) {
+                $productName = $returnable['product_name'] ?? $saleItem->product->name;
+                $limit = $returnable['qty_returnable'] ?? 0;
+
+                throw new DomainException("Qty retur untuk \"{$productName}\" melebihi sisa yang bisa diretur ({$limit}).");
+            }
+
+            $ratio = (float) $saleItem->qty > 0 ? $input['qty'] / (float) $saleItem->qty : 0.0;
+            $value = (int) round($lineNetValues[$saleItem->id] * $ratio);
+
+            $lines[] = [
+                'sale_item_id' => $saleItem->id,
+                'qty' => $input['qty'],
+                'value' => $value,
+                'sale_item' => $saleItem,
+            ];
+            $subtotal += $value;
+        }
+
+        return ['subtotal' => $subtotal, 'lines' => $lines];
+    }
+
+    /**
      * @return array{0: string[], 1: ?string}
      */
     private function resolveTargets(string $methodType, bool $cashAllowed, bool $hasMember): array
@@ -227,6 +328,16 @@ class SaleReturnService
      */
     public function createAndProcess(array $data, ?User $approver = null): SaleReturn
     {
+        // Audit Fase 1 (Temuan Sedang: approver_id sebelumnya tidak
+        // pernah dicek permission sama sekali — siapa pun bisa jadi
+        // "approver" tercatat). Pertahanan berlapis: AuthorizationService::
+        // consumeToken() di controller SUDAH memverifikasi ini, tapi
+        // service ini tetap menolak approver yang lolos dari jalur lain
+        // tanpa izin — pola sama seperti VoidService::void().
+        if ($approver !== null && ! $approver->can('sale_return.approve')) {
+            throw new DomainException('Approval retur wajib dari pemegang izin sale_return.approve.');
+        }
+
         return DB::transaction(function () use ($data, $approver) {
             $existing = SaleReturn::where('idempotency_key', $data['idempotency_key'])->first();
 
@@ -243,27 +354,25 @@ class SaleReturnService
                 throw new DomainException('Sesi kasir yang memproses retur ini harus dalam status terbuka.');
             }
 
-            $returnableItems = collect($this->getReturnableItems($sale))->keyBy('sale_item_id');
+            // Audit Fase 2 (Temuan Kritis #2): nilai retur per baris SEKARANG
+            // net dari SEMUA lapis diskon (item + proporsi bill/promo/kupon
+            // nota), bukan unit_price*qty kotor — lihat calculateNetReturnValue().
+            $netResult = $this->calculateNetReturnValue(
+                $sale,
+                array_map(fn ($input) => ['sale_item_id' => $input['sale_item_id'], 'qty' => $input['qty']], $data['items']),
+            );
+            $netValueByItem = collect($netResult['lines'])->keyBy('sale_item_id');
 
             $subtotal = 0;
             $totalCost = 0;
             $lineInputs = [];
 
             foreach ($data['items'] as $input) {
-                $returnable = $returnableItems->get($input['sale_item_id']);
-
-                if ($returnable === null) {
-                    throw new DomainException('Item retur tidak ditemukan pada nota ini.');
-                }
-
-                if ($input['qty'] > $returnable['qty_returnable'] + 1e-9) {
-                    throw new DomainException("Qty retur untuk \"{$returnable['product_name']}\" melebihi sisa yang bisa diretur ({$returnable['qty_returnable']}).");
-                }
-
-                $saleItem = SaleItem::findOrFail($input['sale_item_id']);
-                $ratio = $input['qty'] / (float) $saleItem->qty;
+                $net = $netValueByItem->get($input['sale_item_id']);
+                $saleItem = $net['sale_item'];
+                $ratio = (float) $saleItem->qty > 0 ? $input['qty'] / (float) $saleItem->qty : 0.0;
                 $qtyBase = (float) $saleItem->qty_base * $ratio;
-                $lineSubtotal = (int) round($saleItem->unit_price * $input['qty']);
+                $lineSubtotal = $net['value'];
                 $lineCost = (int) round($saleItem->total_cost * $ratio);
 
                 $subtotal += $lineSubtotal;

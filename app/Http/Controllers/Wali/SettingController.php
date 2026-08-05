@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\NotificationSetting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -36,5 +38,41 @@ class SettingController extends Controller
         $setting->fill($data)->save();
 
         return back()->with('success', 'Pengaturan notifikasi disimpan.');
+    }
+
+    /**
+     * Gap G-09: sebelumnya satu-satunya jalur ganti password wali adalah
+     * admin (GuardianController::resetPassword()) — wali tidak bisa
+     * menggantinya sendiri sama sekali.
+     */
+    public function updatePassword(Request $request): RedirectResponse
+    {
+        $guardian = $request->user('guardian');
+
+        $data = $request->validate([
+            'current_password' => ['required', 'string', 'current_password:guardian'],
+            'password' => ['required', 'string', Password::default(), 'confirmed'],
+        ]);
+
+        // Sebelum password diganti — mencabut sesi wali di perangkat LAIN
+        // (butuh SESSION_DRIVER=database + middleware 'auth.session' di
+        // routes/wali.php, lihat catatan di sana; logoutOtherDevices()
+        // memverifikasi ulang $data['current_password'] sebelum
+        // mencabut). Sesi yang sedang dipakai request ini sendiri TIDAK
+        // ikut tercabut.
+        Auth::guard('guardian')->logoutOtherDevices($data['current_password']);
+
+        $guardian->forceFill(['password' => $data['password']])->save();
+
+        // LogsActivityCustom::logExcept(['password', ...]) membuat log
+        // otomatis model KOSONG untuk perubahan ini (satu-satunya field
+        // yang berubah justru dikecualikan) — dicatat eksplisit di sini
+        // supaya tetap ada jejak audit "password diganti", tanpa nilainya.
+        activity('security')
+            ->causedBy($guardian)
+            ->withProperties(['guardian_id' => $guardian->id, 'guardian_name' => $guardian->name, 'self_service' => true])
+            ->log("Wali {$guardian->name} mengganti password sendiri");
+
+        return back()->with('success', 'Password berhasil diganti. Perangkat lain yang sedang login akan otomatis keluar.');
     }
 }

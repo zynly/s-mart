@@ -6,6 +6,7 @@ use App\Models\Journal;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\StockLayerConsumption;
+use App\Models\User;
 use App\Services\JournalService;
 
 /**
@@ -46,7 +47,12 @@ class SaleObserver
                 ->first();
 
             if ($journal !== null) {
-                $this->journalService->reverse($journal, "Void nota {$sale->reference}: {$sale->void_reason}");
+                // Audit Fase 7 (Temuan Rendah): $actor sebelumnya tidak
+                // dikirim — jurnal pembalik void selalu kehilangan info
+                // siapa penyetujunya di level akuntansi (created_by/
+                // posted_by null), padahal sale.voided_by sudah menyimpannya.
+                $actor = $sale->voided_by !== null ? User::find($sale->voided_by) : null;
+                $this->journalService->reverse($journal, "Void nota {$sale->reference}: {$sale->void_reason}", $actor);
             }
 
             return;

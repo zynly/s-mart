@@ -3,6 +3,7 @@ import { router, useForm } from '@inertiajs/react'
 import type { ColumnDef } from '@tanstack/react-table'
 import type { DateRange } from 'react-day-picker'
 import { format } from 'date-fns'
+import { formatDateTime } from '@/Lib/date'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
 import { PageTabs } from '@/Components/common/PageTabs'
@@ -10,6 +11,7 @@ import { DataTable } from '@/Components/common/DataTable'
 import { Money } from '@/Components/common/Money'
 import { MoneyInput } from '@/Components/common/MoneyInput'
 import { DateRangePicker } from '@/Components/common/DateRangePicker'
+import { SupervisorPinDialog } from '@/Components/common/SupervisorPinDialog'
 import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
@@ -38,13 +40,26 @@ type TransactionRow = {
   payment_method: { id: number; name: string } | null
 }
 
+type AdjustmentRow = {
+  id: number
+  created_at: string
+  amount: number
+  balance_before: number
+  balance_after: number
+  note: string | null
+  member: { id: number; name: string; member_number: string } | null
+  approver: { id: number; name: string } | null
+}
+
 type DepositIndexProps = {
   tab: string
   transactions: Paginated<TransactionRow>
+  adjustments: Paginated<AdjustmentRow>
   members: MemberOption[]
   paymentMethods: PaymentMethodOption[]
   outlets: OutletOption[]
   filters: { member_id?: string; type?: string; from?: string; to?: string }
+  adjustmentFilters: { member_adj?: string; from_adj?: string; to_adj?: string }
   canWithdraw: boolean
   canAdjust: boolean
 }
@@ -64,7 +79,30 @@ const TYPE_LABELS: Record<string, string> = {
   closing: 'Tutup Akun',
 }
 
-export default function Index({ tab, transactions, members, paymentMethods, outlets, filters, canWithdraw, canAdjust }: DepositIndexProps) {
+export default function Index({ tab, transactions, adjustments, members, paymentMethods, outlets, filters, adjustmentFilters, canWithdraw, canAdjust }: DepositIndexProps) {
+  const [adjMemberFilter, setAdjMemberFilter] = useState(adjustmentFilters.member_adj ?? '')
+  const [adjDateRange, setAdjDateRange] = useState<DateRange | undefined>(
+    adjustmentFilters.from_adj || adjustmentFilters.to_adj
+      ? { from: adjustmentFilters.from_adj ? new Date(adjustmentFilters.from_adj) : undefined, to: adjustmentFilters.to_adj ? new Date(adjustmentFilters.to_adj) : undefined }
+      : undefined,
+  )
+
+  function applyAdjFilter() {
+    router.get(route('admin.deposit.index'), {
+      member_adj: adjMemberFilter,
+      from_adj: adjDateRange?.from ? format(adjDateRange.from, 'yyyy-MM-dd') : '',
+      to_adj: adjDateRange?.to ? format(adjDateRange.to, 'yyyy-MM-dd') : '',
+    }, { preserveState: true, replace: true })
+  }
+
+  function exportAdjustments() {
+    const params = new URLSearchParams({
+      member_adj: adjMemberFilter,
+      from_adj: adjDateRange?.from ? format(adjDateRange.from, 'yyyy-MM-dd') : '',
+      to_adj: adjDateRange?.to ? format(adjDateRange.to, 'yyyy-MM-dd') : '',
+    })
+    window.open(`${route('admin.deposit.adjustments.export')}?${params.toString()}`, '_blank')
+  }
   const [selectedMemberId, setSelectedMemberId] = useState('')
   const [memberSearch, setMemberSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState(filters.type ?? '')
@@ -73,6 +111,8 @@ export default function Index({ tab, transactions, members, paymentMethods, outl
   )
   const [withdrawOpen, setWithdrawOpen] = useState(false)
   const [adjustOpen, setAdjustOpen] = useState(false)
+  const [adjustPinOpen, setAdjustPinOpen] = useState(false)
+  const [topupPinOpen, setTopupPinOpen] = useState(false)
 
   const topupForm = useForm({ member_id: '', amount: 0, payment_method_id: '', outlet_id: outlets[0] ? String(outlets[0].id) : '' })
   const withdrawForm = useForm({ member_id: '', amount: 0, note: '' })
@@ -99,15 +139,33 @@ export default function Index({ tab, transactions, members, paymentMethods, outl
     topupForm.setData('member_id', id)
   }
 
+  const TOPUP_CASH_PIN_THRESHOLD = 200000
+
   const submitTopup: FormEventHandler = (e) => {
     e.preventDefault()
-    router.post(route('admin.deposit.topup'), topupForm.data, {
+    const method = paymentMethods.find((pm) => String(pm.id) === topupForm.data.payment_method_id)
+
+    // REVISI-R1-v2.md §6.3 — top-up TUNAI di atas ambang wajib PIN
+    // supervisor. Pengecekan sisi klien ini murni UX (langsung minta PIN
+    // tanpa round-trip gagal dulu) — backend TETAP menolak tanpa token
+    // valid terlepas dari ini.
+    if (method?.type === 'cash' && topupForm.data.amount > TOPUP_CASH_PIN_THRESHOLD) {
+      setTopupPinOpen(true)
+      return
+    }
+
+    doSubmitTopup()
+  }
+
+  function doSubmitTopup(token?: string) {
+    router.post(route('admin.deposit.topup'), { ...topupForm.data, approval_token: token ?? '' }, {
       preserveScroll: true,
       headers: { 'X-Idempotency-Key': topupKeyRef.current },
       onSuccess: () => {
         topupForm.reset()
         setSelectedMemberId('')
         topupKeyRef.current = newIdempotencyKey()
+        setTopupPinOpen(false)
       },
       onError: (errors) => topupForm.setError(errors as never),
     })
@@ -129,7 +187,11 @@ export default function Index({ tab, transactions, members, paymentMethods, outl
 
   const submitAdjust: FormEventHandler = (e) => {
     e.preventDefault()
-    router.post(route('admin.deposit.adjustment'), adjustForm.data, {
+    setAdjustPinOpen(true)
+  }
+
+  function doSubmitAdjust(token: string) {
+    router.post(route('admin.deposit.adjustment'), { ...adjustForm.data, approval_token: token }, {
       preserveScroll: true,
       headers: { 'X-Idempotency-Key': adjustKeyRef.current },
       onSuccess: () => {
@@ -175,6 +237,7 @@ export default function Index({ tab, transactions, members, paymentMethods, outl
         <TabsList>
           <TabsTrigger value="topup">Top-Up</TabsTrigger>
           <TabsTrigger value="riwayat">Riwayat</TabsTrigger>
+          <TabsTrigger value="penyesuaian">Penyesuaian</TabsTrigger>
         </TabsList>
 
         <TabsContent value="topup" className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4">
@@ -282,6 +345,78 @@ export default function Index({ tab, transactions, members, paymentMethods, outl
             }}
           />
         </TabsContent>
+
+        {/* REVISI-R1-v2.md §6.2 — Riwayat Penyesuaian Saldo, tab terpisah
+            dengan filter & ekspor sendiri (prioritas khusus). */}
+        <TabsContent value="penyesuaian" className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={adjMemberFilter || 'all'} onValueChange={(v) => setAdjMemberFilter(v === 'all' ? '' : v)}>
+              <SelectTrigger className="w-56">
+                <SelectValue placeholder="Semua anggota" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua anggota</SelectItem>
+                {members.map((m) => (
+                  <SelectItem key={m.id} value={String(m.id)}>{m.name} ({m.member_number})</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <DateRangePicker value={adjDateRange} onChange={setAdjDateRange} />
+            <Button variant="outline" onClick={applyAdjFilter}>Terapkan</Button>
+            <Button variant="outline" className="ml-auto" onClick={exportAdjustments}>Ekspor Excel</Button>
+          </div>
+
+          <div className="overflow-x-auto rounded-md border border-border">
+            <table className="w-full text-sm">
+              <thead className="bg-bg">
+                <tr>
+                  <th className="p-2 text-left">Tanggal</th>
+                  <th className="p-2 text-left">Anggota</th>
+                  <th className="p-2 text-left">Jenis</th>
+                  <th className="p-2 text-right">Nominal</th>
+                  <th className="p-2 text-right">Saldo Sebelum</th>
+                  <th className="p-2 text-right">Saldo Sesudah</th>
+                  <th className="p-2 text-left">Alasan</th>
+                  <th className="p-2 text-left">Dilakukan Oleh</th>
+                </tr>
+              </thead>
+              <tbody>
+                {adjustments.data.map((row) => (
+                  <tr key={row.id} className="border-t border-border">
+                    <td className="p-2 font-mono text-xs">{formatDateTime(row.created_at)}</td>
+                    <td className="p-2">{row.member ? `${row.member.name} (${row.member.member_number})` : '—'}</td>
+                    <td className="p-2">
+                      <Badge className={row.amount >= 0 ? 'bg-success text-white' : 'bg-danger text-white'}>
+                        {row.amount >= 0 ? 'Tambah' : 'Kurangi'}
+                      </Badge>
+                    </td>
+                    <td className="p-2 text-right"><Money amount={row.amount} size="sm" showSign /></td>
+                    <td className="p-2 text-right"><Money amount={row.balance_before} size="sm" /></td>
+                    <td className="p-2 text-right"><Money amount={row.balance_after} size="sm" /></td>
+                    <td className="p-2 max-w-xs">{row.note ?? '—'}</td>
+                    <td className="p-2">{row.approver?.name ?? '—'}</td>
+                  </tr>
+                ))}
+                {adjustments.data.length === 0 && (
+                  <tr><td colSpan={8} className="p-6 text-center text-content-muted">Belum ada penyesuaian saldo.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          {adjustments.last_page > 1 && (
+            <div className="flex items-center justify-center gap-2 text-sm">
+              <Button
+                type="button" size="sm" variant="outline" disabled={adjustments.current_page <= 1}
+                onClick={() => router.get(route('admin.deposit.index'), { member_adj: adjMemberFilter, adj_page: adjustments.current_page - 1 }, { preserveState: true })}
+              >◀</Button>
+              <span>Hal. {adjustments.current_page} / {adjustments.last_page}</span>
+              <Button
+                type="button" size="sm" variant="outline" disabled={adjustments.current_page >= adjustments.last_page}
+                onClick={() => router.get(route('admin.deposit.index'), { member_adj: adjMemberFilter, adj_page: adjustments.current_page + 1 }, { preserveState: true })}
+              >▶</Button>
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
 
       <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
@@ -349,17 +484,48 @@ export default function Index({ tab, transactions, members, paymentMethods, outl
               />
               {adjustForm.errors.amount && <p className="text-sm text-danger">{adjustForm.errors.amount}</p>}
             </div>
+            {/* REVISI-R1-v2.md §6.2 — pratinjau "Saldo X → Y" sebelum simpan. */}
+            {(() => {
+              const m = members.find((mm) => String(mm.id) === adjustForm.data.member_id)
+              if (!m || !adjustForm.data.amount) return null
+              const after = m.balance_cache + adjustForm.data.amount
+              return (
+                <p className="rounded-md bg-bg p-2 text-sm">
+                  Saldo <Money amount={m.balance_cache} size="sm" /> → <Money amount={after} size="sm" />{' '}
+                  ({adjustForm.data.amount > 0 ? '+' : ''}<Money amount={adjustForm.data.amount} size="sm" showSign />)
+                </p>
+              )
+            })()}
             <div className="space-y-1.5">
-              <Label>Alasan (wajib, tercatat di audit)</Label>
+              <Label>Alasan (wajib, minimal 20 karakter, tercatat di audit)</Label>
               <Textarea value={adjustForm.data.reason} onChange={(e) => adjustForm.setData('reason', e.target.value)} />
+              <p className="text-xs text-content-muted">{adjustForm.data.reason.length}/20 karakter minimum</p>
               {adjustForm.errors.reason && <p className="text-sm text-danger">{adjustForm.errors.reason}</p>}
             </div>
             <DialogFooter>
-              <Button type="submit" disabled={adjustForm.processing}>Simpan Penyesuaian</Button>
+              <Button type="submit" disabled={adjustForm.processing || adjustForm.data.reason.length < 20}>Simpan Penyesuaian</Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      <SupervisorPinDialog
+        open={topupPinOpen}
+        onOpenChange={setTopupPinOpen}
+        permission="topup.approve"
+        title="Konfirmasi Top-Up Tunai Nominal Besar"
+        description={`Top-up tunai di atas Rp ${TOPUP_CASH_PIN_THRESHOLD.toLocaleString('id-ID')} wajib PIN supervisor.`}
+        onApproved={(token) => doSubmitTopup(token)}
+      />
+
+      <SupervisorPinDialog
+        open={adjustPinOpen}
+        onOpenChange={setAdjustPinOpen}
+        permission="deposit.adjust"
+        title="Konfirmasi Penyesuaian Saldo"
+        description="Aksi ini mengubah saldo anggota tanpa transaksi/uang fisik — masukkan PIN owner untuk melanjutkan."
+        onApproved={(token) => doSubmitAdjust(token)}
+      />
     </div>
   )
 }

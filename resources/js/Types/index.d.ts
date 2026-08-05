@@ -54,4 +54,7 @@ export type PageProps<T extends Record<string, unknown> = Record<string, unknown
   unreadNotificationsCount: number
   appName: string
   status?: string
+  // REVISI-R1-v2.md §1.5 — null untuk owner (bypass semua outlet, tidak
+  // punya satu outlet primary tunggal).
+  activeOutlet: { id: number; name: string } | null
 }

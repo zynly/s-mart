@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreExchangeRequest;
-use App\Models\User;
+use App\Services\AuthorizationService;
 use App\Services\ExchangeService;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
@@ -13,15 +13,18 @@ use RuntimeException;
 
 class ExchangeController extends Controller
 {
-    public function __construct(private readonly ExchangeService $exchangeService) {}
+    public function __construct(
+        private readonly ExchangeService $exchangeService,
+        private readonly AuthorizationService $authorizationService,
+    ) {}
 
     public function store(StoreExchangeRequest $request): RedirectResponse
     {
         $idempotencyKey = (string) $request->header('X-Idempotency-Key');
         $returnData = $request->validated('return');
-        $approver = ($returnData['approver_id'] ?? null) !== null
-            ? User::find($returnData['approver_id'])
-            : null;
+        // Audit Fase 1 (Temuan Kritis #1) — token sekali-pakai, permission
+        // sama seperti retur biasa (tukar barang = retur + nota baru).
+        $approver = $this->authorizationService->consumeToken($returnData['approval_token'] ?? null, 'sale_return.approve');
 
         try {
             $exchange = $this->exchangeService->process(

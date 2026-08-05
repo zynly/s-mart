@@ -17,18 +17,30 @@ class CheckBalanceController extends Controller
 
     public function check(Request $request): Response
     {
-        $data = $request->validate(['member_number' => ['required', 'string', 'max:30']]);
+        // Audit Fase 6 (Temuan Tinggi): member_number berformat sekuensial
+        // dapat ditebak sepenuhnya (tahun+nomor urut) — sebelumnya nomor
+        // ITU SAJA sudah cukup membuka saldo persis, dibatasi cuma
+        // throttle per-IP yang longgar (10/menit) untuk ruang ID yang
+        // kecil. Sekarang wajib faktor kedua (tanggal lahir) yang tidak
+        // bisa ditebak dari nomor anggota — wali/santri pasti tahu,
+        // penyerang acak tidak. Throttle juga diperketat (lihat routes/web.php).
+        $data = $request->validate([
+            'member_number' => ['required', 'string', 'max:30'],
+            'birth_date' => ['required', 'date'],
+        ]);
 
         $member = Member::where('member_number', $data['member_number'])
+            ->whereDate('birth_date', $data['birth_date'])
             ->where('status', 'active')
             ->first();
 
-        // Respons SAMA (generik) untuk "nomor tidak ditemukan" DAN "member
-        // ada tapi status tidak aktif" — kalau dibedakan, endpoint ini jadi
-        // alat enumerasi status keanggotaan orang lain.
+        // Respons SAMA (generik) untuk "nomor tidak ditemukan", "member
+        // ada tapi status tidak aktif", DAN "tanggal lahir tidak cocok" —
+        // kalau dibedakan, endpoint ini jadi alat enumerasi (baik status
+        // keanggotaan maupun tanggal lahir orang lain).
         if ($member === null) {
             return Inertia::render('Public/CheckBalance', [
-                'error' => 'Nomor anggota tidak ditemukan.',
+                'error' => 'Nomor anggota atau tanggal lahir tidak cocok.',
                 'submittedNumber' => $data['member_number'],
             ]);
         }

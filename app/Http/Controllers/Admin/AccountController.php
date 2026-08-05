@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreAccountRequest;
 use App\Http\Requests\Admin\UpdateAccountRequest;
 use App\Models\Account;
+use App\Services\JournalService;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
@@ -14,6 +15,8 @@ use Inertia\Response;
 
 class AccountController extends Controller
 {
+    public function __construct(private readonly JournalService $journalService) {}
+
     public function index(): Response
     {
         return Inertia::render('Admin/Accounts/Index', [
@@ -39,7 +42,19 @@ class AccountController extends Controller
 
     public function update(UpdateAccountRequest $request, Account $account): RedirectResponse
     {
-        $account->update($request->validated());
+        $data = $request->validated();
+
+        // Audit Fase 4 (Temuan Kritis #5): menonaktifkan akun yang masih
+        // punya saldo berjalan sebelumnya diizinkan bebas — saldo itu
+        // lalu diam-diam hilang dari Neraca/Trial Balance (leafAccounts()
+        // memfilter is_active). Sekarang diblokir tegas; akun harus
+        // disaldo-nolkan (lewat proses akuntansi yang benar) dulu sebelum
+        // bisa dinonaktifkan. Tidak berlaku utk MENGAKTIFKAN kembali.
+        if (($data['is_active'] ?? true) === false && $account->is_active && $this->journalService->hasNonZeroBalance($account)) {
+            throw ValidationException::withMessages(['is_active' => 'Akun ini masih punya saldo berjalan — tidak bisa dinonaktifkan sampai saldonya nol.']);
+        }
+
+        $account->update($data);
 
         return back()->with('success', 'Akun berhasil diperbarui.');
     }

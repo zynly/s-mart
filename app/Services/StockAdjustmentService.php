@@ -55,6 +55,14 @@ class StockAdjustmentService
                         throw new DomainException("Pilih layer stok spesifik untuk pengurangan \"{$product->name}\".");
                     }
 
+                    // Audit Fase 6 (Temuan Tinggi): layer yang dipilih
+                    // sebelumnya tidak pernah diverifikasi cocok dengan
+                    // outlet/produk header penyesuaian — layer produk/
+                    // outlet LAIN bisa dipakai (isolasi multi-outlet bocor).
+                    if ((int) $layer->outlet_id !== (int) $data['outlet_id'] || (int) $layer->product_id !== $product->id) {
+                        throw new DomainException("Layer stok yang dipilih tidak cocok dengan produk/outlet penyesuaian \"{$product->name}\".");
+                    }
+
                     if ((float) $layer->qty_remaining < abs($qty)) {
                         throw new DomainException("Qty pengurangan untuk \"{$product->name}\" melebihi sisa layer yang dipilih ({$layer->qty_remaining}).");
                     }

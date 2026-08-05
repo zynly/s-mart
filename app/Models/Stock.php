@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToOutlet;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Stock extends Model
 {
+    use BelongsToOutlet;
+
     protected $fillable = [
         'product_id', 'outlet_id', 'qty', 'avg_cost',
         'last_cost', 'last_movement_at',

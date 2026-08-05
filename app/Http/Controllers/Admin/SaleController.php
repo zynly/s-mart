@@ -14,13 +14,16 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CompleteSaleRequest;
 use App\Http\Requests\Admin\HoldSaleRequest;
 use App\Http\Requests\Admin\VoidSaleRequest;
+use App\Models\Category;
 use App\Models\Member;
 use App\Models\Outlet;
 use App\Models\PaymentMethod;
 use App\Models\Product;
+use App\Models\ProductPrice;
+use App\Models\Promo;
 use App\Models\Sale;
 use App\Models\SaleHold;
-use App\Models\User;
+use App\Services\AuthorizationService;
 use App\Services\BarcodeResolverService;
 use App\Services\CardService;
 use App\Services\CashierSessionService;
@@ -33,6 +36,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -47,6 +51,7 @@ class SaleController extends Controller
         private readonly CardService $cardService,
         private readonly PriceService $priceService,
         private readonly PaymentService $paymentService,
+        private readonly AuthorizationService $authorizationService,
     ) {}
 
     public function index(Request $request): Response
@@ -59,17 +64,79 @@ class SaleController extends Controller
             'outlet' => $outlet,
             'paymentMethods' => PaymentMethod::where('is_active', true)->orderBy('sort_order')
                 ->get(['id', 'code', 'name', 'type', 'allows_change', 'requires_reference', 'mdr_percent']),
-            'favoriteProducts' => Product::where('is_active', true)->where('is_favorite', true)
-                ->with(['baseUnit:id,code,name', 'barcodes'])
-                ->orderBy('name')
-                ->limit(12)
-                ->get(['id', 'name', 'sku', 'base_unit_id']),
+            'catalog' => $this->catalogPayload($request, $outlet),
+            'categories' => Category::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'holds' => $session !== null
                 ? SaleHold::where('cashier_session_id', $session->id)->orderByDesc('held_at')->get(['id', 'reference', 'item_count', 'total', 'held_at', 'member_id'])
                 : [],
             'noPinThreshold' => (int) config('pos.no_pin_threshold', 0),
             'pointValue' => (int) config('pos.point_value', 100),
         ]);
+    }
+
+    /**
+     * REVISI-R1-v2.md §4.7/§5.5 — Lapis 1: grid katalog kasir HANYA
+     * menampilkan produk yang benar-benar punya stok (>0) di outlet
+     * user yang login. Produk tanpa baris `stocks` sama sekali, atau
+     * qty<=0, TIDAK MUNCUL — bukan hanya disamarkan di UI, memang tidak
+     * ikut ter-query. Urutan: favorit dulu, lalu nama A-Z. 12/halaman.
+     */
+    private function catalogPayload(Request $request, ?Outlet $outlet): array
+    {
+        if ($outlet === null) {
+            return ['data' => [], 'current_page' => 1, 'last_page' => 1, 'total' => 0];
+        }
+
+        $query = Product::query()
+            ->where('is_active', true)
+            ->whereHas('stocks', fn ($q) => $q->where('outlet_id', $outlet->id)->where('qty', '>', 0))
+            ->when($request->integer('category_id'), fn ($q, $catId) => $q->where('category_id', $catId))
+            ->when($request->string('search')->toString(), fn ($q, $search) => $q->where(
+                fn ($sub) => $sub->where('name', 'like', "%{$search}%")->orWhere('sku', 'like', "%{$search}%")
+            ))
+            ->with(['category:id,name', 'baseUnit:id,code,name', 'images' => fn ($q) => $q->where('is_primary', true)->limit(1)])
+            ->orderByDesc('is_favorite')
+            ->orderBy('name');
+
+        $page = $query->paginate(12, ['id', 'name', 'sku', 'category_id', 'base_unit_id', 'is_favorite'], 'page', $request->integer('page', 1));
+
+        $productIds = $page->pluck('id');
+        $prices = ProductPrice::where('outlet_id', $outlet->id)
+            ->whereIn('product_id', $productIds)
+            ->whereNull('effective_to')
+            ->get()
+            ->keyBy('product_id');
+
+        $now = now();
+        $promoProductIds = Promo::query()
+            ->where('is_active', true)
+            ->where(fn ($q) => $q->whereNull('start_date')->orWhere('start_date', '<=', $now->toDateString()))
+            ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', $now->toDateString()))
+            ->whereIn('type', ['product', 'clearance', 'buy_x_get_y', 'bundle', 'tiered_qty'])
+            ->with('products:id')
+            ->get()
+            ->pluck('products')
+            ->flatten()
+            ->pluck('id')
+            ->unique();
+
+        $page->getCollection()->transform(function (Product $product) use ($prices, $promoProductIds) {
+            $image = $product->images->first();
+
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'sku' => $product->sku,
+                'category' => $product->category?->name,
+                'unit' => $product->baseUnit ? ['id' => $product->baseUnit->id, 'code' => $product->baseUnit->code] : null,
+                'is_favorite' => $product->is_favorite,
+                'price' => $prices->get($product->id)?->price ?? 0,
+                'has_promo' => $promoProductIds->contains($product->id),
+                'image_url' => $image ? Storage::disk('public')->url($image->path) : null,
+            ];
+        });
+
+        return $page->toArray();
     }
 
     public function scan(Request $request): JsonResponse
@@ -201,7 +268,13 @@ class SaleController extends Controller
 
     public function void(VoidSaleRequest $request, Sale $sale): RedirectResponse
     {
-        $approver = User::findOrFail($request->validated('approver_id'));
+        // Audit Fase 1 (Temuan Kritis #1): BUKAN User::find($approver_id)
+        // lagi — token dari AuthorizationService::issueToken(), ditukar
+        // (sekali pakai, terikat permission+peminta) lewat consumeToken().
+        // $approver null di sini (token tidak valid/kedaluwarsa/dipakai
+        // ulang) tetap diteruskan ke VoidService::void(), yang menolaknya
+        // dengan pesan yang sama seperti sebelumnya.
+        $approver = $this->authorizationService->consumeToken($request->validated('approval_token'), 'sale.void');
 
         try {
             $this->saleService->void($sale, $request->validated('reason'), $approver);

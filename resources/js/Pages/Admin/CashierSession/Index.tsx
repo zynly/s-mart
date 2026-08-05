@@ -85,21 +85,21 @@ export default function Index({ tab, active, expected, cashAccounts, activeSales
   const openForm = useForm({ cash_account_id: cashAccounts[0] ? String(cashAccounts[0].id) : '', opening_cash: 0 })
   // Sengaja default ke 0, bukan expected — kasir wajib menghitung fisik
   // uang di laci sungguhan, bukan sekadar menerima angka sistem.
-  const closeForm = useForm({ actual_cash: 0, reason: '', approver_id: null as number | null })
+  const closeForm = useForm({ actual_cash: 0, reason: '', approval_token: null as string | null })
 
   const [voidTarget, setVoidTarget] = useState<ActiveSaleRow | null>(null)
   const [voidReason, setVoidReason] = useState('')
   const [voidPinOpen, setVoidPinOpen] = useState(false)
   const [voiding, setVoiding] = useState(false)
 
-  function submitVoid(approverId: number) {
+  function submitVoid(approvalToken: string) {
     if (!voidTarget) return
 
     setVoiding(true)
 
     router.put(
       route('pos.sales.void', voidTarget.id),
-      { reason: voidReason, approver_id: approverId },
+      { reason: voidReason, approval_token: approvalToken },
       {
         preserveScroll: true,
         onSuccess: () => {
@@ -126,22 +126,22 @@ export default function Index({ tab, active, expected, cashAccounts, activeSales
   const toleranceAmount = Math.round(Math.abs(expected ?? 0) * 0.005)
   const needsApproval = Math.abs(difference) > toleranceAmount
 
-  function doSubmitClose(approverId: number | null) {
+  function doSubmitClose(approvalToken: string | null) {
     if (!active) return
 
-    closeForm.transform((data) => ({ ...data, approver_id: approverId }))
+    closeForm.transform((data) => ({ ...data, approval_token: approvalToken }))
     closeForm.put(route('admin.cashier-session.close', active.id), { preserveScroll: true })
   }
 
   const submitClose: FormEventHandler = (e) => {
     e.preventDefault()
 
-    if (needsApproval && !closeForm.data.approver_id) {
+    if (needsApproval && !closeForm.data.approval_token) {
       setPinOpen(true)
       return
     }
 
-    doSubmitClose(closeForm.data.approver_id)
+    doSubmitClose(closeForm.data.approval_token)
   }
 
   const sessions = Array.isArray(recentSessions) ? recentSessions : recentSessions.data
@@ -265,8 +265,8 @@ export default function Index({ tab, active, expected, cashAccounts, activeSales
                   <div className="space-y-1.5">
                     <Label>Alasan Selisih (wajib)</Label>
                     <Textarea value={closeForm.data.reason} onChange={(e) => closeForm.setData('reason', e.target.value)} />
-                    {closeForm.data.approver_id ? (
-                      <p className="text-sm text-success">Disetujui oleh supervisor (#{closeForm.data.approver_id}).</p>
+                    {closeForm.data.approval_token ? (
+                      <p className="text-sm text-success">Disetujui oleh supervisor.</p>
                     ) : (
                       <p className="text-sm text-warning">Selisih di atas toleransi — perlu otorisasi supervisor saat simpan.</p>
                     )}
@@ -299,10 +299,10 @@ export default function Index({ tab, active, expected, cashAccounts, activeSales
         permission="pos.approve"
         title="Otorisasi Selisih Kas"
         description="Selisih melebihi batas toleransi — masukkan PIN supervisor."
-        onApproved={(approverId) => {
-          closeForm.setData('approver_id', approverId)
+        onApproved={(token) => {
+          closeForm.setData('approval_token', token)
           setPinOpen(false)
-          doSubmitClose(approverId)
+          doSubmitClose(token)
         }}
       />
 
@@ -333,9 +333,9 @@ export default function Index({ tab, active, expected, cashAccounts, activeSales
         permission="sale.void"
         title="Otorisasi Void Nota"
         description="Masukkan PIN supervisor untuk membatalkan nota ini."
-        onApproved={(approverId) => {
+        onApproved={(token) => {
           setVoidPinOpen(false)
-          submitVoid(approverId)
+          submitVoid(token)
         }}
       />
     </div>

@@ -69,7 +69,7 @@ export default function Index({ tab, outlets }: { tab: string; outlets: OutletRo
     {
       id: 'main',
       header: 'Utama',
-      cell: ({ row }) => (row.original.is_main ? <Badge className="bg-gold text-navy-900">Utama</Badge> : '—'),
+      cell: ({ row }) => (row.original.is_main ? <Badge className="bg-mustard-500 text-navy-900">Utama</Badge> : '—'),
     },
     {
       id: 'status',

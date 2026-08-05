@@ -10,6 +10,7 @@ use App\Models\PaymentMethod;
 use App\Models\Receivable;
 use App\Models\Sale;
 use App\Models\SalePayment;
+use App\Services\AuthorizationService;
 use App\Support\ReferenceGenerator;
 use DomainException;
 
@@ -22,6 +23,8 @@ use DomainException;
  */
 class CreditHandler implements PaymentHandler
 {
+    public function __construct(private readonly AuthorizationService $authorizationService) {}
+
     public function handle(Sale $sale, PaymentMethod $method, array $payload, ?Member $member, CashierSession $session, Outlet $outlet): SalePayment
     {
         if ($member === null) {
@@ -29,12 +32,20 @@ class CreditHandler implements PaymentHandler
         }
 
         $amount = (int) $payload['amount'];
-        $approver = $payload['approver'] ?? null;
-
         $check = $this->checkLimit($member, $amount);
 
-        if (! $check['allowed'] && $approver === null) {
-            throw CreditLimitExceededException::make($check['limit'], $check['active'], $amount);
+        if (! $check['allowed']) {
+            // Audit Fase 6 (Temuan Sedang): sebelumnya `$payload['approver']`
+            // dicek sebagai truthy MENTAH (tidak divalidasi FormRequest,
+            // dan kalau ada nilainya tidak pernah dicek permission apa
+            // pun) — celah bypass limit piutang total kalau field ini
+            // pernah "diperbaiki" tanpa mengikuti pola token. Sekarang
+            // token sekali-pakai, permission receivable.approve.
+            $approver = $this->authorizationService->consumeToken($payload['credit_approval_token'] ?? null, 'receivable.approve');
+
+            if ($approver === null) {
+                throw CreditLimitExceededException::make($check['limit'], $check['active'], $amount);
+            }
         }
 
         Receivable::create([

@@ -1,8 +1,10 @@
 import { useForm } from '@inertiajs/react'
 import type { FormEventHandler, ReactElement } from 'react'
 import WaliLayout from '@/Layouts/WaliLayout'
+import { PasswordStrengthMeter } from '@/Components/common/PasswordStrengthMeter'
 import { Button } from '@/Components/ui/button'
 import { Label } from '@/Components/ui/label'
+import { Input } from '@/Components/ui/input'
 import { Switch } from '@/Components/ui/switch'
 import { MoneyInput } from '@/Components/common/MoneyInput'
 import { Card, CardContent } from '@/Components/ui/card'
@@ -19,9 +21,23 @@ type SettingProps = {
 export default function Edit({ setting }: SettingProps) {
   const { data, setData, put, processing } = useForm(setting)
 
+  const passwordForm = useForm({
+    current_password: '',
+    password: '',
+    password_confirmation: '',
+  })
+
   const submit: FormEventHandler = (e) => {
     e.preventDefault()
     put(route('wali.settings.update'))
+  }
+
+  const submitPassword: FormEventHandler = (e) => {
+    e.preventDefault()
+    passwordForm.put(route('wali.settings.password'), {
+      preserveScroll: true,
+      onSuccess: () => passwordForm.reset(),
+    })
   }
 
   return (
@@ -60,6 +76,49 @@ export default function Edit({ setting }: SettingProps) {
 
         <Button type="submit" disabled={processing} className="w-full">
           Simpan Pengaturan
+        </Button>
+      </form>
+
+      <h1 className="mt-4 text-lg font-semibold text-content">Ganti Password</h1>
+      <form onSubmit={submitPassword} className="flex flex-col gap-3">
+        <Card>
+          <CardContent className="flex flex-col gap-3 p-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="current_password">Password Saat Ini</Label>
+              <Input
+                id="current_password" type="password" autoComplete="current-password"
+                value={passwordForm.data.current_password}
+                onChange={(e) => passwordForm.setData('current_password', e.target.value)}
+              />
+              {passwordForm.errors.current_password && (
+                <p className="text-sm text-danger">{passwordForm.errors.current_password}</p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="new_password">Password Baru</Label>
+              <Input
+                id="new_password" type="password" autoComplete="new-password"
+                value={passwordForm.data.password}
+                onChange={(e) => passwordForm.setData('password', e.target.value)}
+              />
+              <PasswordStrengthMeter password={passwordForm.data.password} />
+              {passwordForm.errors.password && <p className="text-sm text-danger">{passwordForm.errors.password}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="new_password_confirmation">Konfirmasi Password Baru</Label>
+              <Input
+                id="new_password_confirmation" type="password" autoComplete="new-password"
+                value={passwordForm.data.password_confirmation}
+                onChange={(e) => passwordForm.setData('password_confirmation', e.target.value)}
+              />
+            </div>
+            <p className="text-xs text-content-muted">
+              Setelah diganti, perangkat lain yang sedang login dengan akun ini akan otomatis keluar.
+            </p>
+          </CardContent>
+        </Card>
+        <Button type="submit" disabled={passwordForm.processing} className="w-full">
+          Ganti Password
         </Button>
       </form>
     </div>

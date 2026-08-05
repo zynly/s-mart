@@ -149,19 +149,31 @@ class PurchaseService
                 $this->debtService->createFromPurchase($purchase);
             }
 
-            // Catatan (Fase 13, ditemukan saat membaca ulang bersamaan
-            // dengan Temuan D): sisi pembelian TUNAI-nya sendiri juga tidak
-            // pernah menyentuh CashService. Beda dengan retur (recordIn,
-            // selalu berhasil), di sini recordOut() bisa gagal
-            // (InsufficientCashBalanceException) karena cash_accounts.
-            // current_balance SELALU disemai 0 dan tidak pernah didanai
-            // otomatis (lihat Temuan C) — menyambungkannya di sini akan
-            // memblokir alur pembelian tunai yang sudah berjalan sampai
-            // pemilik toko menyetor kas manual dulu, perubahan perilaku
-            // operasional yang di luar cakupan bug-fix retur yang disetujui.
-            // Sengaja TIDAK diperbaiki di fase ini — didokumentasikan saja,
-            // konsisten dengan keputusan Temuan C (GL jurnal & cash_accounts
-            // tetap dua ledger terpisah untuk fase ini).
+            // Gap G-06 (2026-08-03): pembelian TUNAI sekarang benar-benar
+            // mengeluarkan saldo dari Akun Kas operasional yang dipilih —
+            // sebelumnya hanya jurnal GL (via PurchaseObserver) yang
+            // tercatat, cash_accounts/cash_transactions tidak pernah tahu
+            // uang keluar, sehingga tidak sinkron dengan rekonsiliasi
+            // harian (Sesi & Kas). Dijalankan di DALAM transaction yang
+            // sama dengan stok+hutang — kalau saldo kas tidak cukup
+            // (InsufficientCashBalanceException), SELURUH penerimaan
+            // barang ini dibatalkan (rollback), bukan cuma sisi kasnya.
+            if (! $isConsignment && $paymentType === 'cash' && $total > 0) {
+                $cashAccount = CashAccount::findOrFail($data['cash_account_id']);
+
+                if ($cashAccount->outlet_id !== $outlet->id) {
+                    throw new DomainException('Akun kas yang dipilih bukan milik outlet pembelian ini.');
+                }
+
+                $this->cashService->recordOut(
+                    $cashAccount,
+                    $total,
+                    null,
+                    "Pembelian tunai {$purchase->reference}",
+                    null,
+                    $purchase,
+                );
+            }
 
             return $purchase->fresh(['items', 'otherCosts']);
         });
@@ -232,15 +244,56 @@ class PurchaseService
     }
 
     /**
-     * @param  array<int, array{purchase_item_id: int, qty: float, unit_cost: int}>  $items
+     * @param  array<int, array{purchase_item_id: int, qty: float}>  $items
      */
     public function processReturn(array $data, array $items): PurchaseReturn
     {
         return DB::transaction(function () use ($data, $items) {
-            $purchase = Purchase::findOrFail($data['purchase_id']);
+            $purchase = Purchase::lockForUpdate()->findOrFail($data['purchase_id']);
             $outlet = $purchase->outlet;
 
-            $total = array_sum(array_map(fn (array $i) => $i['qty'] * $i['unit_cost'], $items));
+            // Audit Fase 3 (Temuan Kritis #3 & #4): sebelumnya `unit_cost`
+            // dipercaya MENTAH dari client (bisa dipakai menghapus hutang
+            // supplier / memompa kas fiktif sebesar apapun), dan
+            // `purchase_item_id` tidak pernah diverifikasi milik purchase
+            // ini (bisa dari purchase/outlet LAIN — kebocoran isolasi
+            // multi-outlet + korupsi audit trail). Kedua nilai sekarang
+            // 100% berasal dari data server: unit_cost dari
+            // `purchaseItem->final_unit_cost` asli (bukan input), dan
+            // purchase_item_id WAJIB ditemukan lewat query yang di-scope
+            // ke $purchase->id (bukan findOrFail global). Qty retur juga
+            // sekarang divalidasi tidak melebihi qty dibeli dikurangi
+            // retur sebelumnya (sebelumnya tidak dicek sama sekali).
+            $lineInputs = [];
+            $total = 0;
+
+            foreach ($items as $item) {
+                $purchaseItem = PurchaseItem::where('purchase_id', $purchase->id)->find($item['purchase_item_id']);
+
+                if ($purchaseItem === null) {
+                    throw new DomainException('Item retur tidak ditemukan pada pembelian ini.');
+                }
+
+                $alreadyReturned = (float) PurchaseReturnItem::where('purchase_item_id', $purchaseItem->id)
+                    ->whereHas('purchaseReturn', fn ($q) => $q->where('status', 'completed'))
+                    ->sum('qty');
+                $returnable = (float) $purchaseItem->qty - $alreadyReturned;
+
+                if ((float) $item['qty'] > $returnable + 1e-9) {
+                    throw new DomainException("Qty retur untuk \"{$purchaseItem->product->name}\" melebihi sisa yang bisa diretur ({$returnable}).");
+                }
+
+                $unitCost = $purchaseItem->final_unit_cost;
+                $lineTotal = (int) round((float) $item['qty'] * $unitCost);
+                $total += $lineTotal;
+
+                $lineInputs[] = [
+                    'purchase_item' => $purchaseItem,
+                    'qty' => $item['qty'],
+                    'unit_cost' => $unitCost,
+                    'subtotal' => $lineTotal,
+                ];
+            }
 
             $return = PurchaseReturn::create([
                 'reference' => ReferenceGenerator::generate('RB', $outlet->id),
@@ -255,21 +308,21 @@ class PurchaseService
                 'created_by' => auth()->id(),
             ]);
 
-            foreach ($items as $item) {
-                $purchaseItem = PurchaseItem::findOrFail($item['purchase_item_id']);
+            foreach ($lineInputs as $line) {
+                $purchaseItem = $line['purchase_item'];
                 $layer = StockLayer::findOrFail($purchaseItem->stock_layer_id);
                 $product = $purchaseItem->product;
 
                 $qtyBefore = $this->stockService->getAvailable($product, $outlet);
-                $this->stockService->reduceLayer($layer, (float) $item['qty']);
+                $this->stockService->reduceLayer($layer, (float) $line['qty']);
 
                 PurchaseReturnItem::create([
                     'purchase_return_id' => $return->id,
                     'purchase_item_id' => $purchaseItem->id,
                     'product_id' => $product->id,
-                    'qty' => $item['qty'],
-                    'unit_cost' => $item['unit_cost'],
-                    'subtotal' => $item['qty'] * $item['unit_cost'],
+                    'qty' => $line['qty'],
+                    'unit_cost' => $line['unit_cost'],
+                    'subtotal' => $line['subtotal'],
                     'stock_layer_id' => $layer->id,
                 ]);
 
@@ -277,9 +330,9 @@ class PurchaseService
                     $product,
                     $outlet,
                     'purchase_return',
-                    -$item['qty'],
+                    -$line['qty'],
                     $qtyBefore,
-                    $item['unit_cost'],
+                    $line['unit_cost'],
                     $return,
                     null,
                     $layer->id,

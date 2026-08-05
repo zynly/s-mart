@@ -39,6 +39,12 @@ export default function Index({ reports, financialLinks, exports }: ReportsIndex
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title="Laporan" breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Laporan' }]} />
+      {/* Gap G-11: daftar di bawah HANYA berisi laporan yang akun ini
+          berwenang membuka — sudah difilter backend (ReportController::
+          visibleTo()), bukan sekadar disembunyikan di tampilan. */}
+      <p className="text-sm text-content-muted">
+        Daftar laporan di bawah otomatis menyesuaikan hak akses akun Anda — laporan yang tidak berwenang Anda buka tidak akan tampil di sini.
+      </p>
 
       {byCategory.length === 0 && financialLinks.length === 0 && (
         <EmptyState title="Tidak ada laporan tersedia" description="Akun Anda belum diberi akses ke laporan apa pun." />

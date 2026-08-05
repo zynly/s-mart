@@ -21,7 +21,10 @@ Route::get('/produk/{product:slug}', [ProductController::class, 'show'])->name('
 Route::get('/promo', [PromoController::class, 'index'])->name('promo.index');
 Route::get('/cek-saldo', [CheckBalanceController::class, 'index'])->name('cek-saldo.index');
 Route::post('/cek-saldo', [CheckBalanceController::class, 'check'])
-    ->middleware('throttle:10,1')
+    // Audit Fase 6 (Temuan Tinggi): diperketat dari 10/menit — bersama
+    // faktor kedua (tanggal lahir) di controller, ruang percobaan yang
+    // realistis bagi penyerang sekarang jauh lebih kecil.
+    ->middleware('throttle:5,1')
     ->name('cek-saldo.check');
 
 // Temuan audit keamanan: halaman showcase komponen internal ini

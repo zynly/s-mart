@@ -70,7 +70,17 @@ const TYPE_LABELS: Record<string, string> = {
   birthday: 'Ulang Tahun',
 }
 
+// Gap G-01: PromoEngine::matchesProduct() tidak pernah menerapkan tipe ini
+// (default => false) — diskon level anggota berjalan otomatis dari Level
+// Keanggotaan, bonus ulang tahun dari proses terjadwal, BUKAN dari record
+// Promo. Disembunyikan dari pilihan promo BARU; nilai lama tetap bisa
+// dibuka/dinonaktifkan (lihat isLegacyType di bawah).
+const LEGACY_TYPES = ['member_level', 'birthday']
+const SELECTABLE_TYPE_ENTRIES = Object.entries(TYPE_LABELS).filter(([value]) => !LEGACY_TYPES.includes(value))
+
 const DAY_LABELS = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
+
+type Tier = { min_qty: number | ''; discount: number | '' }
 
 type PromoForm = {
   code: string
@@ -98,6 +108,7 @@ type PromoForm = {
   is_active: boolean
   product_ids: number[]
   category_ids: number[]
+  tiers: Tier[]
 }
 
 const emptyForm: PromoForm = {
@@ -105,7 +116,7 @@ const emptyForm: PromoForm = {
   discount_value: 0, max_discount: '', min_purchase: '', min_qty: '', buy_qty: '', get_qty: '',
   start_date: '', end_date: '', start_time: '', end_time: '', days_of_week: [],
   quota_total: '', quota_per_member: '', priority: 0, is_stackable: false, is_public: false,
-  is_active: true, product_ids: [], category_ids: [],
+  is_active: true, product_ids: [], category_ids: [], tiers: [],
 }
 
 export default function Index({ tab, promos, products, categories, filters }: PromosIndexProps) {
@@ -139,9 +150,47 @@ export default function Index({ tab, promos, products, categories, filters }: Pr
       quota_per_member: promo.quota_per_member ?? '', priority: promo.priority,
       is_stackable: promo.is_stackable, is_public: promo.is_public, is_active: promo.is_active,
       product_ids: promo.products.map((p) => p.id), category_ids: promo.categories.map((c) => c.id),
+      tiers: (promo.tiers ?? []).map((t) => ({ min_qty: Number(t.min_qty), discount: Number(t.discount) })),
     })
     setFormOpen(true)
   }
+
+  // Gap G-01: tipe promo yang tidak diterapkan mesin diskon checkout —
+  // dipertahankan hanya agar promo LAMA bertipe ini tetap bisa dibuka/
+  // dinonaktifkan, bukan untuk dipilih pada promo baru (lihat SELECTABLE_TYPE_ENTRIES).
+  const isLegacyType = LEGACY_TYPES.includes(form.data.type)
+
+  // Gap G-02: PromoEngine::tieredDiscountAmount() membaca `tiers`, bukan
+  // `min_qty` tunggal — beralih ke/dari tiered_qty menyesuaikan `tiers` agar
+  // form selalu konsisten dengan apa yang benar-benar dipakai mesin diskon.
+  function handleTypeChange(value: string) {
+    form.setData({
+      ...form.data,
+      type: value,
+      tiers: value === 'tiered_qty' ? (form.data.tiers.length ? form.data.tiers : [{ min_qty: '', discount: '' }]) : [],
+    })
+  }
+
+  function addTier() {
+    form.setData({ ...form.data, tiers: [...form.data.tiers, { min_qty: '', discount: '' }] })
+  }
+
+  function removeTier(index: number) {
+    form.setData({ ...form.data, tiers: form.data.tiers.filter((_, i) => i !== index) })
+  }
+
+  function updateTier(index: number, field: 'min_qty' | 'discount', value: number | '') {
+    form.setData({
+      ...form.data,
+      tiers: form.data.tiers.map((t, i) => (i === index ? { ...t, [field]: value } : t)),
+    })
+  }
+
+  const duplicateTierQty = useMemo(() => {
+    const values = form.data.tiers.map((t) => t.min_qty).filter((v) => v !== '')
+    return new Set(values).size !== values.length
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.data.tiers])
 
   const submit: FormEventHandler = (e) => {
     e.preventDefault()
@@ -218,6 +267,11 @@ export default function Index({ tab, promos, products, categories, filters }: Pr
         { key: 'coupons', label: 'Kupon', href: route('admin.coupons.index'), permission: 'coupon.view' },
       ]} />
 
+      <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-content-muted">
+        <b>Diskon Member Level</b> dan <b>Ulang Tahun</b> tidak tersedia untuk promo baru — keduanya tidak diterapkan mesin diskon saat checkout.
+        Diskon level anggota berjalan otomatis dari pengaturan Level Keanggotaan; bonus ulang tahun berjalan dari proses terjadwal tersendiri.
+      </div>
+
       <div className="flex flex-wrap gap-2">
         <Select value={typeFilter || 'all'} onValueChange={(v) => applyFilter(v === 'all' ? '' : v)}>
           <SelectTrigger className="w-56">
@@ -271,14 +325,22 @@ export default function Index({ tab, promos, products, categories, filters }: Pr
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Tipe Promo</Label>
-                <Select value={form.data.type} onValueChange={(v) => form.setData('type', v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(TYPE_LABELS).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>{label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {isLegacyType ? (
+                  <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
+                    <span className="font-medium">{TYPE_LABELS[form.data.type]}</span> — tipe ini tidak lagi didukung mesin diskon checkout.
+                    Promo lama ini bisa dinonaktifkan, tapi tipenya tidak bisa diubah menjadi tipe ini lagi untuk promo baru.
+                  </div>
+                ) : (
+                  <Select value={form.data.type} onValueChange={handleTypeChange}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {SELECTABLE_TYPE_ENTRIES.map(([value, label]) => (
+                        <SelectItem key={value} value={value}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {form.errors.type && <p className="text-sm text-danger">{form.errors.type}</p>}
               </div>
               <div className="space-y-1.5">
                 <Label>Cakupan</Label>
@@ -362,11 +424,51 @@ export default function Index({ tab, promos, products, categories, filters }: Pr
               </div>
             )}
 
-            {(form.data.type === 'tiered_qty' || form.data.type === 'bundle') && (
+            {form.data.type === 'bundle' && (
               <div className="space-y-1.5">
                 <Label>Minimal Qty</Label>
                 <Input type="number" value={form.data.min_qty} onChange={(e) => form.setData('min_qty', e.target.value === '' ? '' : Number(e.target.value))} />
-                <p className="text-xs text-content-muted">Untuk diskon bertingkat penuh (banyak level), atur lewat tinker/API — form ini hanya set 1 ambang.</p>
+              </div>
+            )}
+
+            {form.data.type === 'tiered_qty' && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Tingkatan Diskon (Tier)</Label>
+                  <Button type="button" size="sm" variant="outline" onClick={addTier}>+ Tambah Tier</Button>
+                </div>
+                <p className="text-xs text-content-muted">
+                  Tier dengan Minimal Qty tertinggi yang terpenuhi oleh qty pembelian yang dipakai — bukan akumulasi semua tier.
+                </p>
+
+                {form.data.tiers.length === 0 && (
+                  <p className="text-sm text-danger">Tambahkan minimal 1 tier — tanpa tier, promo ini tidak memberi diskon sama sekali.</p>
+                )}
+
+                <div className="space-y-2">
+                  {form.data.tiers.map((tier, index) => (
+                    <div key={index} className="flex items-end gap-2">
+                      <div className="flex-1 space-y-1">
+                        <Label className="text-xs">Minimal Qty</Label>
+                        <Input
+                          type="number" min={0} step="0.001" value={tier.min_qty}
+                          onChange={(e) => updateTier(index, 'min_qty', e.target.value === '' ? '' : Number(e.target.value))}
+                        />
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <Label className="text-xs">Diskon (%)</Label>
+                        <Input
+                          type="number" min={0} max={100} value={tier.discount}
+                          onChange={(e) => updateTier(index, 'discount', e.target.value === '' ? '' : Number(e.target.value))}
+                        />
+                      </div>
+                      <Button type="button" size="sm" variant="outline" onClick={() => removeTier(index)}>Hapus</Button>
+                    </div>
+                  ))}
+                </div>
+
+                {duplicateTierQty && <p className="text-sm text-danger">Minimal Qty tidak boleh sama antar tier.</p>}
+                {form.errors.tiers && <p className="text-sm text-danger">{form.errors.tiers}</p>}
               </div>
             )}
 
@@ -446,7 +548,12 @@ export default function Index({ tab, promos, products, categories, filters }: Pr
             </div>
 
             <DialogFooter>
-              <Button type="submit" disabled={form.processing}>{editing ? 'Simpan Perubahan' : 'Buat Promo'}</Button>
+              <Button
+                type="submit"
+                disabled={form.processing || (form.data.type === 'tiered_qty' && (form.data.tiers.length === 0 || duplicateTierQty))}
+              >
+                {editing ? 'Simpan Perubahan' : 'Buat Promo'}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

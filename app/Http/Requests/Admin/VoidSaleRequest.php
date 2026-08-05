@@ -10,8 +10,10 @@ class VoidSaleRequest extends FormRequest
      * BUKAN can('sale.void') — lihat catatan di VoidService::void() dan
      * routes/pos.php. `sale.void` hanya dimiliki owner/admin/supervisor;
      * kasir yang membatalkan nota lewat PIN supervisor tidak pernah
-     * punya izin itu sendiri. Pengecekan bahwa approver_id benar-benar
-     * berizin sale.void dilakukan di VoidService::void(), bukan di sini.
+     * punya izin itu sendiri. Pengecekan bahwa approval_token benar-benar
+     * menukar ke approver berizin sale.void dilakukan di
+     * AuthorizationService::consumeToken() (dipanggil dari controller),
+     * bukan di sini.
      */
     public function authorize(): bool
     {
@@ -25,7 +27,10 @@ class VoidSaleRequest extends FormRequest
     {
         return [
             'reason' => ['required', 'string', 'min:5', 'max:255'],
-            'approver_id' => ['required', 'exists:users,id'],
+            // Audit Fase 1 (Temuan Kritis #1): BUKAN approver_id lagi —
+            // token sekali-pakai dari AuthorizationService::issueToken(),
+            // lihat consumeToken() di SaleController::void().
+            'approval_token' => ['required', 'string'],
         ];
     }
 }

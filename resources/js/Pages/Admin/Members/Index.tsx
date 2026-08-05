@@ -9,6 +9,7 @@ import { DataTable } from '@/Components/common/DataTable'
 import { Money } from '@/Components/common/Money'
 import { MoneyInput } from '@/Components/common/MoneyInput'
 import { ConfirmDialog } from '@/Components/common/ConfirmDialog'
+import { PinInput } from '@/Components/common/PinInput'
 import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
@@ -35,6 +36,18 @@ type MemberRow = {
   type: 'santri' | 'fasilitator' | 'staff' | 'public'
   class_name: string | null
   major: string | null
+  entry_year: number | null
+  gender: 'L' | 'P' | null
+  birth_date: string | null
+  phone: string | null
+  address: string | null
+  guardian_name: string | null
+  guardian_phone: string | null
+  guardian_relation: string | null
+  daily_limit: number | null
+  weekly_limit: number | null
+  blocked_categories: number[] | null
+  joined_at: string | null
   level: Level | null
   status: string
   balance_cache: number
@@ -104,6 +117,10 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<MemberRow | null>(null)
   const [resetPinTarget, setResetPinTarget] = useState<MemberRow | null>(null)
+  const [setPinTarget, setSetPinTarget] = useState<MemberRow | null>(null)
+  const [newPin, setNewPin] = useState('')
+  const [setPinError, setSetPinError] = useState<string | null>(null)
+  const [settingPin, setSettingPin] = useState(false)
   const [deactivateTarget, setDeactivateTarget] = useState<MemberRow | null>(null)
   const [reissueTarget, setReissueTarget] = useState<MemberRow | null>(null)
   const [reissueReason, setReissueReason] = useState('')
@@ -123,6 +140,11 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
 
   function openEdit(row: MemberRow) {
     setEditing(row)
+    // Gap G-07: sebelumnya sebagian besar field di bawah SELALU direset ke
+    // kosong/default di sini, walau datanya sudah ada di `row` — kalau
+    // staf hanya mengubah satu field (mis. Level Keanggotaan) lalu
+    // langsung simpan, data lama ini tertimpa kosong. Sekarang seluruh
+    // field diisi dari data anggota yang sebenarnya.
     form.setData({
       name: row.name,
       nis: row.nis ?? '',
@@ -130,20 +152,20 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
       type: row.type,
       class_name: row.class_name ?? '',
       major: row.major ?? '',
-      entry_year: new Date().getFullYear(),
-      gender: '',
-      birth_date: '',
-      phone: '',
-      address: '',
-      guardian_name: '',
-      guardian_phone: '',
-      guardian_relation: '',
+      entry_year: row.entry_year ?? new Date().getFullYear(),
+      gender: row.gender ?? '',
+      birth_date: row.birth_date ?? '',
+      phone: row.phone ?? '',
+      address: row.address ?? '',
+      guardian_name: row.guardian_name ?? '',
+      guardian_phone: row.guardian_phone ?? '',
+      guardian_relation: row.guardian_relation ?? '',
       receivable_limit: row.receivable_limit,
-      daily_limit: null,
-      weekly_limit: null,
-      blocked_categories: [],
+      daily_limit: row.daily_limit,
+      weekly_limit: row.weekly_limit,
+      blocked_categories: row.blocked_categories ?? [],
       status: row.status,
-      joined_at: '',
+      joined_at: row.joined_at ?? '',
     })
     form.clearErrors()
     setSheetOpen(true)
@@ -221,9 +243,11 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => openEdit(row.original)}>Ubah</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => window.open(route('admin.members.preview-card', row.original.id), '_blank')}>Pratinjau Kartu</DropdownMenuItem>
             <DropdownMenuItem onClick={() => printCards([row.original.id])}>Cetak Kartu</DropdownMenuItem>
             <DropdownMenuItem onClick={() => setReissueTarget(row.original)}>Terbitkan Ulang Kartu</DropdownMenuItem>
             <DropdownMenuItem onClick={() => setResetPinTarget(row.original)}>Reset PIN</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => { setSetPinTarget(row.original); setNewPin(''); setSetPinError(null) }}>Buat/Ganti PIN</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-danger"
@@ -534,6 +558,37 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
           setResetPinTarget(null)
         }}
       />
+
+      <Dialog open={setPinTarget !== null} onOpenChange={(open) => !open && setSetPinTarget(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Buat/Ganti PIN — {setPinTarget?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-3 py-2">
+            <PinInput
+              length={4}
+              value={newPin}
+              onChange={setNewPin}
+              onComplete={(pin) => {
+                if (!setPinTarget) return
+                setSettingPin(true)
+                setSetPinError(null)
+                router.put(route('admin.members.set-pin', setPinTarget.id), { pin }, {
+                  preserveScroll: true,
+                  onSuccess: () => setSetPinTarget(null),
+                  onError: (errors) => setSetPinError(errors.pin ?? 'Gagal menyimpan PIN.'),
+                  onFinish: () => setSettingPin(false),
+                })
+              }}
+              disabled={settingPin}
+            />
+            {setPinError && <p className="text-sm text-danger">{setPinError}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSetPinTarget(null)} disabled={settingPin}>Batal</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={deactivateTarget !== null}

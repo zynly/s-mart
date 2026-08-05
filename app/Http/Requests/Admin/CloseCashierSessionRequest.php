@@ -19,7 +19,9 @@ class CloseCashierSessionRequest extends FormRequest
         return [
             'actual_cash' => ['required', 'integer', 'min:0'],
             'reason' => ['nullable', 'string', 'max:255'],
-            'approver_id' => ['nullable', 'integer', 'exists:users,id'],
+            // Audit Fase 1 (Temuan Kritis #1): BUKAN approver_id lagi —
+            // token sekali-pakai, lihat AuthorizationService::consumeToken().
+            'approval_token' => ['nullable', 'string'],
         ];
     }
 }

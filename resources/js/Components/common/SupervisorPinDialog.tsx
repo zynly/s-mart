@@ -10,7 +10,8 @@ type SupervisorPinDialogProps = {
   permission: string
   title?: string
   description?: string
-  onApproved: (approverId: number) => void
+  /** Token sekali-pakai (bukan ID approver) — lihat AuthorizationService::issueToken(). */
+  onApproved: (token: string) => void
 }
 
 /**
@@ -43,7 +44,7 @@ export function SupervisorPinDialog({
         onSuccess: (page) => {
           setPin('')
           onOpenChange(false)
-          onApproved(page.props.approverId as number)
+          onApproved(page.props.overrideToken as string)
         },
         onError: (errors) => {
           setError(errors.pin ?? 'PIN tidak valid.')

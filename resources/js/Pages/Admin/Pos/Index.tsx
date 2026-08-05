@@ -26,14 +26,19 @@ type PaymentMethodRow = {
   requires_reference: boolean
   mdr_percent: number
 }
-type FavoriteProduct = {
+type CatalogProduct = {
   id: number
   name: string
-  sku: string
-  base_unit_id: number
-  base_unit: { id: number; code: string; name: string }
-  barcodes: { id: number; barcode: string; is_primary: boolean }[]
+  sku: string | null
+  category: string | null
+  unit: { id: number; code: string } | null
+  is_favorite: boolean
+  price: number
+  has_promo: boolean
+  image_url: string | null
 }
+type CatalogPage = { data: CatalogProduct[]; current_page: number; last_page: number; total: number }
+type CategoryRef = { id: number; name: string }
 type HoldRow = { id: number; reference: string; item_count: number; total: number; held_at: string; member_id: number | null }
 type SessionInfo = { id: number; reference: string; opened_at: string } | null
 type OutletInfo = { id: number; name: string } | null
@@ -80,13 +85,24 @@ type PosIndexProps = {
   session: SessionInfo
   outlet: OutletInfo
   paymentMethods: PaymentMethodRow[]
-  favoriteProducts: FavoriteProduct[]
+  catalog: CatalogPage
+  categories: CategoryRef[]
   holds: HoldRow[]
   noPinThreshold: number
   pointValue: number
 }
 
-export default function Index({ session, outlet, paymentMethods, favoriteProducts, holds, noPinThreshold, pointValue }: PosIndexProps) {
+export default function Index({ session, outlet, paymentMethods, catalog, categories, holds, noPinThreshold, pointValue }: PosIndexProps) {
+  const [catalogCategory, setCatalogCategory] = useState('')
+  const [catalogSearch, setCatalogSearch] = useState('')
+
+  function reloadCatalog(patch: { category_id?: string; search?: string; page?: number }) {
+    router.get(route('pos.index'), {
+      category_id: patch.category_id ?? catalogCategory,
+      search: patch.search ?? catalogSearch,
+      page: patch.page ?? 1,
+    }, { preserveState: true, preserveScroll: true, only: ['catalog'] })
+  }
   const [cart, setCart] = useState<CartLine[]>([])
   const [member, setMember] = useState<MemberResult | null>(null)
   const [barcode, setBarcode] = useState('')
@@ -144,14 +160,6 @@ export default function Index({ session, outlet, paymentMethods, favoriteProduct
       setBarcode('')
       focusScan()
     }
-  }
-
-  function addFavorite(product: FavoriteProduct) {
-    const primary = product.barcodes.find((b) => b.is_primary) ?? product.barcodes[0]
-
-    if (!primary) return
-
-    void submitScan(primary.barcode)
   }
 
   function updateQty(key: string, delta: number) {
@@ -434,15 +442,63 @@ export default function Index({ session, outlet, paymentMethods, favoriteProduct
           </table>
         </div>
 
-        <div className="mt-3">
-          <p className="mb-1 text-xs text-content-muted">Produk Favorit</p>
-          <div className="flex flex-wrap gap-2">
-            {favoriteProducts.map((p) => (
-              <Button key={p.id} type="button" variant="outline" size="sm" onClick={() => addFavorite(p)}>
-                {p.name}
-              </Button>
-            ))}
+        {/* REVISI-R1-v2.md §4.7/§5.5 — katalog bergambar, hanya produk
+            berstok di outlet aktif (difilter server, lihat catalogPayload()). */}
+        <div className="mt-3 flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              placeholder="Cari produk di katalog…"
+              value={catalogSearch}
+              onChange={(e) => setCatalogSearch(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && reloadCatalog({ search: catalogSearch })}
+              className="max-w-xs"
+            />
+            <Select value={catalogCategory || 'all'} onValueChange={(v) => { const val = v === 'all' ? '' : v; setCatalogCategory(val); reloadCatalog({ category_id: val }) }}>
+              <SelectTrigger className="w-48"><SelectValue placeholder="Semua kategori" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua kategori</SelectItem>
+                {categories.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
+
+          <div className="grid grid-cols-3 gap-2 xl:grid-cols-4">
+            {catalog.data.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => p.unit && addLine({ id: p.id, name: p.name }, p.unit, p.price, 1)}
+                className="flex flex-col overflow-hidden rounded-md border border-border bg-surface text-left transition-colors hover:border-primary"
+              >
+                <div className="relative aspect-square w-full bg-bg">
+                  {p.image_url ? (
+                    <img src={p.image_url} alt={p.name} className="size-full object-cover" />
+                  ) : (
+                    <div className="flex size-full items-center justify-center text-content-muted">Tidak ada gambar</div>
+                  )}
+                  {p.has_promo && <Badge className="absolute right-1 top-1 bg-danger text-white">PROMO</Badge>}
+                </div>
+                <div className="flex flex-col gap-0.5 p-2">
+                  <p className="line-clamp-2 text-xs font-medium">{p.name}</p>
+                  <p className="truncate text-[10px] text-content-muted">{p.category ?? '—'}</p>
+                  <p className="font-mono text-sm font-bold"><Money amount={p.price} size="sm" /></p>
+                </div>
+              </button>
+            ))}
+            {catalog.data.length === 0 && (
+              <p className="col-span-full p-6 text-center text-sm text-content-muted">
+                Tidak ada produk berstok yang cocok di outlet ini.
+              </p>
+            )}
+          </div>
+
+          {catalog.last_page > 1 && (
+            <div className="flex items-center justify-center gap-2 text-sm">
+              <Button type="button" size="sm" variant="outline" disabled={catalog.current_page <= 1} onClick={() => reloadCatalog({ page: catalog.current_page - 1 })}>◀</Button>
+              <span>Hal. {catalog.current_page} / {catalog.last_page}</span>
+              <Button type="button" size="sm" variant="outline" disabled={catalog.current_page >= catalog.last_page} onClick={() => reloadCatalog({ page: catalog.current_page + 1 })}>▶</Button>
+            </div>
+          )}
         </div>
       </div>
 

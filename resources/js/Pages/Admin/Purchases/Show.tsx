@@ -46,7 +46,7 @@ type PurchaseDetail = {
 export default function Show({ purchase }: { purchase: PurchaseDetail }) {
   const [returnOpen, setReturnOpen] = useState(false)
   const [selected, setSelected] = useState<Record<number, { checked: boolean; qty: number }>>({})
-  const form = useForm({ purchase_id: purchase.id, return_date: new Date().toISOString().slice(0, 10), reason: '', items: [] as { purchase_item_id: number; qty: number; unit_cost: number }[] })
+  const form = useForm({ purchase_id: purchase.id, return_date: new Date().toISOString().slice(0, 10), reason: '', items: [] as { purchase_item_id: number; qty: number }[] })
 
   function toggleItem(item: ItemRow, checked: boolean) {
     setSelected((prev) => ({ ...prev, [item.id]: { checked, qty: prev[item.id]?.qty ?? Number(item.qty) } }))
@@ -58,9 +58,11 @@ export default function Show({ purchase }: { purchase: PurchaseDetail }) {
 
   const submit: FormEventHandler = (e) => {
     e.preventDefault()
+    // Audit Fase 3: unit_cost TIDAK dikirim — server selalu memakai
+    // final_unit_cost asli dari purchase_item, bukan input klien.
     const items = purchase.items
       .filter((it) => selected[it.id]?.checked)
-      .map((it) => ({ purchase_item_id: it.id, qty: selected[it.id]?.qty ?? Number(it.qty), unit_cost: it.final_unit_cost }))
+      .map((it) => ({ purchase_item_id: it.id, qty: selected[it.id]?.qty ?? Number(it.qty) }))
 
     form.transform((data) => ({ ...data, items }))
     form.post(route('admin.purchase-returns.store'), {

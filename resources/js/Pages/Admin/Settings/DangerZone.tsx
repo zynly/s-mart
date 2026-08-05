@@ -110,6 +110,34 @@ export default function DangerZone({ storeName, backups }: DangerZoneProps) {
         </CardContent>
       </Card>
 
+      {/* Gap G-04: sengaja HANYA informasi, tidak ada tombol/form di sini
+          — reset total (termasuk data master & akun pengguna) memang
+          tidak dibangun sebagai aksi web, lihat penjelasan di bawah. */}
+      <Card className="ring-destructive/30">
+        <CardHeader>
+          <CardTitle className="text-destructive">Reset Total Sistem</CardTitle>
+          <CardDescription>
+            Menghapus SEMUA data — termasuk transaksi, produk, anggota, akun pengguna, dan pengaturan —
+            lalu mengembalikan sistem ke kondisi data awal seeder.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Alert variant="destructive">
+            <AlertTriangle />
+            <AlertTitle>Tidak tersedia sebagai tombol di halaman ini — disengaja</AlertTitle>
+            <AlertDescription>
+              Berbeda dari &quot;Reset Data Transaksi&quot; di atas, reset total tidak bisa dipicu lewat
+              browser oleh siapa pun. Ini hanya bisa dijalankan developer/administrator server lewat
+              command-line: <code className="rounded bg-black/10 px-1 py-0.5 font-mono text-xs">php artisan system:reset-total</code>.
+              Perintah itu mewajibkan konfirmasi berlapis (ketik nama aplikasi, konfirmasi eksplisit,
+              dan frasa tambahan khusus di server produksi), membuat cadangan otomatis terlebih dahulu,
+              dan mencatat setiap eksekusinya ke log sistem &amp; log aktivitas. Hubungi developer/admin
+              server jika toko benar-benar membutuhkan ini.
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>

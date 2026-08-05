@@ -10,9 +10,20 @@ return [
     'session_auto_close_time' => '23:59',
     'max_hold_per_cashier' => 5,
     'deposit_min_topup' => 10000,
+    // REVISI-R1-v2.md §6.3 — top-up tunai di atas nominal ini wajib PIN
+    // supervisor (pengaman kedua di atas rekonsiliasi kas saat tutup sesi).
+    'topup_cash_pin_threshold' => 200000,
+    // REVISI-R1-v2.md §6.3 Jalur B — top-up TRANSFER wali di atas
+    // nominal ini wajib PIN supervisor/owner saat admin menyetujuinya.
+    'topup_transfer_pin_threshold' => 500000,
     'pin_length' => 6,
     'pin_max_attempts' => 3,
     'pin_lockout_minutes' => 15,
+    // Audit Fase 1: token otorisasi supervisor (dibuat setelah PIN benar)
+    // berlaku berapa menit sebelum harus diminta ulang — jendela sempit
+    // sengaja, cukup untuk submit form yang sedang dibuka, bukan disimpan
+    // lama-lama di client.
+    'pin_override_ttl_minutes' => 2,
     'no_pin_threshold' => 20000, // bebas PIN di bawah nominal ini
     'return_max_days' => 7,
     'max_discount_percent' => 50,

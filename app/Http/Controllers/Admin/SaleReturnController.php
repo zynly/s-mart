@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreSaleReturnRequest;
 use App\Models\Sale;
 use App\Models\SaleReturn;
-use App\Models\User;
+use App\Services\AuthorizationService;
 use App\Services\CashierSessionService;
 use App\Services\SaleReturnService;
 use DomainException;
@@ -22,6 +22,7 @@ class SaleReturnController extends Controller
     public function __construct(
         private readonly SaleReturnService $saleReturnService,
         private readonly CashierSessionService $sessionService,
+        private readonly AuthorizationService $authorizationService,
     ) {}
 
     public function index(Request $request): Response
@@ -74,15 +75,27 @@ class SaleReturnController extends Controller
 
     public function refundPreview(Request $request): JsonResponse
     {
+        // Audit Fase 2 (Temuan Kritis #2, sub-akibat): sebelumnya
+        // `refund_total` dipercaya MENTAH dari client (frontend menghitung
+        // sendiri qty*unit_price kotor) — preview refund bisa menampilkan
+        // angka yang tidak pernah bisa dicapai backend sungguhan. Sekarang
+        // dihitung ulang dari items (sale_item_id+qty) via
+        // calculateNetReturnValue(), SATU SUMBER KEBENARAN yang sama
+        // dipakai submit sungguhan (store()) — preview & eksekusi selalu
+        // konsisten by construction, bukan cuma kebetulan cocok.
         $data = $request->validate([
             'sale_id' => ['required', 'exists:sales,id'],
-            'refund_total' => ['required', 'integer', 'min:1'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.sale_item_id' => ['required', 'integer'],
+            'items.*.qty' => ['required', 'numeric', 'min:0.001'],
         ]);
 
         $sale = Sale::findOrFail($data['sale_id']);
 
         try {
-            return response()->json($this->saleReturnService->calculateRefundOptions($sale, $data['refund_total']));
+            $net = $this->saleReturnService->calculateNetReturnValue($sale, $data['items']);
+
+            return response()->json($this->saleReturnService->calculateRefundOptions($sale, $net['subtotal']));
         } catch (DomainException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
@@ -91,13 +104,14 @@ class SaleReturnController extends Controller
     public function store(StoreSaleReturnRequest $request): RedirectResponse
     {
         $idempotencyKey = (string) $request->header('X-Idempotency-Key');
-        $approver = $request->validated('approver_id') !== null
-            ? User::find($request->validated('approver_id'))
-            : null;
+        // Audit Fase 1 (Temuan Kritis #1 & Sedang: approver_id tanpa cek
+        // permission) — token sekali-pakai, permission sale_return.approve
+        // (sudah dipegang role supervisor, lihat RolePermissionSeeder).
+        $approver = $this->authorizationService->consumeToken($request->validated('approval_token'), 'sale_return.approve');
 
         try {
             $saleReturn = $this->saleReturnService->createAndProcess([
-                ...$request->safe()->except('approver_id'),
+                ...$request->safe()->except('approval_token'),
                 'idempotency_key' => $idempotencyKey,
             ], $approver);
         } catch (DomainException $e) {

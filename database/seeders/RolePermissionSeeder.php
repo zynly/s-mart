@@ -39,6 +39,13 @@ class RolePermissionSeeder extends Seeder
         // wajib disetujui owner, bukan sekadar siapa pun pemegang
         // opname.approve (supervisor & warehouse juga pegang itu).
         'opname.approve_variance',
+        // Audit Fase 7 (Temuan Rendah): sebelumnya posting jurnal manual
+        // draft (risiko rendah, belum masuk laporan) dan MEMBALIK jurnal
+        // POSTED apa pun (termasuk seluruh jurnal otomatis dari Sale/
+        // Purchase/dst — risiko tinggi, mengubah transaksi yang sudah
+        // final) memakai permission `journal.approve` yang SAMA. Dipisah,
+        // dibatasi ke owner (pola sama seperti period.close).
+        'journal.reverse',
     ];
 
     public function run(): void
@@ -74,6 +81,7 @@ class RolePermissionSeeder extends Seeder
                 'system.reset',
                 'product.view_cost',
                 'opname.approve_variance',
+                'journal.reverse',
             ], true))
         );
 

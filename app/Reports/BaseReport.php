@@ -28,6 +28,21 @@ abstract class BaseReport
     abstract public function requiredPermission(): string;
 
     /**
+     * Gap G-05: sebelumnya `ReportController::export()` hanya memeriksa
+     * `requiredPermission()` yang sama dengan MELIHAT laporan — kasir
+     * (`report.view`+`report.print`, TANPA `report.export`) bisa tetap
+     * mengekspor Excel untuk laporan penjualan yang boleh dilihatnya.
+     * Diturunkan otomatis dari `requiredPermission()` (mis. `stock.view`
+     * -> `stock.export`) supaya izin ekspor mengikuti modul yang sama
+     * dengan izin lihat tiap laporan (bukan satu izin generik), dan
+     * permission-nya sudah ada di seeder tanpa migrasi/permission baru.
+     */
+    final public function exportPermission(): string
+    {
+        return preg_replace('/\.view$/', '.export', $this->requiredPermission());
+    }
+
+    /**
      * Deklarasi filter yang tersedia untuk frontend — dibaca
      * `Admin/Reports/Show.tsx` untuk merender filter bar generik.
      *

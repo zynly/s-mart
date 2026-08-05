@@ -11,7 +11,7 @@ use App\Http\Requests\Admin\OpenCashierSessionRequest;
 use App\Models\CashAccount;
 use App\Models\CashierSession;
 use App\Models\Sale;
-use App\Models\User;
+use App\Services\AuthorizationService;
 use App\Services\CashierSessionService;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
@@ -22,7 +22,10 @@ use Inertia\Response;
 
 class CashierSessionController extends Controller
 {
-    public function __construct(private readonly CashierSessionService $sessionService) {}
+    public function __construct(
+        private readonly CashierSessionService $sessionService,
+        private readonly AuthorizationService $authorizationService,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -63,7 +66,21 @@ class CashierSessionController extends Controller
 
     public function close(CloseCashierSessionRequest $request, CashierSession $cashierSession): RedirectResponse
     {
-        $approver = $request->validated('approver_id') ? User::find($request->validated('approver_id')) : null;
+        // Audit Fase 1 (Temuan Tinggi #3, IDOR): sebelumnya endpoint ini
+        // cuma digerbang `can:pos.update` (permission generik semua
+        // kasir) TANPA cek kepemilikan sesi — kasir A bisa menutup paksa
+        // sesi kasir B (tebak/tahu ID) dan mengirim actual_cash pilihannya
+        // sendiri. Tidak ada jalur UI/permission resmi utk "supervisor
+        // menutup sesi kasir lain" (itu `CashierSessionService::forceClose()`,
+        // HANYA dipakai command terjadwal `session:auto-close`, tidak
+        // pernah diekspos lewat HTTP) — jadi dibatasi tegas ke pemilik sesi.
+        if ($cashierSession->user_id !== $request->user()->id) {
+            abort(403, 'Hanya kasir pemilik sesi yang bisa menutup sesi ini.');
+        }
+
+        // Audit Fase 1 (Temuan Kritis #1): BUKAN User::find($approver_id)
+        // lagi — token sekali-pakai, lihat AuthorizationService::consumeToken().
+        $approver = $this->authorizationService->consumeToken($request->validated('approval_token'), 'pos.approve');
 
         try {
             $this->sessionService->close(
@@ -77,7 +94,7 @@ class CashierSessionController extends Controller
         } catch (SessionCannotCloseWithHoldsException $e) {
             throw ValidationException::withMessages(['actual_cash' => $e->getMessage()]);
         } catch (DomainException $e) {
-            throw ValidationException::withMessages(['approver_id' => $e->getMessage()]);
+            throw ValidationException::withMessages(['approval_token' => $e->getMessage()]);
         }
 
         return back()->with('success', 'Sesi kasir ditutup.');

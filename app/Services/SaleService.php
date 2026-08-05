@@ -30,12 +30,14 @@ class SaleService
         private readonly VoucherService $voucherService,
         private readonly PointService $pointService,
         private readonly VoidService $voidService,
+        private readonly AuthorizationService $authorizationService,
+        private readonly MemberLimitService $memberLimitService,
     ) {}
 
     /**
      * @param  array{outlet_id:int, cashier_session_id:int, member_id?:int, member_card_id?:int,
      *     bill_discount?:int, coupon_code?:string, idempotency_key:string,
-     *     price_override_approver_id?:int, discount_approver_id?:int,
+     *     price_override_approval_token?:string, discount_approval_token?:string,
      *     payments: array<int, array<string, mixed>>,
      *     items: array<int, array{product_id:int, unit_id:int, qty:float, price_override?:int}>}  $cart
      */
@@ -70,6 +72,21 @@ class SaleService
             $memberId = $cart['member_id'] ?? null;
             $member = $memberId !== null ? Member::findOrFail($memberId) : null;
 
+            // Audit Fase 5 (Temuan Kritis: MemberLimitService::canPurchase()
+            // sebelumnya dead code — status suspend, jadwal, dan kategori
+            // terblokir tersimpan di skema & tervalidasi di form admin,
+            // tapi TIDAK PERNAH ditegakkan di titik transaksi manapun).
+            // Cek status/jadwal SEKALI di sini (gagal cepat sebelum kerja
+            // apa pun); cek kategori per-baris di bawah (produk beda-beda
+            // kategori dalam satu keranjang).
+            if ($member !== null) {
+                $check = $this->memberLimitService->canPurchase($member);
+
+                if (! $check['allowed']) {
+                    throw new DomainException($check['reason'] ?? 'Anggota tidak diizinkan bertransaksi saat ini.');
+                }
+            }
+
             // Temuan audit performa (Phase C, CRITICAL): sebelumnya
             // Product::findOrFail()/Unit::findOrFail()/UnitConversion
             // query per BARIS keranjang (3 query/baris di luar harga) —
@@ -81,7 +98,10 @@ class SaleService
             // dicatat sebagai lanjutan Phase C di INDEX.md).
             $productIds = array_values(array_unique(array_column($cart['items'], 'product_id')));
             $unitIds = array_values(array_unique(array_column($cart['items'], 'unit_id')));
-            $products = Product::findOrFail($productIds)->keyBy('id');
+            // Audit Fase 5: eager-load category (bukan lazy per-baris) —
+            // sekarang dibaca tiap baris utk cek kategori terblokir member,
+            // konsisten dgn disiplin batch-query yang sudah ada di sini.
+            $products = Product::with('category')->findOrFail($productIds)->keyBy('id');
             $units = Unit::findOrFail($unitIds)->keyBy('id');
 
             $itemsNeedingConversion = array_filter(
@@ -105,6 +125,15 @@ class SaleService
             foreach ($cart['items'] as $index => $item) {
                 $product = $products[$item['product_id']];
                 $unit = $units[$item['unit_id']];
+
+                if ($member !== null && $product->category_id !== null) {
+                    $categoryCheck = $this->memberLimitService->canPurchase($member, $product->category);
+
+                    if (! $categoryCheck['allowed']) {
+                        throw new DomainException($categoryCheck['reason'] ?? "Produk \"{$product->name}\" tidak diizinkan untuk anggota ini.");
+                    }
+                }
+
                 $activePrice = $this->priceService->getActivePrice($product, $outlet, $unit, $memberId);
                 $unitPrice = $item['price_override'] ?? $activePrice;
                 $qtyBase = $this->convertToBaseQty($product, $unit, (float) $item['qty'], $conversions);
@@ -132,7 +161,7 @@ class SaleService
             $hasPriceOverride = count(array_filter($lines, fn ($l) => $l['price_changed'])) > 0;
 
             if ($hasPriceOverride) {
-                $priceApprover = $this->resolveApprover($cart['price_override_approver_id'] ?? null, 'sale.change_price');
+                $priceApprover = $this->authorizationService->consumeToken($cart['price_override_approval_token'] ?? null, 'sale.change_price');
 
                 if ($priceApprover === null) {
                     throw new DomainException('Ubah harga wajib otorisasi supervisor (permission sale.change_price).');
@@ -180,7 +209,7 @@ class SaleService
             $discountApprover = null;
 
             if ($totalDiscount > $maxDiscount) {
-                $discountApprover = $this->resolveApprover($cart['discount_approver_id'] ?? null, 'sale.discount_over_limit');
+                $discountApprover = $this->authorizationService->consumeToken($cart['discount_approval_token'] ?? null, 'sale.discount_over_limit');
 
                 if ($discountApprover === null) {
                     throw new DomainException("Total diskon melebihi batas maksimal {$maxDiscount} (dari subtotal) — wajib otorisasi supervisor (permission sale.discount_over_limit).");
@@ -265,8 +294,20 @@ class SaleService
                 );
             }
 
+            // Audit Fase 6 (Temuan Sedang): PromoEngine::checkQuota() dibaca
+            // TANPA lock sebelum keputusan "boleh pakai promo ini" diambil
+            // di applyToCart() — di bawah concurrency tinggi, used_count
+            // bisa melebihi quota_total walau counternya sendiri atomik
+            // (keputusannya sudah basi, bukan angkanya yang salah). UPDATE
+            // bersyarat ini memastikan used_count TIDAK PERNAH melebihi
+            // quota_total, atomik di level SQL — kalau race kalah tepat
+            // saat commit, counter cukup berhenti di batas (diskon yang
+            // sudah dipakai nota ini tetap sah, harga sudah final ke
+            // pelanggan; tidak masuk akal me-rollback nota karena ini).
             foreach (array_unique($appliedPromoIds) as $promoId) {
-                Promo::whereKey($promoId)->increment('used_count');
+                Promo::whereKey($promoId)
+                    ->where(fn ($q) => $q->whereNull('quota_total')->orWhereColumn('used_count', '<', 'quota_total'))
+                    ->increment('used_count');
             }
 
             if ($coupon !== null) {
@@ -307,26 +348,35 @@ class SaleService
             throw new DomainException('Sesi kasir ini bukan milik Anda — tidak bisa menahan transaksi di sesi kasir lain.');
         }
 
-        $maxHold = (int) config('pos.max_hold_per_cashier', 5);
-        $activeHolds = SaleHold::where('cashier_session_id', $session->id)->count();
+        // Audit Fase 7 (Temuan Rendah): count()-lalu-create() sebelumnya
+        // TOCTOU — double-click/multi-tab cepat bisa melewati max_hold_per_cashier.
+        // Dampaknya ringan (cuma batas lunak UI, bukan uang/stok), tapi
+        // murah ditutup dengan lock sesi yang sama yang dipakai luas di
+        // service lain.
+        return DB::transaction(function () use ($cart, $session) {
+            CashierSession::lockForUpdate()->findOrFail($session->id);
 
-        if ($activeHolds >= $maxHold) {
-            throw MaxHoldExceededException::make($maxHold);
-        }
+            $maxHold = (int) config('pos.max_hold_per_cashier', 5);
+            $activeHolds = SaleHold::where('cashier_session_id', $session->id)->count();
 
-        $total = array_sum(array_map(fn (array $i) => (float) $i['qty'] * (int) ($i['unit_price'] ?? 0), $cart['items']));
+            if ($activeHolds >= $maxHold) {
+                throw MaxHoldExceededException::make($maxHold);
+            }
 
-        return SaleHold::create([
-            'reference' => ReferenceGenerator::generate('HOLD', $session->outlet_id),
-            'outlet_id' => $session->outlet_id,
-            'cashier_session_id' => $session->id,
-            'user_id' => auth()->id(),
-            'member_id' => $cart['member_id'] ?? null,
-            'cart_data' => $cart,
-            'item_count' => count($cart['items']),
-            'total' => (int) round($total),
-            'held_at' => now(),
-        ]);
+            $total = array_sum(array_map(fn (array $i) => (float) $i['qty'] * (int) ($i['unit_price'] ?? 0), $cart['items']));
+
+            return SaleHold::create([
+                'reference' => ReferenceGenerator::generate('HOLD', $session->outlet_id),
+                'outlet_id' => $session->outlet_id,
+                'cashier_session_id' => $session->id,
+                'user_id' => auth()->id(),
+                'member_id' => $cart['member_id'] ?? null,
+                'cart_data' => $cart,
+                'item_count' => count($cart['items']),
+                'total' => (int) round($total),
+                'held_at' => now(),
+            ]);
+        });
     }
 
     /**
@@ -356,27 +406,6 @@ class SaleService
     public function void(Sale $sale, string $reason, ?User $approver = null): Sale
     {
         return $this->voidService->void($sale, $reason, $approver);
-    }
-
-    /**
-     * Resolusi & verifikasi approver untuk override harga/diskon di atas
-     * batas — pola sama seperti VoidService::void(): approver harus User
-     * aktif yang benar-benar memegang permission terkait, bukan sekadar
-     * ID yang valid ada di tabel users.
-     */
-    private function resolveApprover(?int $approverId, string $permission): ?User
-    {
-        if ($approverId === null) {
-            return null;
-        }
-
-        $approver = User::find($approverId);
-
-        if ($approver === null || ! $approver->can($permission)) {
-            return null;
-        }
-
-        return $approver;
     }
 
     /**

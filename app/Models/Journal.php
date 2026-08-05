@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToOutlet;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class Journal extends Model
 {
+    use BelongsToOutlet;
+
     protected $fillable = [
         'reference', 'outlet_id', 'journal_date', 'type', 'description',
         'sourceable_type', 'sourceable_id', 'total_debit', 'total_credit',

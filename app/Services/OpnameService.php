@@ -150,7 +150,25 @@ class OpnameService
 
             foreach ($items as $item) {
                 $unitCost = (int) (Stock::where('product_id', $item->product_id)->where('outlet_id', $locked->outlet_id)->value('avg_cost') ?? 0);
-                $varianceQty = (float) $item->physical_qty - (float) $item->system_qty;
+
+                // Audit Fase 6 (Temuan Sedang): sebelumnya dihitung
+                // `physical_qty - system_qty` MENTAH — beda formula dari
+                // post() (yang benar: `physical - (system + pergerakan
+                // SEJAK cutoff)`, supaya penjualan sah selama counting
+                // tidak ikut ditimpa/dobel-hitung). Owner sebelumnya
+                // menyetujui angka yang BUKAN angka yang akan benar-benar
+                // diposting. Disamakan di sini — dihitung ULANG di post()
+                // nanti (bukan disalin dari sini), karena pergerakan bisa
+                // terus bertambah antara approve() dan post() kalau
+                // jaraknya berhari-hari; itu celah terpisah yang lebih
+                // besar (di luar cakupan perbaikan formula ini).
+                $movementSinceCutoff = (float) DB::table('stock_movements')
+                    ->where('product_id', $item->product_id)
+                    ->where('outlet_id', $locked->outlet_id)
+                    ->where('created_at', '>', $locked->cutoff_at)
+                    ->sum('qty');
+
+                $varianceQty = (float) $item->physical_qty - ((float) $item->system_qty + $movementSinceCutoff);
                 $varianceValue = (int) round($varianceQty * $unitCost);
 
                 $item->update([

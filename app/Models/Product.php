@@ -63,6 +63,16 @@ class Product extends Model
         return $this->hasMany(ProductBarcode::class);
     }
 
+    /**
+     * REVISI-R1-v2.md §4.6/§4.7 — dipakai memfilter katalog kasir agar
+     * hanya menampilkan produk yang benar-benar punya stok di outlet
+     * yang sedang aktif (Stock::where('outlet_id',...)->where('qty','>',0)).
+     */
+    public function stocks(): HasMany
+    {
+        return $this->hasMany(Stock::class);
+    }
+
     public function prices(): HasMany
     {
         return $this->hasMany(ProductPrice::class);

@@ -115,5 +115,14 @@ class AccountSeeder extends Seeder
                 ],
             );
         }
+
+        // Audit Fase 7 (Temuan Rendah): JournalService::getProfitLoss()
+        // sebelumnya mendeteksi baris HPP dengan hardcode literal
+        // `$row->code === '5-1000'` — akun HPP baru (mis. dipecah per
+        // kategori produk) akan diam-diam TIDAK terhitung. `subtype`
+        // sudah ada di skema & form Account sejak awal tapi tidak pernah
+        // dipakai — sekarang jadi penanda generik "ini akun HPP",
+        // getProfitLoss() membaca subtype ini, bukan kode literal.
+        $byCode['5-1000']->update(['subtype' => 'cogs']);
     }
 }

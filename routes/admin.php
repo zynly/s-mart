@@ -130,8 +130,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::put('/members/{member}', [MemberController::class, 'update'])->name('members.update')->middleware('can:member.update');
     Route::delete('/members/{member}', [MemberController::class, 'destroy'])->name('members.destroy')->middleware('can:member.delete');
     Route::put('/members/{member}/reset-pin', [MemberController::class, 'resetPin'])->name('members.reset-pin')->middleware('can:member.update');
+    Route::put('/members/{member}/set-pin', [MemberController::class, 'setPin'])->name('members.set-pin')->middleware('can:member.update');
     Route::post('/members/{member}/reissue-card', [MemberController::class, 'reissueCard'])->name('members.reissue-card')->middleware('can:card.create');
     Route::get('/members/print-cards', [MemberController::class, 'printCards'])->name('members.print-cards')->middleware('can:member.print');
+    Route::get('/members/{member}/preview-card', [MemberController::class, 'previewCard'])->name('members.preview-card')->middleware('can:member.print');
 
     // Portal Wali — kelola akun wali (Fase 16, T-095/T-096). Gap yang
     // tidak ditulis eksplisit di spec: tanpa ini tidak ada cara admin
@@ -145,6 +147,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // Deposit & Saldo (Fase 4)
     Route::middleware('can:deposit.view')->group(function () {
         Route::get('/deposit', [DepositController::class, 'index'])->name('deposit.index');
+        Route::get('/deposit/adjustments/export', [DepositController::class, 'exportAdjustments'])->name('deposit.adjustments.export');
     });
     Route::post('/deposit/topup', [DepositController::class, 'storeTopup'])->name('deposit.topup')->middleware(['can:topup.create', 'idempotent']);
     Route::post('/deposit/withdrawal', [DepositController::class, 'storeWithdrawal'])->name('deposit.withdrawal')->middleware(['can:withdrawal.create', 'idempotent']);
@@ -204,6 +207,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::post('/cash/in', [CashController::class, 'storeIn'])->name('cash.in')->middleware('can:cash.create');
     Route::post('/cash/out', [CashController::class, 'storeOut'])->name('cash.out')->middleware('can:cash.create');
     Route::post('/cash/transfer', [CashController::class, 'transfer'])->name('cash.transfer')->middleware('can:cash.create');
+    // REVISI-R1-v2.md §1.7 — Kelola Laci.
+    Route::post('/cash-accounts', [CashController::class, 'storeAccount'])->name('cash-accounts.store')->middleware('can:cash.create');
+    Route::put('/cash-accounts/{cashAccount}', [CashController::class, 'updateAccount'])->name('cash-accounts.update')->middleware('can:cash.update');
 
     // Piutang Anggota (Fase 9 — T-060)
     Route::middleware('can:receivable.view')->group(function () {
@@ -288,7 +294,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     });
     Route::post('/journals', [JournalController::class, 'store'])->name('journals.store')->middleware('can:journal.create');
     Route::put('/journals/{journal}/post', [JournalController::class, 'post'])->name('journals.post')->middleware('can:journal.approve');
-    Route::put('/journals/{journal}/reverse', [JournalController::class, 'reverse'])->name('journals.reverse')->middleware('can:journal.approve');
+    // Audit Fase 7 (Temuan Rendah): dipisah dari journal.approve (dipakai
+    // posting draft manual, risiko rendah) — membalik jurnal POSTED
+    // (termasuk seluruh jurnal otomatis) adalah aksi berisiko tinggi,
+    // dibatasi ke owner (pola sama seperti period.close).
+    Route::put('/journals/{journal}/reverse', [JournalController::class, 'reverse'])->name('journals.reverse')->middleware('can:journal.reverse');
 
     Route::middleware('can:ledger.view')->group(function () {
         Route::get('/ledger', [LedgerController::class, 'index'])->name('ledger.index');

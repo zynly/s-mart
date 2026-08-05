@@ -216,7 +216,7 @@ class JournalService
             ->whereIn('journals.status', ['posted', 'reversed'])
             ->whereBetween('journals.journal_date', [$from->toDateString(), $to->toDateString()])
             ->whereIn('accounts.type', ['revenue', 'expense'])
-            ->selectRaw('accounts.code, accounts.name, accounts.type, SUM(journal_entries.debit) as total_debit, SUM(journal_entries.credit) as total_credit')
+            ->selectRaw('accounts.code, accounts.name, accounts.type, accounts.subtype, SUM(journal_entries.debit) as total_debit, SUM(journal_entries.credit) as total_credit')
             ->groupBy('accounts.id', 'accounts.code', 'accounts.name', 'accounts.type')
             ->get();
 
@@ -240,8 +240,12 @@ class JournalService
                 $expense[] = ['code' => $row->code, 'name' => $row->name, 'amount' => $amount];
                 $totalExpense += $amount;
 
-                if ($row->code === '5-1000') {
-                    $totalCogs = $amount;
+                // Audit Fase 7 (Temuan Rendah): BUKAN hardcode kode akun
+                // literal lagi — akun HPP baru (mis. dipecah per kategori)
+                // otomatis ikut terhitung selama ditandai subtype=cogs
+                // saat dibuat, bukan diam-diam terlewat.
+                if ($row->subtype === 'cogs') {
+                    $totalCogs += $amount;
                 }
             }
         }
@@ -330,14 +334,25 @@ class JournalService
     public function closePeriod(int $year, int $month, User $owner): void
     {
         DB::transaction(function () use ($year, $month, $owner) {
-            $existing = AccountingPeriod::where('year', $year)->where('month', $month)->first();
+            $startDate = Carbon::createFromDate($year, $month, 1)->startOfMonth();
+            $endDate = $startDate->copy()->endOfMonth();
 
-            if ($existing !== null && $existing->status !== 'open') {
+            // Audit Fase 4 (Temuan Tinggi): kunci baris YANG SAMA yang
+            // dipakai assertPeriodOpen() — record() yang dipanggil di
+            // bawah (untuk jurnal penutup) akan re-lock baris ini di
+            // transaksi yang SAMA (aman, row lock re-entrant per
+            // transaksi), sehingga closePeriod() dan record()/createManual()
+            // konkuren pada periode yang sama benar-benar terserialisasi.
+            $period = AccountingPeriod::firstOrCreate(
+                ['year' => $year, 'month' => $month],
+                ['start_date' => $startDate, 'end_date' => $endDate, 'status' => 'open'],
+            );
+            $locked = AccountingPeriod::whereKey($period->id)->lockForUpdate()->first();
+
+            if ($locked->status !== 'open') {
                 throw new DomainException("Periode {$month}/{$year} sudah ditutup.");
             }
 
-            $startDate = Carbon::createFromDate($year, $month, 1)->startOfMonth();
-            $endDate = $startDate->copy()->endOfMonth();
             $pl = $this->getProfitLoss($startDate, $endDate);
             $netProfit = $pl['netProfit'];
 
@@ -379,16 +394,13 @@ class JournalService
                 $this->record('closing', $retainedEntries, null, $endDate, "Ikhtisar Laba Rugi -> Laba Ditahan {$month}/{$year}", null);
             }
 
-            AccountingPeriod::updateOrCreate(
-                ['year' => $year, 'month' => $month],
-                [
-                    'start_date' => $startDate,
-                    'end_date' => $endDate,
-                    'status' => 'closed',
-                    'closed_by' => $owner->id,
-                    'closed_at' => now(),
-                ],
-            );
+            $locked->update([
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'status' => 'closed',
+                'closed_by' => $owner->id,
+                'closed_at' => now(),
+            ]);
         });
     }
 
@@ -469,6 +481,18 @@ class JournalService
                 throw new DomainException("Akun \"{$account->code} {$account->name}\" adalah akun header — tidak bisa diposting langsung.");
             }
 
+            // Audit Fase 4 (Temuan Kritis #5): sebelumnya menonaktifkan
+            // akun (is_active=false) tidak menghentikan posting BARU sama
+            // sekali — akun itu tetap bisa dipakai transaksi berikutnya,
+            // cuma diam-diam MENGHILANG dari Neraca/Trial Balance
+            // (leafAccounts() memfilter is_active) sehingga laporan bisa
+            // timpang tanpa error apa pun. Ini SATU-SATUNYA titik semua
+            // jurnal (otomatis observer maupun manual) lewat sini, jadi
+            // cukup ditegakkan di sini saja.
+            if (! $account->is_active) {
+                throw new DomainException("Akun \"{$account->code} {$account->name}\" nonaktif — tidak bisa diposting.");
+            }
+
             $debit = (int) ($line['debit'] ?? 0);
             $credit = (int) ($line['credit'] ?? 0);
             $totalDebit += $debit;
@@ -511,21 +535,67 @@ class JournalService
         ], $resolved));
     }
 
+    /**
+     * Audit Fase 4 (Temuan Tinggi): sebelumnya SELECT biasa tanpa lock —
+     * transaksi A baca periode "open", transaksi B (closePeriod())
+     * commit menutup periode, A tetap lanjut INSERT jurnal & commit
+     * setelahnya — jurnal baru lolos ke periode yang sudah closed.
+     * Diperbaiki dengan `firstOrCreate()` (baris SELALU ada untuk
+     * dikunci, bukan bergantung null=open) + `lockForUpdate()` — closePeriod()
+     * mengunci baris YANG SAMA sebelum mengubah status, jadi kedua
+     * operasi terserialisasi lewat row lock, bukan lagi baca-lalu-tulis
+     * yang bisa saling silang antar transaksi.
+     */
     private function assertPeriodOpen(Carbon $date): void
     {
-        $period = AccountingPeriod::where('year', $date->year)->where('month', $date->month)->first();
+        $period = AccountingPeriod::firstOrCreate(
+            ['year' => $date->year, 'month' => $date->month],
+            ['start_date' => $date->copy()->startOfMonth(), 'end_date' => $date->copy()->endOfMonth(), 'status' => 'open'],
+        );
 
-        if ($period !== null && $period->status !== 'open') {
+        $locked = AccountingPeriod::whereKey($period->id)->lockForUpdate()->first();
+
+        if ($locked->status !== 'open') {
             throw new DomainException('Periode akuntansi '.$date->format('m/Y').' sudah ditutup — tidak bisa menambah jurnal baru.');
         }
     }
 
+    /**
+     * Audit Fase 4 (Temuan Kritis #5): TIDAK LAGI memfilter is_active —
+     * dipakai getTrialBalance()/getBalanceSheet(), yang WAJIB tetap
+     * menampilkan akun nonaktif yang masih punya saldo historis (baris
+     * bersaldo nol sudah tersaring terpisah oleh masing-masing method
+     * pemanggil, `$row->debit !== 0 || $row->credit !== 0` / `$balance
+     * === 0`). Larangan POSTING BARU ke akun nonaktif ditegakkan di
+     * resolveEntries(), bukan di sini — dua kebutuhan berbeda yang
+     * sebelumnya keliru disatukan lewat filter yang sama.
+     */
     private function leafAccounts(): Collection
     {
-        $accounts = $this->accountsByCode()->values()->filter(fn (Account $a) => $a->is_active);
+        $accounts = $this->accountsByCode()->values();
         $parentIds = $accounts->pluck('parent_id')->filter()->unique();
 
         return $accounts->reject(fn (Account $a) => $parentIds->contains($a->id))->values();
+    }
+
+    /**
+     * Dipakai AccountController::update() — menonaktifkan akun yang
+     * masih punya saldo berjalan disengaja diblokir (Fase 4), supaya
+     * saldo itu tidak "hilang" dari laporan tanpa proses tutup-saldo
+     * yang jelas.
+     */
+    public function hasNonZeroBalance(Account $account): bool
+    {
+        $sums = $account->entries()
+            ->whereHas('journal', fn ($q) => $q->whereIn('status', ['posted', 'reversed']))
+            ->selectRaw('COALESCE(SUM(debit),0) as total_debit, COALESCE(SUM(credit),0) as total_credit')
+            ->first();
+
+        $debit = (int) $sums->total_debit;
+        $credit = (int) $sums->total_credit;
+        $balance = $account->normal_balance === 'debit' ? $debit - $credit : $credit - $debit;
+
+        return $balance !== 0;
     }
 
     /**

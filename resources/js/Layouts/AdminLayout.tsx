@@ -50,7 +50,7 @@ function NavLink({ item, collapsed }: { item: NavigationItem; collapsed: boolean
       className={cn(
         'flex items-center gap-2.5 rounded-md border-l-4 border-transparent py-2 text-sm text-navy-100 transition-colors hover:bg-navy-700',
         collapsed ? 'justify-center px-2' : 'px-2.5',
-        item.active && 'border-gold bg-navy-700 font-medium text-white',
+        item.active && 'border-mustard-500 bg-navy-700 font-medium text-white',
         item.highlight && !item.active && 'bg-teal/20 text-teal-100',
       )}
     >
@@ -58,7 +58,7 @@ function NavLink({ item, collapsed }: { item: NavigationItem; collapsed: boolean
       <Icon className="size-4 shrink-0" />
       {!collapsed && <span className="truncate">{item.label}</span>}
       {!collapsed && item.badge && (
-        <Badge className="ml-auto bg-gold text-navy-900">{item.badge}</Badge>
+        <Badge className="ml-auto bg-mustard-500 text-navy-900">{item.badge}</Badge>
       )}
     </Link>
   )
@@ -110,7 +110,7 @@ function NavGroup({ group, collapsed }: { group: NavigationGroup; collapsed: boo
 }
 
 function SidebarContent({ collapsed }: { collapsed: boolean }) {
-  const { navigation } = usePage<PageProps>().props
+  const { navigation, activeOutlet } = usePage<PageProps>().props
 
   return (
     <div className="flex h-full flex-col bg-navy-800 text-navy-50">
@@ -125,6 +125,11 @@ function SidebarContent({ collapsed }: { collapsed: boolean }) {
         </nav>
       </TooltipProvider>
       <div className="shrink-0 space-y-0.5 border-t border-navy-700 px-2 py-2">
+        {/* REVISI-R1-v2.md §1.5 — label statis, BUKAN dropdown switcher
+            (switcher ditunda sampai outlet kedua benar-benar ada). */}
+        {!collapsed && activeOutlet && (
+          <p className="truncate px-2.5 py-1 text-xs text-navy-300">Outlet: {activeOutlet.name}</p>
+        )}
         {!collapsed && DEV_LINKS.map((link) => (
           <Link key={link.href} href={link.href} className="block rounded-md px-2.5 py-1.5 text-xs text-navy-400 hover:bg-navy-700 hover:text-navy-100">
             {link.label}
@@ -152,6 +157,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  // REVISI-R1-v2.md §3.5 — dialog pencarian harus tertutup begitu
+  // navigasi Inertia terjadi (klik hasil pencarian/tombol back/dst),
+  // bukan tertinggal terbuka menutupi halaman baru.
+  useEffect(() => {
+    return router.on('navigate', () => setSearchOpen(false))
   }, [])
 
   const initials = (auth.user?.name ?? 'SM')

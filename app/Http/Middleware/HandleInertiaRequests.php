@@ -66,13 +66,22 @@ class HandleInertiaRequests extends Middleware
                 'info' => fn () => $request->session()->get('info'),
             ],
             'status' => fn () => $request->session()->get('status'),
-            // AuthorizationOverrideController men-flash ini via ->with()
-            // setelah PIN supervisor tervalidasi — SupervisorPinDialog
-            // membacanya dari page.props untuk resolve approver_id.
-            'approverId' => fn () => $request->session()->get('approverId'),
+            // Audit Fase 1: sebelumnya membagikan approver->id MENTAH —
+            // endpoint aksi mempercayainya begitu saja tanpa bukti PIN
+            // pernah diverifikasi (Temuan Kritis #1). AuthorizationOverrideController
+            // sekarang men-flash TOKEN sekali-pakai (AuthorizationService::
+            // issueToken()), bukan ID — SupervisorPinDialog membacanya dari
+            // sini dan endpoint aksi wajib menukarnya lewat consumeToken().
+            'overrideToken' => fn () => $request->session()->get('overrideToken'),
             // T-116 (Fase UI-01): sidebar admin dibangun dari sini, bukan
             // hardcoded di React — lihat NavigationService.
             'navigation' => fn () => $user ? app(NavigationService::class)->forUser($user) : [],
+            // REVISI-R1-v2.md §1.5 — label "Outlet: {nama}" statis di
+            // footer sidebar (switcher UI sengaja DITUNDA sampai outlet
+            // kedua benar-benar ada). Owner belum tentu punya outlet
+            // primary (bypass semua outlet) — tampilkan null, layout
+            // menyembunyikan label bila null.
+            'activeOutlet' => fn () => $user ? $user->primaryOutlet()?->only(['id', 'name']) : null,
             // T-094 (Fase 15): badge count bel notifikasi di header —
             // dihitung ringan (COUNT saja), isi lengkap di-fetch lazy
             // oleh dropdown lewat NotificationController::index().

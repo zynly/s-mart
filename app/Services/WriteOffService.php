@@ -28,8 +28,20 @@ class WriteOffService
      */
     public function request(array $data, User $requester): StockWriteOff
     {
-        $layer = isset($data['stock_layer_id']) ? StockLayer::find($data['stock_layer_id']) : null;
-        $unitCost = $layer->unit_cost ?? 0;
+        // Audit Fase 6 (Temuan Tinggi): layer WAJIB dipilih untuk jalur
+        // manual (pertahanan berlapis — StoreWriteOffRequest sudah
+        // mewajibkan ini juga) — TANPA layer, applyStockReduction() tidak
+        // punya apapun untuk dikurangi ("stok fantom"). Layer juga WAJIB
+        // cocok outlet & produk yang disubmit — sebelumnya tidak pernah
+        // diverifikasi, layer produk/outlet LAIN bisa dipakai (isolasi
+        // multi-outlet bocor, produk yang salah yang berkurang stoknya).
+        $layer = StockLayer::findOrFail($data['stock_layer_id']);
+
+        if ((int) $layer->outlet_id !== (int) $data['outlet_id'] || (int) $layer->product_id !== (int) $data['product_id']) {
+            throw new DomainException('Layer stok yang dipilih tidak cocok dengan produk/outlet write-off ini.');
+        }
+
+        $unitCost = $layer->unit_cost;
         $qty = (float) $data['qty'];
 
         return StockWriteOff::create([

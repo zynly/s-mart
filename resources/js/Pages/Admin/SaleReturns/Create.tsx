@@ -29,6 +29,7 @@ type ReturnableItem = {
   product_name: string
   unit_code: string
   unit_price: number
+  unit_net_value: number
   qty_sold: number
   qty_returned: number
   qty_returnable: number
@@ -39,6 +40,8 @@ type CartItem = {
   product_name: string
   unit_code: string
   unit_price: number
+  /** Nilai net per unit (setelah semua diskon) — dipakai utk estimasi, bukan unit_price kotor. */
+  unit_net_value: number
   qty_returnable: number
   qty: number
   condition: 'good' | 'damaged'
@@ -93,7 +96,7 @@ export default function Create({ session }: SaleReturnCreateProps) {
   const [previewLoading, setPreviewLoading] = useState(false)
   const [refundTargets, setRefundTargets] = useState<Record<number, string>>({})
   const [pinOpen, setPinOpen] = useState(false)
-  const [approverId, setApproverId] = useState<number | null>(null)
+  const [approvalToken, setApprovalToken] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   // Temuan audit keamanan: key idempotency dibuat sekali per kunjungan
@@ -101,8 +104,13 @@ export default function Create({ session }: SaleReturnCreateProps) {
   // pakai key yang sama supaya backend bisa men-dedup dengan benar.
   const idempotencyKeyRef = useRef(newIdempotencyKey())
 
+  // Audit Fase 2 (Temuan Kritis #2): estimasi tampilan SAJA, dari
+  // unit_net_value (sudah net semua diskon) — bukan unit_price kotor.
+  // Nilai yang benar-benar dieksekusi selalu dihitung ulang di server
+  // (calculateNetReturnValue()), estimasi ini murni supaya tombol
+  // "Proses Retur" tidak aktif saat keranjang kosong.
   const refundTotal = useMemo(
-    () => cart.reduce((sum, l) => sum + l.qty * l.unit_price, 0),
+    () => cart.reduce((sum, l) => sum + l.qty * l.unit_net_value, 0),
     [cart],
   )
 
@@ -135,6 +143,7 @@ export default function Create({ session }: SaleReturnCreateProps) {
             product_name: item.product_name,
             unit_code: item.unit_code,
             unit_price: item.unit_price,
+            unit_net_value: item.unit_net_value,
             qty_returnable: item.qty_returnable,
             qty: 0,
             condition: 'good',
@@ -168,7 +177,10 @@ export default function Create({ session }: SaleReturnCreateProps) {
           'Content-Type': 'application/json',
           'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? ''),
         },
-        body: JSON.stringify({ sale_id: sale.id, refund_total: refundTotal }),
+        body: JSON.stringify({
+          sale_id: sale.id,
+          items: selectedItems().map((l) => ({ sale_item_id: l.sale_item_id, qty: l.qty })),
+        }),
       })
       const data = await res.json()
 
@@ -189,7 +201,7 @@ export default function Create({ session }: SaleReturnCreateProps) {
     return cart.filter((l) => l.qty > 0)
   }
 
-  function doSubmit(approver: number | null) {
+  function doSubmit(approvalToken: string | null) {
     if (!sale || !session) return
 
     const items = selectedItems()
@@ -205,7 +217,7 @@ export default function Create({ session }: SaleReturnCreateProps) {
         cashier_session_id: session.id,
         reason,
         reason_detail: reasonDetail || null,
-        approver_id: approver,
+        approval_token: approvalToken,
         items: items.map((l) => ({
           sale_item_id: l.sale_item_id,
           qty: l.qty,
@@ -235,12 +247,12 @@ export default function Create({ session }: SaleReturnCreateProps) {
 
     const needsSupervisor = preview?.lines.some((l) => l.method_type !== 'voucher') ?? true
 
-    if (needsSupervisor && !approverId) {
+    if (needsSupervisor && !approvalToken) {
       setPinOpen(true)
       return
     }
 
-    doSubmit(approverId)
+    doSubmit(approvalToken)
   }
 
   if (!session) {
@@ -342,7 +354,7 @@ export default function Create({ session }: SaleReturnCreateProps) {
                           onCheckedChange={(v) => updateCartLine(line.sale_item_id, { restock: Boolean(v) })}
                         />
                       </td>
-                      <td className="p-2 text-right"><Money amount={line.qty * line.unit_price} size="sm" /></td>
+                      <td className="p-2 text-right"><Money amount={line.qty * line.unit_net_value} size="sm" /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -428,10 +440,10 @@ export default function Create({ session }: SaleReturnCreateProps) {
         permission="sale_return.approve"
         title="Otorisasi Retur"
         description="Retur memerlukan otorisasi supervisor — masukkan PIN."
-        onApproved={(id) => {
-          setApproverId(id)
+        onApproved={(token) => {
+          setApprovalToken(token)
           setPinOpen(false)
-          doSubmit(id)
+          doSubmit(token)
         }}
       />
     </div>

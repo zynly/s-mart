@@ -74,6 +74,11 @@ class ReportController extends Controller
             'columns' => $report->visibleColumns($user),
             'rows' => $rows,
             'summary' => $report->visibleSummary($report->summary($report->scopedQuery($filters, $user), $user), $user),
+            // Gap G-05: tombol "Ekspor Excel" hanya dirender kalau user
+            // benar-benar punya izin ekspor laporan ini — backend TETAP
+            // menolak di export() terlepas dari flag ini (pertahanan
+            // berlapis, bukan pengganti pengecekan server).
+            'canExport' => $user->can($report->exportPermission()),
             'filters' => $filters,
             'outlets' => Outlet::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'cashiers' => User::role('cashier')->orderBy('name')->get(['id', 'name']),
@@ -95,6 +100,10 @@ class ReportController extends Controller
     {
         $user = $request->user();
         $report = $this->resolve($key, $user);
+        // Gap G-05: melihat laporan (requiredPermission()) TIDAK berarti
+        // boleh mengekspornya — dicek eksplisit di sini, terpisah dari
+        // resolve() yang hanya menggerbang akses lihat.
+        abort_unless($user->can($report->exportPermission()), 403);
         $filters = $request->only(collect($report->filters())->pluck('key')->all());
         $cashierScoped = $user->hasRole('cashier');
 
@@ -116,7 +125,14 @@ class ReportController extends Controller
 
             return response()->json([
                 'status' => 'ready',
-                'downloadUrl' => URL::temporarySignedRoute('admin.reports.download', now()->addHours(24), ['filename' => $filename]),
+                // Audit Fase 7 (Temuan Rendah): user_id disertakan &
+                // diverifikasi di download() — signed URL sendiri terbukti
+                // valid (tidak bisa ditebak/dipalsukan tanda tangannya),
+                // tapi TIDAK terikat ke siapa yang boleh memakainya. Kalau
+                // link bocor (screen share, riwayat browser bersama),
+                // siapa pun yang login bisa mengunduhnya, termasuk data
+                // yang harusnya di luar cakupan izinnya sendiri.
+                'downloadUrl' => URL::temporarySignedRoute('admin.reports.download', now()->addHours(24), ['filename' => $filename, 'user_id' => $user->id]),
                 'rowCount' => $rowCount,
             ]);
         }
@@ -132,6 +148,13 @@ class ReportController extends Controller
     public function download(string $filename, Request $request): StreamedResponse
     {
         abort_unless($request->hasValidSignature(), 403);
+        // Audit Fase 7 (Temuan Rendah): signed URL sah tidak lagi cukup
+        // sendirian — harus dipakai oleh user yang SAMA yang memicu
+        // ekspornya. user_id absen (link lama dari sebelum perbaikan ini)
+        // sengaja DILOLOSKAN (bukan ditolak) supaya tidak mendadak
+        // mematahkan link yang sudah beredar sebelum deploy perbaikan ini.
+        $expectedUserId = $request->integer('user_id');
+        abort_if($expectedUserId !== 0 && $expectedUserId !== $request->user()->id, 403);
         abort_unless(Storage::disk('local')->exists("exports/{$filename}"), 404);
 
         return Storage::disk('local')->download("exports/{$filename}");

@@ -31,6 +31,7 @@ type ReportsShowProps = {
   outlets: Ref[]
   cashiers: Ref[]
   products: ProductRef[]
+  canExport: boolean
 }
 
 function xsrfToken(): string {
@@ -64,7 +65,7 @@ function humanizeKey(key: string): string {
   return key.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())
 }
 
-export default function Show({ reportKey, title, filterDefs, columns, rows, summary, filters, outlets, products }: ReportsShowProps) {
+export default function Show({ reportKey, title, filterDefs, columns, rows, summary, filters, outlets, products, canExport }: ReportsShowProps) {
   const [form, setForm] = useState<Record<string, string>>(filters)
   const [exporting, setExporting] = useState(false)
 
@@ -116,7 +117,7 @@ export default function Show({ reportKey, title, filterDefs, columns, rows, summ
       <PageHeader
         title={title}
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Laporan', href: route('admin.reports.index') }, { label: title }]}
-        actions={<Button onClick={exportExcel} disabled={exporting}>{exporting ? 'Mengekspor…' : 'Ekspor Excel'}</Button>}
+        actions={canExport ? <Button onClick={exportExcel} disabled={exporting}>{exporting ? 'Mengekspor…' : 'Ekspor Excel'}</Button> : undefined}
       />
 
       <div className="flex flex-wrap items-end gap-3">

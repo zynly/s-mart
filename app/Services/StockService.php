@@ -29,6 +29,16 @@ class StockService
         bool $isConsignment = false,
         ?int $supplierId = null,
     ): StockLayer {
+        // Audit Fase 7 (Temuan Rendah): tidak ada guard qty>0 di level
+        // service — saat ini semua FormRequest pemanggil sudah
+        // mewajibkan qty positif (min:0.001), jadi tidak reachable lewat
+        // HTTP, tapi itu kebetulan konfigurasi form, bukan proteksi di
+        // titik yang seharusnya (domain layer). Pemanggil baru (command,
+        // job, integrasi) yang lupa validasi qty akan tertangkap di sini.
+        if ($qty < 0) {
+            throw new DomainException('Qty harus lebih besar dari nol.');
+        }
+
         return DB::transaction(function () use ($product, $outlet, $qty, $unitCost, $batchNo, $expiredAt, $source, $isConsignment, $supplierId) {
             $layer = StockLayer::create([
                 'product_id' => $product->id,
@@ -60,6 +70,15 @@ class StockService
      */
     public function consume(Product $product, Outlet $outlet, float $qty, ?Model $consumer = null): array
     {
+        // Audit Fase 7 (Temuan Rendah): lihat catatan yang sama di
+        // addLayer() — qty negatif sebelumnya lolos (available<qty
+        // selalu false) dan decrement() dgn nilai negatif justru
+        // MENAMBAH qty_remaining alih-alih mengurangi. qty=0 tetap
+        // diizinkan (no-op aman, beberapa pemanggil sengaja memakainya).
+        if ($qty < 0) {
+            throw new DomainException('Qty harus lebih besar dari nol.');
+        }
+
         return DB::transaction(function () use ($product, $outlet, $qty, $consumer) {
             $layers = StockLayer::query()
                 ->where('product_id', $product->id)
@@ -121,6 +140,14 @@ class StockService
      */
     public function returnToLayer(StockLayerConsumption $consumption, float $qty): void
     {
+        // Audit Fase 7 (Temuan Rendah): qty<=0 sebelumnya lolos guard
+        // "melebihi qty konsumsi" (qty negatif membuat totalnya makin
+        // kecil, bukan makin besar) dan increment()/qty_returned jadi
+        // salah arah.
+        if ($qty < 0) {
+            throw new DomainException('Qty harus lebih besar dari nol.');
+        }
+
         DB::transaction(function () use ($consumption, $qty) {
             $lockedConsumption = StockLayerConsumption::lockForUpdate()->findOrFail($consumption->id);
             $layer = StockLayer::lockForUpdate()->findOrFail($lockedConsumption->stock_layer_id);
@@ -150,6 +177,13 @@ class StockService
      */
     public function reduceLayer(StockLayer $layer, float $qty): void
     {
+        // Audit Fase 7 (Temuan Rendah): qty<=0 sebelumnya lolos guard
+        // InsufficientStockException (qty_remaining < qty negatif selalu
+        // false) dan decrement() dgn nilai negatif MENAMBAH stok.
+        if ($qty < 0) {
+            throw new DomainException('Qty harus lebih besar dari nol.');
+        }
+
         DB::transaction(function () use ($layer, $qty) {
             $locked = StockLayer::lockForUpdate()->findOrFail($layer->id);
 
@@ -200,8 +234,26 @@ class StockService
         ]);
     }
 
+    /**
+     * Audit Fase 6 (Temuan Sedang): sebelumnya read-aggregate-then-upsert
+     * TANPA lock — dua transaksi konkuren pada produk+outlet yang sama
+     * (mis. pembelian masuk & penjualan keluar nyaris bersamaan) bisa
+     * saling menimpa hasil satu sama lain (lost update), karena
+     * `lockForUpdate()` di consume()/addLayer() hanya mengunci baris
+     * StockLayer yang SUDAH ADA, bukan agregat "seluruh layer produk
+     * ini". Dikunci di sini SEBELUM membaca layer — semua 4 pemanggil
+     * (consume/addLayer/reduceLayer/returnToLayer) sudah membungkus
+     * dalam DB::transaction(), jadi lock ini otomatis bertahan sampai
+     * transaksi caller commit.
+     */
     public function recalculateCache(Product $product, Outlet $outlet): void
     {
+        $stock = Stock::firstOrCreate(
+            ['product_id' => $product->id, 'outlet_id' => $outlet->id],
+            ['qty' => 0, 'avg_cost' => 0, 'last_cost' => 0],
+        );
+        $locked = Stock::whereKey($stock->id)->lockForUpdate()->first();
+
         $layers = StockLayer::where('product_id', $product->id)
             ->where('outlet_id', $outlet->id)
             ->where('qty_remaining', '>', 0)
@@ -216,15 +268,12 @@ class StockService
             ->orderByDesc('received_at')
             ->first();
 
-        Stock::updateOrCreate(
-            ['product_id' => $product->id, 'outlet_id' => $outlet->id],
-            [
-                'qty' => $qty,
-                'avg_cost' => $avgCost,
-                'last_cost' => $lastLayer->unit_cost ?? 0,
-                'last_movement_at' => now(),
-            ],
-        );
+        $locked->update([
+            'qty' => $qty,
+            'avg_cost' => $avgCost,
+            'last_cost' => $lastLayer->unit_cost ?? 0,
+            'last_movement_at' => now(),
+        ]);
     }
 
     public function getAvailable(Product $product, Outlet $outlet): float

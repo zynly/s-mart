@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exceptions\WeakPinException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\SetMemberPinRequest;
 use App\Http\Requests\Admin\StoreMemberRequest;
 use App\Http\Requests\Admin\UpdateMemberRequest;
 use App\Models\Category;
@@ -15,6 +17,7 @@ use App\Services\MemberService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -81,6 +84,23 @@ class MemberController extends Controller
         return back()->with('success', 'PIN anggota direset. Anggota akan diminta buat PIN baru saat transaksi berikutnya.');
     }
 
+    /**
+     * Audit Fase 5: jalur BARU untuk membuat/mengganti PIN anggota —
+     * sebelumnya tidak ada sama sekali (lihat SetMemberPinRequest).
+     * Dipakai baik utk anggota baru (belum pernah punya PIN) maupun
+     * mengganti PIN yang sudah ada (admin/staf dgn izin member.update).
+     */
+    public function setPin(SetMemberPinRequest $request, Member $member): RedirectResponse
+    {
+        try {
+            $this->pinService->set($member, $request->validated('pin'));
+        } catch (WeakPinException $e) {
+            throw ValidationException::withMessages(['pin' => $e->getMessage()]);
+        }
+
+        return back()->with('success', 'PIN anggota berhasil disimpan.');
+    }
+
     public function reissueCard(Request $request, Member $member): RedirectResponse
     {
         $data = $request->validate(['reason' => ['required', 'string', 'max:255']]);
@@ -103,6 +123,23 @@ class MemberController extends Controller
         return response($pdf, 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="kartu-anggota.pdf"',
+        ]);
+    }
+
+    /**
+     * REVISI-R1-v2.md §9.3 — pratinjau satu kartu sebelum cetak massal.
+     */
+    public function previewCard(Member $member): HttpResponse
+    {
+        try {
+            $pdf = $this->cardPrintService->previewCard($member);
+        } catch (\DomainException $e) {
+            abort(422, $e->getMessage());
+        }
+
+        return response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="pratinjau-kartu-'.$member->member_number.'.pdf"',
         ]);
     }
 }

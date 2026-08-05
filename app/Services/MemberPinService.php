@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exceptions\MemberPinLockedException;
 use App\Exceptions\WeakPinException;
 use App\Models\Member;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class MemberPinService
@@ -27,30 +28,39 @@ class MemberPinService
 
     public function verify(Member $member, string $pin): bool
     {
-        if ($member->pin_locked_until !== null && $member->pin_locked_until->isFuture()) {
-            throw MemberPinLockedException::until($member->pin_locked_until);
-        }
+        // Audit Fase 7 (Temuan Rendah): sebelumnya baca pin_attempts/
+        // pin_locked_until lalu tulis TANPA lock — dua percobaan PIN
+        // konkuren pada anggota yang sama bisa membaca counter yang sama
+        // sebelum salah satu commit, memperlebar jendela percobaan
+        // sebelum lockout benar-benar aktif dibanding niat desainnya.
+        return DB::transaction(function () use ($member, $pin) {
+            $locked = Member::lockForUpdate()->findOrFail($member->id);
 
-        if ($member->pin === null || ! Hash::check($pin, $member->pin)) {
-            $attempts = $member->pin_attempts + 1;
-            // Temuan audit keamanan (code-quality #1/#8): sebelumnya
-            // hardcode 3/15, mengabaikan config('pos.pin_max_attempts')/
-            // ('pos.pin_lockout_minutes') yang sudah dipajang & bisa
-            // diubah owner lewat halaman Pengaturan (T-103) — owner ubah
-            // nilainya, toast sukses, tapi tidak berpengaruh sama sekali.
-            $locked = $attempts >= (int) config('pos.pin_max_attempts', 3);
+            if ($locked->pin_locked_until !== null && $locked->pin_locked_until->isFuture()) {
+                throw MemberPinLockedException::until($locked->pin_locked_until);
+            }
 
-            $member->update([
-                'pin_attempts' => $locked ? 0 : $attempts,
-                'pin_locked_until' => $locked ? now()->addMinutes((int) config('pos.pin_lockout_minutes', 15)) : null,
-            ]);
+            if ($locked->pin === null || ! Hash::check($pin, $locked->pin)) {
+                $attempts = $locked->pin_attempts + 1;
+                // Temuan audit keamanan (code-quality #1/#8): sebelumnya
+                // hardcode 3/15, mengabaikan config('pos.pin_max_attempts')/
+                // ('pos.pin_lockout_minutes') yang sudah dipajang & bisa
+                // diubah owner lewat halaman Pengaturan (T-103) — owner ubah
+                // nilainya, toast sukses, tapi tidak berpengaruh sama sekali.
+                $isLocked = $attempts >= (int) config('pos.pin_max_attempts', 3);
 
-            return false;
-        }
+                $locked->update([
+                    'pin_attempts' => $isLocked ? 0 : $attempts,
+                    'pin_locked_until' => $isLocked ? now()->addMinutes((int) config('pos.pin_lockout_minutes', 15)) : null,
+                ]);
 
-        $member->update(['pin_attempts' => 0]);
+                return false;
+            }
 
-        return true;
+            $locked->update(['pin_attempts' => 0]);
+
+            return true;
+        });
     }
 
     public function reset(Member $member): void

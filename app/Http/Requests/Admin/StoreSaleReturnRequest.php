@@ -22,7 +22,10 @@ class StoreSaleReturnRequest extends FormRequest
             'cashier_session_id' => ['required', 'exists:cashier_sessions,id'],
             'reason' => ['required', Rule::in(['damaged', 'wrong_item', 'expired', 'customer_request', 'other'])],
             'reason_detail' => ['nullable', 'string', 'max:255'],
-            'approver_id' => ['nullable', 'exists:users,id'],
+            // Audit Fase 1 (Temuan Kritis #1 & Sedang: approver_id tanpa
+            // cek permission sama sekali) — token sekali-pakai, lihat
+            // AuthorizationService::consumeToken().
+            'approval_token' => ['nullable', 'string'],
 
             'items' => ['required', 'array', 'min:1'],
             'items.*.sale_item_id' => ['required', 'exists:sale_items,id'],

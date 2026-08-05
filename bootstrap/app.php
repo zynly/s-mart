@@ -5,6 +5,7 @@ use App\Http\Middleware\EnsureIdempotencyKey;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\ThrottlePasswordReset;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -47,6 +48,20 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->renderable(function (DomainException $e, Request $request) {
             if ($request->header('X-Inertia')) {
                 return back()->with('error', $e->getMessage());
+            }
+        });
+
+        // Audit Fase 7 (Temuan Rendah): idempotency check di SaleService::
+        // complete()/SaleReturnService::createAndProcess() (SELECT lalu
+        // INSERT, tanpa lock) dilindungi dari double-charge oleh unique
+        // constraint DB (idempotency_key) — TAPI request duplikat yang
+        // genuinely race (retry jaringan nyaris bersamaan) sebelumnya
+        // dapat 500 mentah, bukan respons yang wajar. Jaring pengaman
+        // yang sama seperti DomainException di atas, bukan pengganti
+        // perbaikan di titik asalnya.
+        $exceptions->renderable(function (UniqueConstraintViolationException $e, Request $request) {
+            if ($request->header('X-Inertia')) {
+                return back()->with('error', 'Transaksi ini kemungkinan sudah diproses sebelumnya (permintaan ganda) — periksa riwayat sebelum mencoba lagi.');
             }
         });
     })->create();

@@ -6,6 +6,7 @@ use App\Models\Coupon;
 use App\Models\CouponRedemption;
 use App\Models\Member;
 use App\Models\Sale;
+use DomainException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -88,6 +89,27 @@ class VoucherService
     {
         return DB::transaction(function () use ($coupon, $sale, $member, $discountAmount) {
             $locked = Coupon::lockForUpdate()->findOrFail($coupon->id);
+
+            // Audit Fase 6 (Temuan Tinggi): validate() (dipanggil sebelum
+            // ini, di awal SaleService::complete()) membaca used_count/
+            // per_member_limit TANPA lock — dua checkout paralel dengan
+            // kupon quota=1 yang sama bisa sama-sama lolos validate()
+            // sebelum salah satu commit. Re-verifikasi DI BAWAH LOCK di
+            // sini adalah pertahanan sesungguhnya, bukan validate() di atas.
+            if ($locked->used_count >= $locked->quota) {
+                throw new DomainException('Kuota kupon sudah habis (terpakai transaksi lain yang berbarengan).');
+            }
+
+            if ($member !== null && $locked->per_member_limit > 0) {
+                $usedByMember = CouponRedemption::where('coupon_id', $locked->id)
+                    ->where('member_id', $member->id)
+                    ->where('is_reverted', false)
+                    ->count();
+
+                if ($usedByMember >= $locked->per_member_limit) {
+                    throw new DomainException('Kupon ini sudah dipakai anggota ini di transaksi lain yang berbarengan.');
+                }
+            }
 
             $redemption = CouponRedemption::create([
                 'coupon_id' => $locked->id,

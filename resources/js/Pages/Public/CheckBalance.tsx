@@ -14,7 +14,7 @@ type CheckBalanceProps = {
 }
 
 export default function CheckBalance({ result, error, submittedNumber }: CheckBalanceProps) {
-  const { data, setData, post, processing } = useForm({ member_number: submittedNumber ?? '' })
+  const { data, setData, post, processing } = useForm({ member_number: submittedNumber ?? '', birth_date: '' })
 
   function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -25,7 +25,7 @@ export default function CheckBalance({ result, error, submittedNumber }: CheckBa
     <div className="mx-auto flex max-w-md flex-col gap-6 py-8">
       <div className="text-center">
         <h1 className="text-2xl font-semibold text-content">Cek Saldo</h1>
-        <p className="mt-1 text-sm text-content-muted">Masukkan nomor anggota untuk melihat saldo deposit.</p>
+        <p className="mt-1 text-sm text-content-muted">Masukkan nomor anggota &amp; tanggal lahir untuk melihat saldo deposit.</p>
       </div>
 
       <form onSubmit={submit} className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-6">
@@ -36,6 +36,13 @@ export default function CheckBalance({ result, error, submittedNumber }: CheckBa
           onChange={(e) => setData('member_number', e.target.value)}
           placeholder="Contoh: 202600001"
           autoFocus
+        />
+        <Label htmlFor="birth_date">Tanggal Lahir</Label>
+        <Input
+          id="birth_date"
+          type="date"
+          value={data.birth_date}
+          onChange={(e) => setData('birth_date', e.target.value)}
         />
         <Button type="submit" disabled={processing} className="mt-1">
           Cek Saldo

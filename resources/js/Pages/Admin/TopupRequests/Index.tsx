@@ -13,6 +13,7 @@ import { Checkbox } from '@/Components/ui/checkbox'
 import { Label } from '@/Components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
+import { SupervisorPinDialog } from '@/Components/common/SupervisorPinDialog'
 import type { Paginated } from '@/Types'
 
 type TopupRequestRow = {
@@ -28,7 +29,11 @@ type TopupRequestRow = {
   member: { id: number; name: string; member_number: string } | null
   guardian: { id: number; name: string; phone: string } | null
   verifier: { id: number; name: string } | null
+  is_possible_duplicate: boolean
 }
+
+// REVISI-R1-v2.md §6.3 Jalur B — wajib PIN supervisor/owner di atas ambang ini.
+const TRANSFER_PIN_THRESHOLD = 500000
 
 type TopupRequestsIndexProps = {
   tab: string
@@ -50,6 +55,7 @@ export default function Index({ tab, topupRequests, filters }: TopupRequestsInde
   const [approveTarget, setApproveTarget] = useState<TopupRequestRow | null>(null)
   const [bankVerified, setBankVerified] = useState(false)
   const [approveNote, setApproveNote] = useState('')
+  const [approvePinOpen, setApprovePinOpen] = useState(false)
 
   function applyFilter(status: string) {
     setStatusFilter(status)
@@ -59,11 +65,26 @@ export default function Index({ tab, topupRequests, filters }: TopupRequestsInde
   function submitApprove() {
     if (!approveTarget || !bankVerified) return
 
-    router.put(route('admin.topup-requests.approve', approveTarget.id), { bank_verified: bankVerified, note: approveNote }, {
+    // REVISI-R1-v2.md §6.3 Jalur B — nominal besar butuh PIN
+    // supervisor/owner SEBELUM disetujui, di atas checkbox konfirmasi
+    // mutasi rekening yang sudah ada.
+    if (approveTarget.amount > TRANSFER_PIN_THRESHOLD) {
+      setApprovePinOpen(true)
+      return
+    }
+
+    doSubmitApprove()
+  }
+
+  function doSubmitApprove(token?: string) {
+    if (!approveTarget) return
+
+    router.put(route('admin.topup-requests.approve', approveTarget.id), { bank_verified: bankVerified, note: approveNote, approval_token: token ?? '' }, {
       onSuccess: () => {
         setApproveTarget(null)
         setBankVerified(false)
         setApproveNote('')
+        setApprovePinOpen(false)
       },
     })
   }
@@ -83,7 +104,20 @@ export default function Index({ tab, topupRequests, filters }: TopupRequestsInde
     { accessorKey: 'reference', header: 'Referensi' },
     { id: 'member', header: 'Anak', cell: ({ row }) => row.original.member?.name ?? '—' },
     { id: 'guardian', header: 'Wali', cell: ({ row }) => row.original.guardian?.name ?? '—' },
-    { id: 'amount', header: 'Nominal', cell: ({ row }) => <Money amount={row.original.amount} /> },
+    {
+      id: 'amount',
+      header: 'Nominal',
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1.5">
+          <Money amount={row.original.amount} />
+          {row.original.is_possible_duplicate && (
+            <Badge className="bg-warning text-white" title="Ada pengajuan lain dengan nominal & tanggal transfer yang sama — periksa bukti dengan teliti sebelum menyetujui.">
+              Duga Duplikat
+            </Badge>
+          )}
+        </div>
+      ),
+    },
     { id: 'bank', header: 'Bank / Pengirim', cell: ({ row }) => `${row.original.bank_name ?? '—'} / ${row.original.sender_name ?? '—'}` },
     {
       id: 'proof',
@@ -167,6 +201,14 @@ export default function Index({ tab, topupRequests, filters }: TopupRequestsInde
                 Saya sudah mencocokkan pengajuan ini dengan mutasi rekening koran sekolah — bukan hanya melihat foto bukti transfer.
               </Label>
             </div>
+            {approveTarget?.is_possible_duplicate && (
+              <p className="rounded-md bg-warning/10 p-2 text-sm text-warning">
+                ⚠ Ada pengajuan top-up LAIN dengan nominal &amp; tanggal transfer yang sama persis — periksa dengan teliti, kemungkinan bukti transfer dipakai berulang.
+              </p>
+            )}
+            {approveTarget && approveTarget.amount > TRANSFER_PIN_THRESHOLD && (
+              <p className="text-xs text-content-muted">Nominal di atas Rp {TRANSFER_PIN_THRESHOLD.toLocaleString('id-ID')} — PIN supervisor/owner akan diminta setelah ini.</p>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="approve_note">Catatan (opsional)</Label>
               <Textarea id="approve_note" value={approveNote} onChange={(e) => setApproveNote(e.target.value)} placeholder="Mis. dicocokkan dengan mutasi BCA 01/08" />
@@ -177,6 +219,15 @@ export default function Index({ tab, topupRequests, filters }: TopupRequestsInde
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <SupervisorPinDialog
+        open={approvePinOpen}
+        onOpenChange={setApprovePinOpen}
+        permission="topup.approve"
+        title="Konfirmasi Top-Up Nominal Besar"
+        description={`Top-up di atas Rp ${TRANSFER_PIN_THRESHOLD.toLocaleString('id-ID')} wajib PIN supervisor/owner.`}
+        onApproved={(token) => doSubmitApprove(token)}
+      />
 
       <Dialog open={rejectTarget !== null} onOpenChange={(open) => !open && setRejectTarget(null)}>
         <DialogContent>

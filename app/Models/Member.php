@@ -14,6 +14,12 @@ class Member extends Model
 {
     use LogsActivityCustom, SoftDeletes;
 
+    // Gap G-07: MemberController::index() tidak membatasi kolom (SELECT *)
+    // — hash PIN tidak perlu ikut terserialisasi ke setiap baris daftar
+    // anggota di frontend hanya karena field lain (kelas/HP/alamat/dst.)
+    // sekarang perlu dikirim utuh untuk prefill form Ubah Anggota.
+    protected $hidden = ['pin'];
+
     protected $fillable = [
         'member_number', 'name', 'nis', 'member_level_id', 'type',
         'class_name', 'major', 'entry_year', 'gender', 'birth_date',

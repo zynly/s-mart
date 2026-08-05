@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToOutlet;
 use App\Traits\LogsActivityCustom;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PurchaseReturn extends Model
 {
-    use LogsActivityCustom;
+    use BelongsToOutlet, LogsActivityCustom;
 
     protected $fillable = [
         'reference', 'purchase_id', 'supplier_id', 'outlet_id', 'return_date',

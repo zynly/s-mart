@@ -36,6 +36,8 @@ type PurchaseRow = {
   outlet: Ref
 }
 
+type CashAccountRef = { id: number; name: string; outlet_id: number }
+
 type PurchasesIndexProps = {
   tab: string
   purchases: Paginated<PurchaseRow>
@@ -43,6 +45,7 @@ type PurchasesIndexProps = {
   outlets: Ref[]
   products: ProductRef[]
   units: UnitRef[]
+  cashAccounts: CashAccountRef[]
   filters: { search?: string; supplier_id?: string }
 }
 
@@ -66,6 +69,7 @@ const emptyForm = {
   due_date: '',
   type: 'regular' as 'regular' | 'consignment',
   payment_type: 'cash' as 'cash' | 'credit',
+  cash_account_id: '',
   discount: 0,
   tax: 0,
   note: '',
@@ -73,7 +77,7 @@ const emptyForm = {
   other_costs: [] as CostField[],
 }
 
-export default function Index({ tab, purchases, suppliers, outlets, products, units, filters }: PurchasesIndexProps) {
+export default function Index({ tab, purchases, suppliers, outlets, products, units, cashAccounts, filters }: PurchasesIndexProps) {
   const [search, setSearch] = useState(filters.search ?? '')
   const [sheetOpen, setSheetOpen] = useState(false)
   const form = useForm(emptyForm)
@@ -256,6 +260,24 @@ export default function Index({ tab, purchases, suppliers, outlets, products, un
                         <SelectItem value="credit">Kredit (hutang)</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                )}
+                {form.data.type === 'regular' && form.data.payment_type === 'cash' && (
+                  <div className="space-y-1.5">
+                    <Label>Akun Kas (saldo akan berkurang sebesar total pembelian)</Label>
+                    <Select value={form.data.cash_account_id} onValueChange={(v) => form.setData('cash_account_id', v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih akun kas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cashAccounts
+                          .filter((a) => String(a.outlet_id) === form.data.outlet_id)
+                          .map((a) => (
+                            <SelectItem key={a.id} value={String(a.id)}>{a.name}</SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    {form.errors.cash_account_id && <p className="text-sm text-danger">{form.errors.cash_account_id}</p>}
                   </div>
                 )}
               </TabsContent>

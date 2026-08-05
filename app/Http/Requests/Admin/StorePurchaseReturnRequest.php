@@ -24,7 +24,10 @@ class StorePurchaseReturnRequest extends FormRequest
             'items' => ['required', 'array', 'min:1'],
             'items.*.purchase_item_id' => ['required', 'exists:purchase_items,id'],
             'items.*.qty' => ['required', 'numeric', 'min:0.001'],
-            'items.*.unit_cost' => ['required', 'integer', 'min:0'],
+            // Audit Fase 3 (Temuan Kritis #3): BUKAN unit_cost dari client
+            // lagi — PurchaseService::processReturn() sekarang SELALU
+            // memakai purchaseItem->final_unit_cost asli, mengabaikan
+            // apapun yang dikirim di sini.
         ];
     }
 }

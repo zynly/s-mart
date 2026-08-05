@@ -1,4 +1,4 @@
-import { useForm } from '@inertiajs/react'
+import { Link, useForm } from '@inertiajs/react'
 import type { FormEventHandler, ReactElement } from 'react'
 import GuestLayout from '@/Layouts/GuestLayout'
 import { Button } from '@/Components/ui/button'
@@ -52,6 +52,10 @@ export default function Login() {
         <Button type="submit" disabled={processing} className="w-full">
           Masuk
         </Button>
+
+        <Link href={route('wali.forgot-password.phone')} className="text-center text-sm text-content-muted hover:underline">
+          Lupa password?
+        </Link>
       </form>
     </div>
   )

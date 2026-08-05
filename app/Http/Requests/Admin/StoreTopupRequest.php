@@ -21,6 +21,10 @@ class StoreTopupRequest extends FormRequest
             'amount' => ['required', 'integer', 'min:'.config('pos.deposit_min_topup', 10000)],
             'payment_method_id' => ['required', 'exists:payment_methods,id'],
             'outlet_id' => ['required', 'exists:outlets,id'],
+            // REVISI-R1-v2.md §6.3 — wajib diisi hanya bila top-up TUNAI
+            // melebihi ambang (dicek di controller, butuh tipe metode
+            // bayar yang baru diketahui setelah query).
+            'approval_token' => ['nullable', 'string'],
         ];
     }
 }

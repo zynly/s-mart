@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StorePurchaseRequest extends FormRequest
 {
@@ -25,6 +26,14 @@ class StorePurchaseRequest extends FormRequest
             'due_date' => ['nullable', 'date', 'after_or_equal:purchase_date'],
             'type' => ['required', 'in:regular,consignment'],
             'payment_type' => ['required_if:type,regular', 'in:cash,credit'],
+            // Gap G-06: pembelian tunai sekarang benar-benar mengeluarkan
+            // saldo dari Akun Kas operasional (bukan hanya jurnal GL) —
+            // akun kas WAJIB dipilih eksplisit saat bayar tunai, tidak
+            // ditebak diam-diam dari "akun default outlet".
+            'cash_account_id' => [
+                Rule::requiredIf(fn () => ($this->input('type') ?? 'regular') === 'regular' && $this->input('payment_type') === 'cash'),
+                'nullable', 'exists:cash_accounts,id',
+            ],
             'discount' => ['nullable', 'integer', 'min:0'],
             'tax' => ['nullable', 'integer', 'min:0'],
             'note' => ['nullable', 'string'],
