@@ -11,7 +11,7 @@ import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
 import { Badge } from '@/Components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
-import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/Components/ui/sheet'
+import { AppSheet } from '@/Components/common/AppSheet'
 import { formatDate } from '@/Lib/date'
 import type { Paginated } from '@/Types'
 
@@ -120,12 +120,14 @@ export default function Index({ tab, settlements, suppliers, outlets }: Consignm
 
       <DataTable columns={columns} data={settlements.data} getRowId={(row) => String(row.id)} emptyDescription="Belum ada settlement konsinyasi." />
 
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>Buat Settlement Konsinyasi</SheetTitle>
-          </SheetHeader>
-          <form onSubmit={submit} className="flex flex-col gap-4 px-4">
+      <AppSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        title="Buat Settlement Konsinyasi"
+        size="md"
+        footer={<Button type="submit" form="consignment-form" disabled={form.processing}>Hitung & Simpan</Button>}
+      >
+          <form id="consignment-form" onSubmit={submit} className="flex flex-col gap-4 px-4">
             <div className="space-y-1.5">
               <Label>Supplier Konsinyor</Label>
               <Select value={form.data.supplier_id} onValueChange={(v) => form.setData('supplier_id', v)}>
@@ -177,12 +179,8 @@ export default function Index({ tab, settlements, suppliers, outlets }: Consignm
             <p className="text-xs text-content-muted">
               Dihitung dari barang konsinyasi supplier ini yang terjual (keluar dari stok) dalam periode, pada harga jual aktif produk saat ini.
             </p>
-            <SheetFooter>
-              <Button type="submit" disabled={form.processing}>Hitung & Simpan</Button>
-            </SheetFooter>
           </form>
-        </SheetContent>
-      </Sheet>
+      </AppSheet>
     </div>
   )
 }

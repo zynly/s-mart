@@ -157,8 +157,15 @@ class SaleController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
+        // REVISI-UI-KASIR.md §1.5 — baris keranjang menampilkan thumbnail
+        // produk, harus tersedia baik lewat scan maupun klik grid.
+        $image = $resolved['product']->images()->where('is_primary', true)->first();
+
         return response()->json([
-            'product' => $resolved['product']->only(['id', 'name', 'sku']),
+            'product' => [
+                ...$resolved['product']->only(['id', 'name', 'sku']),
+                'image_url' => $image ? Storage::disk('public')->url($image->path) : null,
+            ],
             'unit' => $resolved['unit']->only(['id', 'code', 'name']),
             'qty_multiplier' => $resolved['qty_multiplier'],
             'price' => $price,

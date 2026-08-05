@@ -13,7 +13,7 @@ import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
 import { Badge } from '@/Components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
-import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/Components/ui/sheet'
+import { AppSheet } from '@/Components/common/AppSheet'
 import { formatDate } from '@/Lib/date'
 import type { Paginated } from '@/Types'
 
@@ -171,12 +171,14 @@ export default function Index({ tab, orders, suppliers, outlets, products, units
         }}
       />
 
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="w-full overflow-y-auto sm:max-w-2xl">
-          <SheetHeader>
-            <SheetTitle>Buat Purchase Order</SheetTitle>
-          </SheetHeader>
-          <form onSubmit={submit} className="flex flex-col gap-4 px-4 pb-4">
+      <AppSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        title="Buat Purchase Order"
+        size="full"
+        footer={<Button type="submit" form="po-create-form" disabled={form.processing || form.data.items.length === 0}>Simpan PO</Button>}
+      >
+          <form id="po-create-form" onSubmit={submit} className="flex flex-col gap-4 px-4 pb-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Supplier</Label>
@@ -272,12 +274,8 @@ export default function Index({ tab, orders, suppliers, outlets, products, units
               </div>
             </div>
 
-            <SheetFooter>
-              <Button type="submit" disabled={form.processing || form.data.items.length === 0}>Simpan PO</Button>
-            </SheetFooter>
           </form>
-        </SheetContent>
-      </Sheet>
+      </AppSheet>
     </div>
   )
 }

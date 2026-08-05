@@ -1,7 +1,10 @@
 import { useCallback, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react'
 import { router, usePage } from '@inertiajs/react'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { Minus, Plus, Trash2, User, X } from 'lucide-react'
+import {
+  ArrowDownCircle, ArrowUpCircle, ChevronLeft, ChevronRight, CreditCard, Pause, Phone,
+  ScanLine, Search, ShoppingCart, Trash2, UserCircle, Wallet, X,
+} from 'lucide-react'
 import PosLayout from '@/Layouts/PosLayout'
 import { Money } from '@/Components/common/Money'
 import { MoneyInput } from '@/Components/common/MoneyInput'
@@ -40,7 +43,7 @@ type CatalogProduct = {
 type CatalogPage = { data: CatalogProduct[]; current_page: number; last_page: number; total: number }
 type CategoryRef = { id: number; name: string }
 type HoldRow = { id: number; reference: string; item_count: number; total: number; held_at: string; member_id: number | null }
-type SessionInfo = { id: number; reference: string; opened_at: string } | null
+type SessionInfo = { id: number; reference: string; opened_at: string; cash_account_id: number } | null
 type OutletInfo = { id: number; name: string } | null
 
 type MemberResult = {
@@ -63,6 +66,8 @@ type CartLine = {
   product_id: number
   unit_id: number
   product_name: string
+  product_sku: string | null
+  image_url: string | null
   unit_code: string
   qty: number
   unit_price: number
@@ -117,8 +122,19 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
   const [submitting, setSubmitting] = useState(false)
   const [paymentError, setPaymentError] = useState<string | null>(null)
   const [holdError, setHoldError] = useState<string | null>(null)
+  const [cashDialog, setCashDialog] = useState<'in' | 'out' | null>(null)
+  const [cashAmount, setCashAmount] = useState(0)
+  const [cashDescription, setCashDescription] = useState('')
+  const [cashError, setCashError] = useState<string | null>(null)
+  const [cashSubmitting, setCashSubmitting] = useState(false)
   const idempotencyKeyRef = useRef(newIdempotencyKey())
   const barcodeRef = useRef<HTMLInputElement>(null)
+  const memberInputRef = useRef<HTMLInputElement>(null)
+  const carouselRef = useRef<HTMLDivElement>(null)
+
+  function scrollCarousel(direction: -1 | 1) {
+    carouselRef.current?.scrollBy({ left: direction * 320, behavior: 'smooth' })
+  }
 
   const subtotal = useMemo(() => cart.reduce((sum, line) => sum + line.qty * line.unit_price, 0), [cart])
 
@@ -126,7 +142,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
     barcodeRef.current?.focus()
   }
 
-  function addLine(product: { id: number; name: string }, unit: { id: number; code: string }, price: number, qtyMultiplier: number) {
+  function addLine(product: { id: number; name: string; sku?: string | null; image_url?: string | null }, unit: { id: number; code: string }, price: number, qtyMultiplier: number) {
     setCart((prev) => {
       const existing = prev.find((l) => l.product_id === product.id && l.unit_id === unit.id)
 
@@ -134,7 +150,17 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
         return prev.map((l) => (l === existing ? { ...l, qty: l.qty + qtyMultiplier } : l))
       }
 
-      return [...prev, { key: `${product.id}-${unit.id}-${Date.now()}`, product_id: product.id, unit_id: unit.id, product_name: product.name, unit_code: unit.code, qty: qtyMultiplier, unit_price: price }]
+      return [...prev, {
+        key: `${product.id}-${unit.id}-${Date.now()}`,
+        product_id: product.id,
+        unit_id: unit.id,
+        product_name: product.name,
+        product_sku: product.sku ?? null,
+        image_url: product.image_url ?? null,
+        unit_code: unit.code,
+        qty: qtyMultiplier,
+        unit_price: price,
+      }]
     })
   }
 
@@ -215,6 +241,44 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
     )
   }, [cart, member, outlet, session])
 
+  function openCashDialog(type: 'in' | 'out') {
+    if (!session) return
+    setCashAmount(0)
+    setCashDescription('')
+    setCashError(null)
+    setCashDialog(type)
+  }
+
+  function submitCash() {
+    if (!session || !cashDialog) return
+    if (cashAmount <= 0) {
+      setCashError('Nominal harus lebih dari 0.')
+      return
+    }
+    if (!cashDescription.trim()) {
+      setCashError('Keterangan wajib diisi.')
+      return
+    }
+
+    setCashSubmitting(true)
+    setCashError(null)
+
+    router.post(
+      route(cashDialog === 'in' ? 'admin.cash.in' : 'admin.cash.out'),
+      {
+        cash_account_id: session.cash_account_id,
+        amount: cashAmount,
+        description: cashDescription,
+      },
+      {
+        preserveScroll: true,
+        onSuccess: () => setCashDialog(null),
+        onError: (errors) => setCashError(Object.values(errors)[0] ?? 'Gagal menyimpan transaksi kas.'),
+        onFinish: () => setCashSubmitting(false),
+      },
+    )
+  }
+
   function recallHold(hold: HoldRow) {
     fetch(route('pos.holds.recall', hold.id))
       .then(async (res) => {
@@ -234,6 +298,8 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
             product_id: it.product_id,
             unit_id: it.unit_id,
             product_name: it.product_name ?? `Produk #${it.product_id}`,
+            product_sku: null,
+            image_url: null,
             unit_code: it.unit_code ?? '',
             qty: it.qty,
             unit_price: it.unit_price ?? 0,
@@ -366,7 +432,9 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
   useHotkeys('f4', (e) => { e.preventDefault(); doHold() })
   useHotkeys('f5', (e) => { e.preventDefault(); setHoldsOpen(true) })
   useHotkeys('f9', (e) => { e.preventDefault(); openPayment() })
-  useHotkeys('esc', () => { setPaymentOpen(false); setHoldsOpen(false) })
+  useHotkeys('f11', (e) => { e.preventDefault(); openCashDialog('in') })
+  useHotkeys('f12', (e) => { e.preventDefault(); openCashDialog('out') })
+  useHotkeys('esc', () => { setPaymentOpen(false); setHoldsOpen(false); setCashDialog(null) })
 
   if (!session) {
     return (
@@ -378,194 +446,344 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
   }
 
   return (
-    <div className="grid h-full grid-cols-1 gap-0 overflow-hidden md:grid-cols-[1fr_360px]">
-      <div className="flex flex-col overflow-hidden border-r border-border p-3">
-        <Input
-          ref={barcodeRef}
-          autoFocus
-          placeholder="Scan barcode / cari produk… (F3)"
-          value={barcode}
-          onChange={(e) => setBarcode(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault()
-              void submitScan(barcode)
-            }
-          }}
-          className="h-11 text-base"
-        />
-        {scanError && <p className="mt-1 text-sm text-danger">{scanError}</p>}
-
-        <div className="mt-3 flex-1 overflow-y-auto rounded-lg border border-border">
-          <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-surface">
-              <tr className="text-left text-content-muted">
-                <th className="p-2">#</th>
-                <th className="p-2">Produk</th>
-                <th className="p-2">Qty</th>
-                <th className="p-2 text-right">Harga</th>
-                <th className="p-2 text-right">Subtotal</th>
-                <th className="p-2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {cart.map((line, index) => (
-                <tr key={line.key} className="border-t border-border">
-                  <td className="p-2">{index + 1}</td>
-                  <td className="p-2">{line.product_name}</td>
-                  <td className="p-2">
-                    <div className="flex items-center gap-1">
-                      <Button type="button" size="icon-sm" variant="ghost" onClick={() => updateQty(line.key, -1)}>
-                        <Minus className="size-3" />
-                      </Button>
-                      <span className="w-10 text-center font-mono tabular-nums">{line.qty}</span>
-                      <Button type="button" size="icon-sm" variant="ghost" onClick={() => updateQty(line.key, 1)}>
-                        <Plus className="size-3" />
-                      </Button>
-                    </div>
-                  </td>
-                  <td className="p-2 text-right"><Money amount={line.unit_price} size="sm" /></td>
-                  <td className="p-2 text-right"><Money amount={line.qty * line.unit_price} size="sm" /></td>
-                  <td className="p-2">
-                    <Button type="button" size="icon-sm" variant="ghost" onClick={() => removeLine(line.key)}>
-                      <Trash2 className="size-3.5 text-danger" />
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-              {cart.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="p-8 text-center text-content-muted">Keranjang kosong — scan barcode untuk mulai.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+    <div className="flex h-full flex-col overflow-hidden">
+    <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 flex-col gap-4 overflow-hidden p-4">
+        {/* Search bar */}
+        <div className="relative shrink-0">
+          <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-gray-400" />
+          <input
+            ref={barcodeRef}
+            autoFocus
+            type="text"
+            placeholder="Scan barcode atau cari produk… (F3)"
+            value={barcode}
+            onChange={(e) => setBarcode(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                void submitScan(barcode)
+              }
+            }}
+            className="h-12 w-full rounded-xl border border-gray-200 bg-white pl-12 pr-12 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-navy-500"
+          />
+          <ScanLine className="pointer-events-none absolute right-4 top-1/2 size-5 -translate-y-1/2 text-gray-400" />
         </div>
+        {scanError && <p className="-mt-2 text-sm text-danger">{scanError}</p>}
 
-        {/* REVISI-R1-v2.md §4.7/§5.5 — katalog bergambar, hanya produk
-            berstok di outlet aktif (difilter server, lihat catalogPayload()). */}
-        <div className="mt-3 flex flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <Input
-              placeholder="Cari produk di katalog…"
-              value={catalogSearch}
-              onChange={(e) => setCatalogSearch(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && reloadCatalog({ search: catalogSearch })}
-              className="max-w-xs"
-            />
-            <Select value={catalogCategory || 'all'} onValueChange={(v) => { const val = v === 'all' ? '' : v; setCatalogCategory(val); reloadCatalog({ category_id: val }) }}>
-              <SelectTrigger className="w-48"><SelectValue placeholder="Semua kategori" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua kategori</SelectItem>
-                {categories.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+        {/* Produk Cepat */}
+        <section className="shrink-0">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-navy-600">Produk Cepat</h2>
+            <div className="flex items-center gap-2">
+              <Input
+                placeholder="Cari produk di katalog…"
+                value={catalogSearch}
+                onChange={(e) => setCatalogSearch(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && reloadCatalog({ search: catalogSearch })}
+                className="h-8 max-w-[180px] rounded-lg border-gray-200 bg-white text-xs"
+              />
+              <Select value={catalogCategory || 'all'} onValueChange={(v) => { const val = v === 'all' ? '' : v; setCatalogCategory(val); reloadCatalog({ category_id: val }) }}>
+                <SelectTrigger className="h-8 w-36 rounded-lg border-gray-200 bg-white text-xs"><SelectValue placeholder="Semua kategori" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua kategori</SelectItem>
+                  {categories.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 xl:grid-cols-4">
-            {catalog.data.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => p.unit && addLine({ id: p.id, name: p.name }, p.unit, p.price, 1)}
-                className="flex flex-col overflow-hidden rounded-md border border-border bg-surface text-left transition-colors hover:border-primary"
-              >
-                <div className="relative aspect-square w-full bg-bg">
-                  {p.image_url ? (
-                    <img src={p.image_url} alt={p.name} className="size-full object-cover" />
-                  ) : (
-                    <div className="flex size-full items-center justify-center text-content-muted">Tidak ada gambar</div>
-                  )}
-                  {p.has_promo && <Badge className="absolute right-1 top-1 bg-danger text-white">PROMO</Badge>}
-                </div>
-                <div className="flex flex-col gap-0.5 p-2">
-                  <p className="line-clamp-2 text-xs font-medium">{p.name}</p>
-                  <p className="truncate text-[10px] text-content-muted">{p.category ?? '—'}</p>
-                  <p className="font-mono text-sm font-bold"><Money amount={p.price} size="sm" /></p>
-                </div>
-              </button>
-            ))}
-            {catalog.data.length === 0 && (
-              <p className="col-span-full p-6 text-center text-sm text-content-muted">
-                Tidak ada produk berstok yang cocok di outlet ini.
-              </p>
-            )}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => scrollCarousel(-1)}
+              className="absolute -ml-4 left-0 top-1/2 z-10 flex size-8 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white shadow hover:bg-gray-50"
+              aria-label="Sebelumnya"
+            >
+              <ChevronLeft className="size-4" />
+            </button>
+
+            <div ref={carouselRef} className="scrollbar-none flex gap-3 overflow-x-auto scroll-smooth px-1 pb-1">
+              {catalog.data.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => p.unit && addLine({ id: p.id, name: p.name, sku: p.sku, image_url: p.image_url }, p.unit, p.price, 1)}
+                  className="group w-[155px] shrink-0 rounded-xl border border-gray-200 bg-white p-3 text-left transition-all hover:border-navy-400 hover:shadow-sm"
+                >
+                  <div className="relative mb-2 aspect-square w-full overflow-hidden rounded-lg bg-gray-50">
+                    {p.image_url ? (
+                      <img src={p.image_url} alt={p.name} className="size-full object-contain p-1" loading="lazy" />
+                    ) : (
+                      <div className="flex size-full items-center justify-center text-[10px] text-gray-400">Tidak ada gambar</div>
+                    )}
+                    {p.has_promo && <Badge className="absolute right-1 top-1 bg-danger text-[9px] text-white">PROMO</Badge>}
+                  </div>
+                  <p className="mb-1 line-clamp-2 text-xs font-medium leading-tight text-gray-800">{p.name}</p>
+                  <p className="text-sm font-bold text-navy-600"><Money amount={p.price} size="sm" /></p>
+                </button>
+              ))}
+              {catalog.data.length === 0 && (
+                <p className="p-6 text-center text-sm text-gray-400">Tidak ada produk berstok yang cocok di outlet ini.</p>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => scrollCarousel(1)}
+              className="absolute -mr-4 right-0 top-1/2 z-10 flex size-8 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white shadow hover:bg-gray-50"
+              aria-label="Berikutnya"
+            >
+              <ChevronRight className="size-4" />
+            </button>
           </div>
 
           {catalog.last_page > 1 && (
-            <div className="flex items-center justify-center gap-2 text-sm">
+            <div className="mt-2 flex items-center justify-center gap-2 text-sm text-gray-600">
               <Button type="button" size="sm" variant="outline" disabled={catalog.current_page <= 1} onClick={() => reloadCatalog({ page: catalog.current_page - 1 })}>◀</Button>
               <span>Hal. {catalog.current_page} / {catalog.last_page}</span>
               <Button type="button" size="sm" variant="outline" disabled={catalog.current_page >= catalog.last_page} onClick={() => reloadCatalog({ page: catalog.current_page + 1 })}>▶</Button>
             </div>
           )}
-        </div>
+        </section>
+
+        {/* Keranjang Transaksi */}
+        <section className="flex flex-1 flex-col overflow-hidden">
+          <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-navy-600">Keranjang Transaksi</h2>
+
+          <div className="flex-1 overflow-hidden rounded-xl border border-gray-200 bg-white">
+            <div className="h-full overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 border-b border-gray-200 bg-gray-50">
+                  <tr>
+                    <th className="w-[40%] px-4 py-3 text-left font-medium text-gray-600">Produk</th>
+                    <th className="w-[15%] px-3 py-3 text-center font-medium text-gray-600">Qty</th>
+                    <th className="w-[15%] px-3 py-3 text-right font-medium text-gray-600">Harga</th>
+                    <th className="w-[12%] px-3 py-3 text-right font-medium text-gray-600">Diskon</th>
+                    <th className="w-[12%] px-3 py-3 text-right font-medium text-gray-600">Total</th>
+                    <th className="w-[6%] px-3 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {cart.map((line) => (
+                    <tr key={line.key} className="transition-colors hover:bg-blue-50/30">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          {line.image_url ? (
+                            <img src={line.image_url} className="size-10 shrink-0 rounded-lg border border-gray-100 bg-gray-50 object-contain" alt={line.product_name} />
+                          ) : (
+                            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-gray-100 bg-gray-50">
+                              <ShoppingCart className="size-4 text-gray-300" />
+                            </div>
+                          )}
+                          <div>
+                            <p className="font-medium text-gray-900">{line.product_name}</p>
+                            <p className="text-xs text-gray-400">SKU: {line.product_sku ?? '-'}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => updateQty(line.key, -1)}
+                            className="flex size-7 items-center justify-center rounded-md border border-gray-300 text-sm font-bold text-gray-600 hover:bg-gray-100"
+                          >
+                            −
+                          </button>
+                          <span className="w-8 text-center font-mono text-sm font-medium">{line.qty}</span>
+                          <button
+                            type="button"
+                            onClick={() => updateQty(line.key, 1)}
+                            className="flex size-7 items-center justify-center rounded-md border border-gray-300 text-sm font-bold text-gray-600 hover:bg-gray-100"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 text-right font-mono text-sm text-gray-700"><Money amount={line.unit_price} size="sm" /></td>
+                      {/* Diskon dihitung server (PromoEngine) saat checkout, belum
+                          ada perhitungan promo live di keranjang — tampilkan "−"
+                          sampai fitur itu dibangun terpisah. */}
+                      <td className="px-3 py-3 text-right font-mono text-sm text-gray-500">−</td>
+                      <td className="px-3 py-3 text-right font-mono text-sm font-bold text-gray-900"><Money amount={line.qty * line.unit_price} size="sm" /></td>
+                      <td className="px-3 py-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => removeLine(line.key)}
+                          className="mx-auto flex size-8 items-center justify-center rounded-lg border border-red-200 bg-white text-red-500 transition-colors hover:bg-red-50"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {cart.length === 0 && (
+                <div className="flex h-32 flex-col items-center justify-center text-gray-400">
+                  <ShoppingCart className="mb-2 size-8 opacity-30" />
+                  <p className="text-sm">Keranjang kosong</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
       </div>
 
-      <div className="flex flex-col overflow-y-auto p-3">
-        <div className="rounded-lg border border-border bg-surface p-3">
-          <div className="mb-2 flex items-center justify-between">
-            <p className="text-sm font-medium">Anggota</p>
+      {/* Panel kanan */}
+      <aside className="flex w-[420px] shrink-0 flex-col gap-5 overflow-y-auto border-l border-gray-200 bg-white p-5">
+        {/* Pelanggan / Member */}
+        <section>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">Pelanggan / Member</h3>
             {member && (
-              <Button type="button" size="icon-sm" variant="ghost" onClick={() => setMember(null)}>
-                <X className="size-3.5" />
-              </Button>
+              <button type="button" onClick={() => setMember(null)} className="text-gray-400 hover:text-gray-600">
+                <X className="size-4" />
+              </button>
             )}
           </div>
+
           {!member ? (
-            <div className="flex flex-col gap-1">
-              <Input placeholder="Scan kartu / NIS / cari nama…" value={memberQuery} onChange={(e) => void searchMember(e.target.value)} />
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => memberInputRef.current?.focus()}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-navy-300 py-3 text-sm font-medium text-navy-600 transition-colors hover:border-navy-500 hover:bg-navy-50"
+              >
+                <ScanLine className="size-5" />
+                Scan kartu member
+              </button>
+              <Input ref={memberInputRef} placeholder="Scan kartu / NIS / cari nama…" value={memberQuery} onChange={(e) => void searchMember(e.target.value)} className="rounded-xl border-gray-200" />
               {memberResults.length > 0 && (
-                <div className="flex flex-col divide-y divide-border rounded-md border border-border">
+                <div className="flex flex-col divide-y divide-gray-100 rounded-xl border border-gray-200">
                   {memberResults.map((m) => (
-                    <button key={m.id} type="button" onClick={() => pickMember(m)} className="p-2 text-left text-sm hover:bg-bg">
+                    <button key={m.id} type="button" onClick={() => pickMember(m)} className="p-2 text-left text-sm hover:bg-gray-50">
                       <p className="font-medium">{m.name}</p>
-                      <p className="text-xs text-content-muted">{m.member_number} · <Money amount={m.balance_cache} size="sm" /></p>
+                      <p className="text-xs text-gray-500">{m.member_number} · <Money amount={m.balance_cache} size="sm" /></p>
                     </button>
                   ))}
                 </div>
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
-                <User className="size-5" />
+            <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
+              <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-200">
+                <UserCircle className="size-full p-1 text-gray-400" />
               </div>
-              <div className="flex-1">
-                <p className="font-medium">{member.name}</p>
-                <p className="text-xs text-content-muted">{member.class_name ?? '-'} {member.major ?? ''}</p>
-                {member.level && <Badge className="mt-1" variant="outline">{member.level.name}</Badge>}
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-content-muted">Saldo</p>
-                <Money amount={member.balance_cache} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-gray-900">{member.name}</p>
+                <p className="text-xs text-gray-500">Saldo: <span className="font-mono font-medium text-navy-700"><Money amount={member.balance_cache} size="sm" /></span></p>
+                <p className="text-xs text-gray-400">ID Member: {member.member_number}</p>
+                {member.level && <Badge className="mt-1 text-xs" variant="outline">{member.level.name}</Badge>}
               </div>
             </div>
           )}
+        </section>
+
+        {/* Ringkasan */}
+        <section>
+          <h3 className="mb-3 text-xs font-bold uppercase tracking-widest text-gray-500">Ringkasan</h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between text-gray-600">
+              <span>Subtotal</span>
+              <Money amount={subtotal} size="sm" />
+            </div>
+            <div className="flex justify-between text-gray-500">
+              <span>Diskon</span>
+              <span>−</span>
+            </div>
+            <div className="flex justify-between text-gray-600">
+              <span>Pajak</span>
+              <span>−</span>
+            </div>
+            <div className="mt-2 border-t border-gray-200 pt-2">
+              <div className="flex items-baseline justify-between">
+                <span className="text-base font-bold text-gray-900">TOTAL</span>
+                <span className="font-mono text-2xl font-bold text-navy-700"><Money amount={subtotal} size="lg" /></span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {holdError && <p className="text-sm text-danger">{holdError}</p>}
+
+        {/* Tombol Bayar */}
+        <button
+          type="button"
+          onClick={openPayment}
+          disabled={cart.length === 0}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-success py-4 text-base font-bold text-white transition-colors hover:bg-success/90 disabled:bg-gray-300"
+        >
+          <Wallet className="size-5" />
+          BAYAR <Money amount={subtotal} size="md" className="text-white" />
+        </button>
+
+        {/* Cash Masuk / Cash Keluar */}
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => openCashDialog('in')}
+            className="group flex items-center gap-2 rounded-xl border border-gray-200 bg-white p-3 text-left transition-colors hover:border-green-300 hover:bg-green-50"
+          >
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-green-100 transition-colors group-hover:bg-green-200">
+              <ArrowDownCircle className="size-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-green-700">Cash Masuk</p>
+              <p className="text-xs text-gray-400">Tambah kas laci</p>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => openCashDialog('out')}
+            className="group flex items-center gap-2 rounded-xl border border-gray-200 bg-white p-3 text-left transition-colors hover:border-red-300 hover:bg-red-50"
+          >
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-red-100 transition-colors group-hover:bg-red-200">
+              <ArrowUpCircle className="size-5 text-red-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-red-700">Cash Keluar</p>
+              <p className="text-xs text-gray-400">Pengeluaran kas kecil</p>
+            </div>
+          </button>
         </div>
 
-        <div className="mt-3 flex-1 rounded-lg border border-border bg-surface p-3">
-          <div className="flex justify-between py-1 text-sm">
-            <span className="text-content-muted">Subtotal</span>
-            <Money amount={subtotal} size="sm" />
-          </div>
-          <div className="flex justify-between border-t border-border pt-2 mt-2">
-            <span className="text-lg font-semibold">TOTAL</span>
-            <Money amount={subtotal} size="lg" />
-          </div>
-        </div>
+        <button
+          type="button"
+          onClick={() => setHoldsOpen(true)}
+          className="w-full rounded-xl border border-gray-200 bg-white py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+        >
+          Transaksi Ditahan ({holds.length})
+        </button>
+      </aside>
+    </div>
 
-        <div className="mt-3 flex flex-col gap-2">
-          {holdError && <p className="text-sm text-danger">{holdError}</p>}
-          <Button size="lg" className="h-14 bg-success text-white hover:bg-success/90" onClick={openPayment} disabled={cart.length === 0}>
-            F9 &nbsp; BAYAR
-          </Button>
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" onClick={doHold} disabled={cart.length === 0}>F4 Hold</Button>
-            <Button variant="outline" onClick={() => setHoldsOpen(true)}>F5 Recall ({holds.length})</Button>
-          </div>
-        </div>
-      </div>
+    {/* Footer hotkey bar */}
+    <footer className="flex h-16 shrink-0 items-center gap-2 bg-navy-900 px-4">
+      {[
+        { key: 'F3', label: 'Cari', icon: Search, onClick: focusScan },
+        { key: 'F4', label: 'Tahan', icon: Pause, onClick: doHold, disabled: cart.length === 0 },
+        { key: 'F5', label: 'Panggil', icon: Phone, onClick: () => setHoldsOpen(true) },
+        { key: 'F9', label: 'Bayar', icon: CreditCard, onClick: openPayment, disabled: cart.length === 0, className: 'bg-green-600 border-green-500 hover:bg-green-700' },
+        { key: 'F11', label: 'Cash Masuk', icon: ArrowDownCircle, onClick: () => openCashDialog('in'), className: 'bg-green-700 border-green-600 hover:bg-green-800' },
+        { key: 'F12', label: 'Cash Keluar', icon: ArrowUpCircle, onClick: () => openCashDialog('out'), className: 'bg-red-700 border-red-600 hover:bg-red-800' },
+      ].map((btn) => (
+        <button
+          key={btn.key}
+          type="button"
+          onClick={btn.onClick}
+          disabled={btn.disabled}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-navy-700 bg-navy-800 px-2 py-2 text-xs font-medium text-white transition-colors hover:bg-navy-700 disabled:opacity-40 ${btn.className ?? ''}`}
+        >
+          <span className="font-mono text-[10px] font-bold opacity-70">{btn.key}</span>
+          <btn.icon className="size-3.5 shrink-0" />
+          <span className="hidden sm:inline">{btn.label}</span>
+        </button>
+      ))}
+    </footer>
 
       <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
         <DialogContent>
@@ -717,6 +935,28 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={cashDialog !== null} onOpenChange={(open) => !open && setCashDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{cashDialog === 'in' ? 'Cash Masuk' : 'Cash Keluar'}</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            <div>
+              <Label>Nominal</Label>
+              <MoneyInput value={cashAmount} onChange={setCashAmount} />
+            </div>
+            <div>
+              <Label>Keterangan</Label>
+              <Input value={cashDescription} onChange={(e) => setCashDescription(e.target.value)} placeholder="Contoh: Setoran modal awal" />
+            </div>
+            {cashError && <p className="text-sm text-danger">{cashError}</p>}
+          </div>
+          <DialogFooter>
+            <Button onClick={submitCash} disabled={cashSubmitting}>Simpan</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -729,6 +969,7 @@ function PosIndexShell({ children }: { children: ReactNode }) {
       outletName={props.outlet?.name}
       cashierName={props.auth.user?.name ?? '-'}
       sessionLabel={props.session ? `Sesi ${props.session.reference}` : 'Belum ada sesi'}
+      hasActiveSession={props.session !== null}
       onCloseSession={() => router.visit(route('admin.cashier-session.index'))}
     >
       {children}

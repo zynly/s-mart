@@ -14,8 +14,9 @@ import { Label } from '@/Components/ui/label'
 import { Badge } from '@/Components/ui/badge'
 import { Switch } from '@/Components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/Components/ui/sheet'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/Components/ui/sheet'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/Components/ui/dropdown-menu'
+import { AppSheet } from '@/Components/common/AppSheet'
 import type { Paginated } from '@/Types'
 
 type UserRow = {
@@ -227,15 +228,15 @@ export default function Index({ tab, users, roles, filters }: UsersIndexProps) {
         }}
       />
 
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>{editingUser ? 'Ubah Pengguna' : 'Tambah Pengguna'}</SheetTitle>
-            <SheetDescription>
-              {editingUser ? `Perbarui data ${editingUser.name}.` : 'Buat akun staf baru.'}
-            </SheetDescription>
-          </SheetHeader>
-          <form onSubmit={submit} className="flex flex-col gap-4 px-4">
+      <AppSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        title={editingUser ? 'Ubah Pengguna' : 'Tambah Pengguna'}
+        description={editingUser ? `Perbarui data ${editingUser.name}.` : 'Buat akun staf baru.'}
+        size="md"
+        footer={<Button type="submit" form="user-form" disabled={form.processing}>Simpan</Button>}
+      >
+          <form id="user-form" onSubmit={submit} className="flex flex-col gap-4 px-4">
             <div className="space-y-1.5">
               <Label htmlFor="u-name">Nama</Label>
               <Input id="u-name" value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} />
@@ -301,14 +302,8 @@ export default function Index({ tab, users, roles, filters }: UsersIndexProps) {
                 Aktif
               </Label>
             </div>
-            <SheetFooter>
-              <Button type="submit" disabled={form.processing}>
-                Simpan
-              </Button>
-            </SheetFooter>
           </form>
-        </SheetContent>
-      </Sheet>
+      </AppSheet>
 
       <ConfirmDialog
         open={deactivateTarget !== null}

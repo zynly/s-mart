@@ -16,7 +16,7 @@ import { Textarea } from '@/Components/ui/textarea'
 import { Badge } from '@/Components/ui/badge'
 import { Switch } from '@/Components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
-import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/Components/ui/sheet'
+import { AppSheet } from '@/Components/common/AppSheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/Components/ui/dropdown-menu'
 import type { Paginated } from '@/Types'
@@ -247,12 +247,14 @@ export default function Index({ tab, products, categories, brands, units, outlet
         }}
       />
 
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
-          <SheetHeader>
-            <SheetTitle>{editing ? 'Ubah Produk' : 'Tambah Produk'}</SheetTitle>
-          </SheetHeader>
-          <form onSubmit={submit} className="flex flex-col gap-4 px-4 pb-4">
+      <AppSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        title={editing ? 'Ubah Produk' : 'Tambah Produk'}
+        size="xl"
+        footer={<Button type="submit" form="product-form" disabled={form.processing}>Simpan</Button>}
+      >
+          <form id="product-form" onSubmit={submit} className="flex flex-col gap-4">
             <Tabs defaultValue="umum">
               <TabsList>
                 <TabsTrigger value="umum">Umum</TabsTrigger>
@@ -432,13 +434,8 @@ export default function Index({ tab, products, categories, brands, units, outlet
                 </div>
               </TabsContent>
             </Tabs>
-
-            <SheetFooter>
-              <Button type="submit" disabled={form.processing}>Simpan</Button>
-            </SheetFooter>
           </form>
-        </SheetContent>
-      </Sheet>
+      </AppSheet>
     </div>
   )
 }

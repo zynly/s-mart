@@ -11,7 +11,7 @@ import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
 import { Badge } from '@/Components/ui/badge'
 import { Switch } from '@/Components/ui/switch'
-import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/Components/ui/sheet'
+import { AppSheet } from '@/Components/common/AppSheet'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/Components/ui/dropdown-menu'
 
 type BrandRow = { id: number; name: string; is_active: boolean }
@@ -93,27 +93,25 @@ export default function Index({ tab, brands }: { tab: string; brands: BrandRow[]
 
       <DataTable columns={columns} data={brands} getRowId={(row) => String(row.id)} />
 
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>{editing ? 'Ubah Brand' : 'Tambah Brand'}</SheetTitle>
-          </SheetHeader>
-          <form onSubmit={submit} className="flex flex-col gap-4 px-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="b-name">Nama</Label>
-              <Input id="b-name" value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} />
-              {form.errors.name && <p className="text-sm text-danger">{form.errors.name}</p>}
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch id="b-active" checked={form.data.is_active} onCheckedChange={(c) => form.setData('is_active', c)} />
-              <Label htmlFor="b-active" className="font-normal">Aktif</Label>
-            </div>
-            <SheetFooter>
-              <Button type="submit" disabled={form.processing}>Simpan</Button>
-            </SheetFooter>
-          </form>
-        </SheetContent>
-      </Sheet>
+      <AppSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        title={editing ? 'Ubah Brand' : 'Tambah Brand'}
+        size="sm"
+        footer={<Button type="submit" form="brand-form" disabled={form.processing}>Simpan</Button>}
+      >
+        <form id="brand-form" onSubmit={submit} className="flex flex-col gap-4 px-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="b-name">Nama</Label>
+            <Input id="b-name" value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} />
+            {form.errors.name && <p className="text-sm text-danger">{form.errors.name}</p>}
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch id="b-active" checked={form.data.is_active} onCheckedChange={(c) => form.setData('is_active', c)} />
+            <Label htmlFor="b-active" className="font-normal">Aktif</Label>
+          </div>
+        </form>
+      </AppSheet>
     </div>
   )
 }

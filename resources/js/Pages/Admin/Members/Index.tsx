@@ -16,7 +16,7 @@ import { Label } from '@/Components/ui/label'
 import { Textarea } from '@/Components/ui/textarea'
 import { Badge } from '@/Components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
-import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/Components/ui/sheet'
+import { AppSheet } from '@/Components/common/AppSheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/Components/ui/dropdown-menu'
@@ -329,12 +329,14 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
         }}
       />
 
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
-          <SheetHeader>
-            <SheetTitle>{editing ? 'Ubah Anggota' : 'Tambah Anggota'}</SheetTitle>
-          </SheetHeader>
-          <form onSubmit={submit} className="flex flex-col gap-4 px-4 pb-4">
+      <AppSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        title={editing ? 'Ubah Anggota' : 'Tambah Anggota'}
+        size="xl"
+        footer={<Button type="submit" form="member-form" disabled={form.processing}>Simpan</Button>}
+      >
+          <form id="member-form" onSubmit={submit} className="flex flex-col gap-4">
             <Tabs defaultValue="identitas">
               <TabsList>
                 <TabsTrigger value="identitas">Identitas</TabsTrigger>
@@ -537,13 +539,8 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
                 </div>
               </TabsContent>
             </Tabs>
-
-            <SheetFooter>
-              <Button type="submit" disabled={form.processing}>Simpan</Button>
-            </SheetFooter>
           </form>
-        </SheetContent>
-      </Sheet>
+      </AppSheet>
 
       <ConfirmDialog
         open={resetPinTarget !== null}

@@ -36,6 +36,7 @@ import {
 } from '@/Components/ui/pagination'
 import { EmptyState } from '@/Components/common/EmptyState'
 import { BulkActionBar, type BulkAction } from '@/Components/common/BulkActionBar'
+import { getLabel } from '@/Lib/labels'
 
 export type ServerPagination = {
   page: number
@@ -126,7 +127,7 @@ export function DataTable<TData>({
                   checked={column.getIsVisible()}
                   onCheckedChange={(value) => column.toggleVisibility(!!value)}
                 >
-                  {column.id}
+                  {getLabel(column.id)}
                 </DropdownMenuCheckboxItem>
               ))}
           </DropdownMenuContent>

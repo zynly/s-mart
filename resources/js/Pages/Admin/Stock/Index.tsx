@@ -12,7 +12,7 @@ import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
 import { Badge } from '@/Components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/Components/ui/sheet'
+import { AppSheet } from '@/Components/common/AppSheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs'
 import { formatDate } from '@/Lib/date'
 import type { Paginated } from '@/Types'
@@ -265,11 +265,12 @@ export default function Index({ tab, stocks, categories, outlets, currentOutletI
         </TabsContent>
       </Tabs>
 
-      <Sheet open={cardSheetProduct !== null} onOpenChange={(open) => !open && setCardSheetProduct(null)}>
-        <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
-          <SheetHeader>
-            <SheetTitle>Kartu Stok — {cardSheetProduct?.product.name}</SheetTitle>
-          </SheetHeader>
+      <AppSheet
+        open={cardSheetProduct !== null}
+        onOpenChange={(open) => !open && setCardSheetProduct(null)}
+        title={`Kartu Stok — ${cardSheetProduct?.product.name ?? ''}`}
+        size="lg"
+      >
           <div className="flex flex-col gap-2 px-4 pb-4">
             {loadingMovements && <p className="text-sm text-content-muted">Memuat…</p>}
             {!loadingMovements && movements.length === 0 && <p className="text-sm text-content-muted">Belum ada pergerakan stok.</p>}
@@ -289,8 +290,7 @@ export default function Index({ tab, stocks, categories, outlets, currentOutletI
               </div>
             ))}
           </div>
-        </SheetContent>
-      </Sheet>
+      </AppSheet>
     </div>
   )
 }

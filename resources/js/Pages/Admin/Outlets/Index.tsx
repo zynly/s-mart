@@ -11,8 +11,8 @@ import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
 import { Badge } from '@/Components/ui/badge'
 import { Switch } from '@/Components/ui/switch'
-import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/Components/ui/sheet'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/Components/ui/dropdown-menu'
+import { AppSheet } from '@/Components/common/AppSheet'
 
 type OutletRow = {
   id: number
@@ -116,12 +116,14 @@ export default function Index({ tab, outlets }: { tab: string; outlets: OutletRo
 
       <DataTable columns={columns} data={outlets} getRowId={(row) => String(row.id)} />
 
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>{editing ? 'Ubah Outlet' : 'Tambah Outlet'}</SheetTitle>
-          </SheetHeader>
-          <form onSubmit={submit} className="flex flex-col gap-4 px-4">
+      <AppSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        title={editing ? 'Ubah Outlet' : 'Tambah Outlet'}
+        size="md"
+        footer={<Button type="submit" form="outlet-form" disabled={form.processing}>Simpan</Button>}
+      >
+          <form id="outlet-form" onSubmit={submit} className="flex flex-col gap-4 px-4">
             <div className="space-y-1.5">
               <Label htmlFor="o-code">Kode</Label>
               <Input id="o-code" value={form.data.code} onChange={(e) => form.setData('code', e.target.value)} />
@@ -148,12 +150,8 @@ export default function Index({ tab, outlets }: { tab: string; outlets: OutletRo
               <Switch id="o-active" checked={form.data.is_active} onCheckedChange={(c) => form.setData('is_active', c)} />
               <Label htmlFor="o-active" className="font-normal">Aktif</Label>
             </div>
-            <SheetFooter>
-              <Button type="submit" disabled={form.processing}>Simpan</Button>
-            </SheetFooter>
           </form>
-        </SheetContent>
-      </Sheet>
+      </AppSheet>
     </div>
   )
 }

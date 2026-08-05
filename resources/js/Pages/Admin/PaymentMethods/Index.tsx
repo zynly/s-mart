@@ -12,8 +12,8 @@ import { Label } from '@/Components/ui/label'
 import { Badge } from '@/Components/ui/badge'
 import { Switch } from '@/Components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
-import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/Components/ui/sheet'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/Components/ui/dropdown-menu'
+import { AppSheet } from '@/Components/common/AppSheet'
 
 const TYPES = ['cash', 'card', 'qris', 'ewallet', 'transfer', 'deposit', 'voucher', 'point', 'credit', 'payroll'] as const
 
@@ -121,12 +121,14 @@ export default function Index({ tab, paymentMethods }: { tab: string; paymentMet
 
       <DataTable columns={columns} data={paymentMethods} getRowId={(row) => String(row.id)} />
 
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>{editing ? 'Ubah Metode Bayar' : 'Tambah Metode Bayar'}</SheetTitle>
-          </SheetHeader>
-          <form onSubmit={submit} className="flex flex-col gap-4 px-4">
+      <AppSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        title={editing ? 'Ubah Metode Bayar' : 'Tambah Metode Bayar'}
+        size="md"
+        footer={<Button type="submit" form="pm-form" disabled={form.processing}>Simpan</Button>}
+      >
+        <form id="pm-form" onSubmit={submit} className="flex flex-col gap-4 px-4">
             <div className="space-y-1.5">
               <Label htmlFor="pm-code">Kode</Label>
               <Input id="pm-code" value={form.data.code} onChange={(e) => form.setData('code', e.target.value)} />
@@ -174,12 +176,8 @@ export default function Index({ tab, paymentMethods }: { tab: string; paymentMet
               <Switch id="pm-active" checked={form.data.is_active} onCheckedChange={(c) => form.setData('is_active', c)} />
               <Label htmlFor="pm-active" className="font-normal">Aktif</Label>
             </div>
-            <SheetFooter>
-              <Button type="submit" disabled={form.processing}>Simpan</Button>
-            </SheetFooter>
-          </form>
-        </SheetContent>
-      </Sheet>
+        </form>
+      </AppSheet>
     </div>
   )
 }

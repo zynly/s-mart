@@ -14,7 +14,7 @@ import { Label } from '@/Components/ui/label'
 import { Badge } from '@/Components/ui/badge'
 import { Switch } from '@/Components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
-import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/Components/ui/sheet'
+import { AppSheet } from '@/Components/common/AppSheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs'
 import { formatDate } from '@/Lib/date'
 import type { Paginated } from '@/Types'
@@ -184,12 +184,14 @@ export default function Index({ tab, purchases, suppliers, outlets, products, un
         }}
       />
 
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="w-full overflow-y-auto sm:max-w-2xl">
-          <SheetHeader>
-            <SheetTitle>Terima Barang</SheetTitle>
-          </SheetHeader>
-          <form onSubmit={submit} className="flex flex-col gap-4 px-4 pb-4">
+      <AppSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        title="Terima Barang"
+        size="full"
+        footer={<Button type="submit" form="purchase-receive-form" disabled={form.processing || form.data.items.length === 0}>Simpan Penerimaan</Button>}
+      >
+          <form id="purchase-receive-form" onSubmit={submit} className="flex flex-col gap-4 px-4 pb-4">
             <Tabs defaultValue="umum">
               <TabsList>
                 <TabsTrigger value="umum">Umum</TabsTrigger>
@@ -378,12 +380,8 @@ export default function Index({ tab, purchases, suppliers, outlets, products, un
               </div>
             </div>
 
-            <SheetFooter>
-              <Button type="submit" disabled={form.processing || form.data.items.length === 0}>Simpan Penerimaan</Button>
-            </SheetFooter>
           </form>
-        </SheetContent>
-      </Sheet>
+      </AppSheet>
     </div>
   )
 }
