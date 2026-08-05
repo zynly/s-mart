@@ -18,8 +18,8 @@ class HomeController extends Controller
             'featuredProducts' => $this->storefront->getFeaturedProducts((int) config('storefront.featured_limit', 8)),
             'activePromos' => $this->storefront->getActivePublicPromos()->take(3)->map(fn ($p) => $this->storefront->formatPromoForDisplay($p))->values(),
             'categories' => Category::where('is_active', true)
+                ->whereHas('products', fn ($q) => $q->public())
                 ->withCount(['products' => fn ($q) => $q->public()])
-                ->having('products_count', '>', 0)
                 ->orderByDesc('products_count')
                 ->limit(8)
                 ->get(['id', 'name']),

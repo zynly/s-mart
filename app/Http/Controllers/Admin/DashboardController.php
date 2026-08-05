@@ -198,10 +198,17 @@ class DashboardController extends Controller
 
     private function salesByHour($user, string $today): array
     {
+        $driver = DB::getDriverName();
+        $hourExpr = match ($driver) {
+            'pgsql' => 'EXTRACT(HOUR FROM sale_date)',
+            'sqlite' => "CAST(strftime('%H', sale_date) AS INTEGER)",
+            default => 'HOUR(sale_date)',
+        };
+
         $query = Sale::where('status', 'completed')
             ->where('sale_date', '>=', $today)
             ->where('sale_date', '<', Carbon::parse($today)->addDay()->toDateString())
-            ->selectRaw('HOUR(sale_date) as jam, COUNT(*) as transaksi')
+            ->selectRaw("{$hourExpr} as jam, COUNT(*) as transaksi")
             ->groupBy('jam')
             ->orderBy('jam');
 

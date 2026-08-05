@@ -59,9 +59,9 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
-            'options' => extension_loaded('pdo_mysql') ? array_filter([
-                (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
-            ]) : [],
+            'options' => array_filter([
+                (defined('PDO::MYSQL_ATTR_SSL_CA') ? PDO::MYSQL_ATTR_SSL_CA : 1012) => env('MYSQL_ATTR_SSL_CA'),
+            ]),
             // Fase 17-Darurat: dipakai spatie/laravel-backup (db-dumper)
             // untuk cari mysqldump. Kosong (null) di produksi Linux
             // biasa (mysqldump ada di PATH standar) — cuma perlu diisi
@@ -108,6 +108,9 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
+            'options' => array_filter([
+                (defined('PDO::MYSQL_ATTR_SSL_CA') ? PDO::MYSQL_ATTR_SSL_CA : 1012) => env('MYSQL_ATTR_SSL_CA'),
+            ]),
         ],
 
         'mariadb' => [

@@ -104,17 +104,21 @@ class ReferenceGenerator
         $now = now();
 
         return $connection->transaction(function () use ($connection, $prefix, $outletId, $dateKey, $now) {
-            $sql = $connection->getDriverName() === 'sqlite'
-                ? 'INSERT INTO reference_counters (prefix, outlet_id, date, last_number, created_at, updated_at)
-                   VALUES (?, ?, ?, 1, ?, ?)
-                   ON CONFLICT(prefix, outlet_id, date) DO UPDATE SET last_number = last_number + 1, updated_at = excluded.updated_at'
-                : 'INSERT INTO reference_counters (prefix, outlet_id, date, last_number, created_at, updated_at)
-                   VALUES (?, ?, ?, 1, ?, ?)
-                   ON DUPLICATE KEY UPDATE last_number = last_number + 1, updated_at = ?';
+            $driver = $connection->getDriverName();
 
-            $bindings = $connection->getDriverName() === 'sqlite'
-                ? [$prefix, $outletId, $dateKey, $now, $now]
-                : [$prefix, $outletId, $dateKey, $now, $now, $now];
+            $sql = match ($driver) {
+                'sqlite', 'pgsql' => 'INSERT INTO reference_counters (prefix, outlet_id, date, last_number, created_at, updated_at)
+                   VALUES (?, ?, ?, 1, ?, ?)
+                   ON CONFLICT(prefix, outlet_id, date) DO UPDATE SET last_number = reference_counters.last_number + 1, updated_at = excluded.updated_at',
+                default => 'INSERT INTO reference_counters (prefix, outlet_id, date, last_number, created_at, updated_at)
+                   VALUES (?, ?, ?, 1, ?, ?)
+                   ON DUPLICATE KEY UPDATE last_number = last_number + 1, updated_at = ?',
+            };
+
+            $bindings = match ($driver) {
+                'sqlite', 'pgsql' => [$prefix, $outletId, $dateKey, $now, $now],
+                default => [$prefix, $outletId, $dateKey, $now, $now, $now],
+            };
 
             $connection->statement($sql, $bindings);
 

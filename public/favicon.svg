@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4f46e5"/>
+      <stop offset="50%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+    <linearGradient id="iconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#e0e7ff"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#0f172a" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  
+  <!-- Outer Rounded Container -->
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)"/>
+
+  <!-- Inner Subtle Ring -->
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="none" stroke="#ffffff" stroke-opacity="0.15" stroke-width="8"/>
+
+  <!-- Store / Shopping Bag Icon -->
+  <g filter="url(#shadow)" fill="none" stroke="url(#iconGrad)" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Bag Handles -->
+    <path d="M192 180 V 140 C 192 104, 220 76, 256 76 C 292 76, 320 104, 320 140 V 180" stroke-width="28"/>
+    
+    <!-- Main Shopping Bag Body -->
+    <path d="M120 180 H 392 L 416 420 C 418 436, 404 448, 388 448 H 124 C 108 448, 94 436, 96 420 L 120 180 Z" stroke-width="28" fill="#ffffff" fill-opacity="0.08"/>
+    
+    <!-- Stylized "S" / Shopping Sparkle Accent -->
+    <path d="M224 280 C 224 256, 288 256, 288 280 C 288 304, 224 312, 224 336 C 224 360, 288 360, 288 336" stroke-width="24" stroke="#ffffff"/>
+  </g>
+</svg>

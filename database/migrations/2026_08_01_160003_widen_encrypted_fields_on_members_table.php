@@ -27,13 +27,23 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement('ALTER TABLE members MODIFY phone TEXT NULL');
-        DB::statement('ALTER TABLE members MODIFY guardian_phone TEXT NULL');
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE members MODIFY phone TEXT NULL');
+            DB::statement('ALTER TABLE members MODIFY guardian_phone TEXT NULL');
+        } elseif (DB::getDriverName() === 'pgsql') {
+            DB::statement('ALTER TABLE members ALTER COLUMN phone TYPE TEXT');
+            DB::statement('ALTER TABLE members ALTER COLUMN guardian_phone TYPE TEXT');
+        }
     }
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE members MODIFY phone VARCHAR(20) NULL');
-        DB::statement('ALTER TABLE members MODIFY guardian_phone VARCHAR(20) NULL');
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE members MODIFY phone VARCHAR(20) NULL');
+            DB::statement('ALTER TABLE members MODIFY guardian_phone VARCHAR(20) NULL');
+        } elseif (DB::getDriverName() === 'pgsql') {
+            DB::statement('ALTER TABLE members ALTER COLUMN phone TYPE VARCHAR(20)');
+            DB::statement('ALTER TABLE members ALTER COLUMN guardian_phone TYPE VARCHAR(20)');
+        }
     }
 };
