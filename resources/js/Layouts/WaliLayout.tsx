@@ -2,7 +2,9 @@ import type { ReactNode } from 'react'
 import { Link, router, usePage } from '@inertiajs/react'
 import { Home, User, UserRound, Wallet } from 'lucide-react'
 import { Button } from '@/Components/ui/button'
+import { NotificationBell } from '@/Components/common/NotificationBell'
 import { useFlashToast } from '@/Lib/useFlashToast'
+import { useNotificationPoll } from '@/Lib/useNotificationPoll'
 import { cn } from '@/Lib/utils'
 import type { PageProps } from '@/Types'
 
@@ -20,6 +22,7 @@ const bottomNav = [
 
 export default function WaliLayout({ children, active }: WaliLayoutProps) {
   const { guardianAuth } = usePage<PageProps>().props
+  const { count, refresh } = useNotificationPoll(30000, 'wali.notifications.count')
 
   useFlashToast()
 
@@ -27,9 +30,18 @@ export default function WaliLayout({ children, active }: WaliLayoutProps) {
     <div className="flex min-h-screen flex-col bg-bg pb-16">
       <header className="flex h-14 items-center justify-between border-b border-border bg-surface px-4">
         <p className="text-sm font-medium text-content">{guardianAuth.guardian?.name ?? 'Wali Santri'}</p>
-        <Button size="sm" variant="ghost" onClick={() => router.post(route('wali.logout'))}>
-          Keluar
-        </Button>
+        <div className="flex items-center gap-1">
+          <NotificationBell
+            unreadCount={count}
+            indexRouteName="wali.notifications.index"
+            readRouteName="wali.notifications.read"
+            readAllRouteName="wali.notifications.read-all"
+            onCountChange={refresh}
+          />
+          <Button size="sm" variant="ghost" onClick={() => router.post(route('wali.logout'))}>
+            Keluar
+          </Button>
+        </div>
       </header>
 
       <main className="flex-1 px-4 py-4">{children}</main>

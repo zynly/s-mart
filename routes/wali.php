@@ -4,6 +4,7 @@ use App\Http\Controllers\Wali\AuthController;
 use App\Http\Controllers\Wali\DashboardController;
 use App\Http\Controllers\Wali\ForgotPasswordController;
 use App\Http\Controllers\Wali\MemberController;
+use App\Http\Controllers\Wali\NotificationController;
 use App\Http\Controllers\Wali\SettingController;
 use App\Http\Controllers\Wali\TopupController;
 use Illuminate\Support\Facades\Route;
@@ -36,10 +37,20 @@ Route::prefix('wali')->name('wali.')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
         Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('/anak/{member}', [MemberController::class, 'show'])->name('members.show');
+        Route::post('/anak/{member}/laporkan-kartu', [MemberController::class, 'reportLostCard'])->name('members.report-lost-card');
         Route::get('/topup', [TopupController::class, 'create'])->name('topup.create');
         Route::post('/topup', [TopupController::class, 'store'])->name('topup.store')->middleware('idempotent');
         Route::get('/akun', [SettingController::class, 'edit'])->name('settings.edit');
         Route::put('/akun', [SettingController::class, 'update'])->name('settings.update');
         Route::put('/akun/password', [SettingController::class, 'updatePassword'])->name('settings.password')->middleware('throttle:wali-password-change');
+
+        // fase-16-v2.md §8-9 — lonceng notifikasi in-app, pola sama
+        // dengan grup 'admin.notifications.*'.
+        Route::prefix('notifikasi')->name('notifications.')->group(function () {
+            Route::get('/', [NotificationController::class, 'index'])->name('index');
+            Route::get('/jumlah', [NotificationController::class, 'count'])->name('count');
+            Route::post('{id}/baca', [NotificationController::class, 'markAsRead'])->name('read');
+            Route::post('baca-semua', [NotificationController::class, 'markAllAsRead'])->name('read-all');
+        });
     });
 });

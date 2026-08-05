@@ -59,6 +59,10 @@ class HandleInertiaRequests extends Middleware
             'guardianAuth' => [
                 'guardian' => $guardian ? $guardian->only('id', 'name', 'phone') : null,
             ],
+            // fase-16-v2.md §8-9 — badge lonceng notifikasi wali, pola
+            // sama dengan 'unreadNotificationsCount' admin (T-094) tapi
+            // dihitung dari guard 'guardian' terpisah.
+            'guardianUnreadNotificationsCount' => fn () => $guardian ? $guardian->unreadNotifications()->count() : 0,
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),

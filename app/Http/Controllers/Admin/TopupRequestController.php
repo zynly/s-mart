@@ -134,6 +134,10 @@ class TopupRequestController extends Controller
             throw ValidationException::withMessages(['status' => $e->getMessage()]);
         }
 
+        if ($rejected->guardian) {
+            $this->notificationService->topupRejected($rejected->guardian, $rejected->member, $rejected->amount, $rejected->reject_reason);
+        }
+
         return back()->with('success', "Top-up {$rejected->reference} ditolak.");
     }
 }

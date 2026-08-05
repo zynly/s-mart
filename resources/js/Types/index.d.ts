@@ -52,6 +52,7 @@ export type PageProps<T extends Record<string, unknown> = Record<string, unknown
   }
   navigation: NavigationGroup[]
   unreadNotificationsCount: number
+  guardianUnreadNotificationsCount: number
   appName: string
   status?: string
   // REVISI-R1-v2.md §1.5 — null untuk owner (bypass semua outlet, tidak

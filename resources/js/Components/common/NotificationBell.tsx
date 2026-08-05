@@ -31,10 +31,31 @@ function timeAgo(iso: string) {
 
 type NotificationBellProps = {
   className?: string
+  // fase-16-v2.md §8-9 — dipakai ulang untuk lonceng wali (bukan cuma
+  // admin). Default tetap perilaku admin lama (route admin.notifications.*,
+  // count dari prop global `unreadNotificationsCount`) supaya AdminLayout
+  // tidak perlu berubah sama sekali.
+  unreadCount?: number
+  indexRouteName?: string
+  readRouteName?: string
+  readAllRouteName?: string
+  // Dipanggil setelah tandai (semua) dibaca, sebagai pengganti
+  // router.reload({only:['unreadNotificationsCount']}) — wali pakai
+  // polling lokal (useNotificationPoll), bukan prop Inertia, jadi
+  // count-nya perlu di-refresh lewat callback ini.
+  onCountChange?: () => void
 }
 
-export function NotificationBell({ className }: NotificationBellProps) {
+export function NotificationBell({
+  className,
+  unreadCount,
+  indexRouteName = 'admin.notifications.index',
+  readRouteName = 'admin.notifications.read',
+  readAllRouteName = 'admin.notifications.read-all',
+  onCountChange,
+}: NotificationBellProps) {
   const { unreadNotificationsCount } = usePage<PageProps>().props
+  const count = unreadCount ?? unreadNotificationsCount
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [items, setItems] = useState<NotificationItem[] | null>(null)
@@ -42,7 +63,7 @@ export function NotificationBell({ className }: NotificationBellProps) {
   async function loadNotifications() {
     setLoading(true)
     try {
-      const res = await fetch(route('admin.notifications.index'))
+      const res = await fetch(route(indexRouteName))
       const data = await res.json()
       setItems(data.notifications)
     } finally {
@@ -50,22 +71,30 @@ export function NotificationBell({ className }: NotificationBellProps) {
     }
   }
 
+  function refreshCount() {
+    if (onCountChange) {
+      onCountChange()
+    } else {
+      router.reload({ only: ['unreadNotificationsCount'] })
+    }
+  }
+
   async function markAsRead(id: string) {
-    await fetch(route('admin.notifications.read', id), {
+    await fetch(route(readRouteName, id), {
       method: 'POST',
       headers: { 'X-XSRF-TOKEN': xsrfToken() },
     })
     setItems((prev) => prev?.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n)) ?? null)
-    router.reload({ only: ['unreadNotificationsCount'] })
+    refreshCount()
   }
 
   async function markAllAsRead() {
-    await fetch(route('admin.notifications.read-all'), {
+    await fetch(route(readAllRouteName), {
       method: 'POST',
       headers: { 'X-XSRF-TOKEN': xsrfToken() },
     })
     setItems((prev) => prev?.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })) ?? null)
-    router.reload({ only: ['unreadNotificationsCount'] })
+    refreshCount()
   }
 
   return (
@@ -79,9 +108,9 @@ export function NotificationBell({ className }: NotificationBellProps) {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon-sm" className={cn('relative', className)} aria-label="Notifikasi">
           <Bell className="size-4" />
-          {unreadNotificationsCount > 0 && (
+          {count > 0 && (
             <Badge className="absolute -top-1 -right-1 h-4 min-w-4 justify-center rounded-full px-1 text-[10px]">
-              {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
+              {count > 9 ? '9+' : count}
             </Badge>
           )}
         </Button>
@@ -89,7 +118,7 @@ export function NotificationBell({ className }: NotificationBellProps) {
       <DropdownMenuContent align="end" className="w-80 p-0">
         <div className="flex items-center justify-between border-b border-border px-3 py-2">
           <p className="text-sm font-medium text-content">Notifikasi</p>
-          {unreadNotificationsCount > 0 && (
+          {count > 0 && (
             <button type="button" onClick={markAllAsRead} className="text-xs text-primary hover:underline">
               Tandai semua dibaca
             </button>

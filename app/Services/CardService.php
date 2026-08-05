@@ -33,6 +33,23 @@ class CardService
     }
 
     /**
+     * fase-16-v2.md §5 — wali melaporkan kartu hilang lewat Portal
+     * Wali. Status 'lost' (beda dari 'blocked' yang dipakai admin
+     * untuk pemblokiran manual) supaya panel admin bisa membedakan
+     * alasan kartu tidak aktif. Saldo tidak tersentuh — tetap di
+     * Member::balance_cache, kartu pengganti dibuatkan admin via
+     * reissue().
+     */
+    public function reportLost(MemberCard $card): void
+    {
+        $card->update([
+            'status' => 'lost',
+            'blocked_at' => now(),
+            'block_reason' => 'Dilaporkan hilang oleh wali lewat Portal Wali',
+        ]);
+    }
+
+    /**
      * Kartu lama otomatis jadi 'replaced'. Saldo tidak berubah —
      * saldo ada di Member::balance_cache, bukan di kartu.
      */
