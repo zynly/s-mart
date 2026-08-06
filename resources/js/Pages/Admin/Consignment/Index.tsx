@@ -155,7 +155,7 @@ export default function Index({ tab, settlements, suppliers, outlets }: Consignm
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Periode Awal</Label>
                 <Input type="date" value={form.data.period_start} onChange={(e) => form.setData('period_start', e.target.value)} />

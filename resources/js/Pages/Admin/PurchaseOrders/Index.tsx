@@ -14,6 +14,7 @@ import { Label } from '@/Components/ui/label'
 import { Badge } from '@/Components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { AppSheet } from '@/Components/common/AppSheet'
+import { ProductCombobox } from '@/Components/common/ProductCombobox'
 import { formatDate } from '@/Lib/date'
 import type { Paginated } from '@/Types'
 
@@ -179,7 +180,7 @@ export default function Index({ tab, orders, suppliers, outlets, products, units
         footer={<Button type="submit" form="po-create-form" disabled={form.processing || form.data.items.length === 0}>Simpan PO</Button>}
       >
           <form id="po-create-form" onSubmit={submit} className="flex flex-col gap-4 px-4 pb-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Supplier</Label>
                 <Select value={form.data.supplier_id} onValueChange={(v) => form.setData('supplier_id', v)}>
@@ -207,7 +208,7 @@ export default function Index({ tab, orders, suppliers, outlets, products, units
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Tanggal Order</Label>
                 <Input type="date" value={form.data.order_date} onChange={(e) => form.setData('order_date', e.target.value)} />
@@ -224,16 +225,11 @@ export default function Index({ tab, orders, suppliers, outlets, products, units
                 <div key={index} className="flex items-end gap-2 rounded-md border border-border p-2">
                   <div className="flex-1 space-y-1">
                     <Label className="text-xs">Produk</Label>
-                    <Select value={item.product_id} onValueChange={(v) => updateItem(index, { product_id: v })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih produk" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {products.map((p) => (
-                          <SelectItem key={p.id} value={String(p.id)}>{p.name} ({p.sku})</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <ProductCombobox
+                      products={products}
+                      value={item.product_id}
+                      onSelect={(p) => updateItem(index, { product_id: String(p.id), unit_id: String(p.base_unit_id) })}
+                    />
                   </div>
                   <div className="w-24 space-y-1">
                     <Label className="text-xs">Satuan</Label>

@@ -368,7 +368,7 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="m-class">Kelas</Label>
                     <Input id="m-class" value={form.data.class_name} onChange={(e) => form.setData('class_name', e.target.value)} />
@@ -378,7 +378,7 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
                     <Input id="m-major" value={form.data.major} onChange={(e) => form.setData('major', e.target.value)} />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="m-entry-year">Tahun Masuk</Label>
                     <Input
