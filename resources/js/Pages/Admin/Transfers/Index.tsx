@@ -271,13 +271,35 @@ export default function Index({ tab, transfers, products, outlets, filters }: Tr
             </div>
 
             {lines.length > 0 && (
-              <div className="flex flex-col divide-y divide-border rounded-md border border-border">
-                {lines.map((line) => (
-                  <div key={line.key} className="flex items-center justify-between p-2 text-sm">
-                    <span>{line.product_name} — {line.qty} {line.unit_code}</span>
-                    <Button type="button" size="sm" variant="ghost" className="text-danger" onClick={() => removeLine(line.key)}>Hapus</Button>
-                  </div>
-                ))}
+              <div className="overflow-hidden rounded-xl border border-border bg-surface neu-flat">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-navy-900 text-white font-semibold uppercase tracking-wider text-[11px]">
+                      <tr>
+                        <th className="px-3 py-2.5 text-center w-12">No.</th>
+                        <th className="px-4 py-2.5">Nama Produk</th>
+                        <th className="px-4 py-2.5 text-center">Qty Transfer</th>
+                        <th className="px-4 py-2.5 text-center">Satuan</th>
+                        <th className="px-4 py-2.5 text-center">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {lines.map((line, idx) => (
+                        <tr key={line.key} className="transition-colors hover:bg-navy-50/50">
+                          <td className="px-3 py-3 text-center font-mono text-content-muted font-medium">{idx + 1}</td>
+                          <td className="px-4 py-3 font-semibold text-content">{line.product_name}</td>
+                          <td className="px-4 py-3 text-center font-mono font-bold text-navy-800">{line.qty}</td>
+                          <td className="px-4 py-3 text-center font-mono text-content-muted">{line.unit_code}</td>
+                          <td className="px-4 py-3 text-center">
+                            <Button type="button" size="sm" variant="ghost" className="h-7 text-xs text-danger hover:bg-red-50" onClick={() => removeLine(line.key)}>
+                              Hapus / Batal
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
 

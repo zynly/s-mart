@@ -14,85 +14,91 @@ import { Badge } from '@/Components/ui/badge'
 import { Switch } from '@/Components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { AppSheet } from '@/Components/common/AppSheet'
+import { ConfirmDialog } from '@/Components/common/ConfirmDialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/Components/ui/dropdown-menu'
 
 type CategoryRow = {
   id: number
-  code: string
+  code?: string
   name: string
   parent_id: number | null
-  parent: { id: number; name: string } | null
-  description: string | null
+  parent_name?: string | null
+  description?: string | null
   is_active: boolean
 }
-
-const emptyForm = { code: '', name: '', parent_id: '', description: '', is_active: true as boolean }
 
 export default function Index({ tab, categories }: { tab: string; categories: CategoryRow[] }) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<CategoryRow | null>(null)
-  const form = useForm(emptyForm)
+  const [deactivateTarget, setDeactivateTarget] = useState<CategoryRow | null>(null)
+  const form = useForm({ code: '', name: '', parent_id: '' as string, description: '', is_active: true as boolean })
 
   function openCreate() {
     setEditing(null)
-    form.reset()
-    form.clearErrors()
+    form.setData({ code: '', name: '', parent_id: '', description: '', is_active: true })
     setSheetOpen(true)
   }
 
-  function openEdit(row: CategoryRow) {
-    setEditing(row)
+  function openEdit(category: CategoryRow) {
+    setEditing(category)
     form.setData({
-      code: row.code,
-      name: row.name,
-      parent_id: row.parent_id ? String(row.parent_id) : '',
-      description: row.description ?? '',
-      is_active: row.is_active,
+      code: category.code ?? '',
+      name: category.name,
+      parent_id: category.parent_id ? String(category.parent_id) : '',
+      description: category.description ?? '',
+      is_active: category.is_active,
     })
-    form.clearErrors()
     setSheetOpen(true)
   }
 
   const submit: FormEventHandler = (e) => {
     e.preventDefault()
-    const options = { preserveScroll: true as const, onSuccess: () => setSheetOpen(false) }
     if (editing) {
-      form.put(route('admin.categories.update', editing.id), options)
+      form.put(route('admin.categories.update', editing.id), { onSuccess: () => setSheetOpen(false) })
     } else {
-      form.post(route('admin.categories.store'), options)
+      form.post(route('admin.categories.store'), { onSuccess: () => setSheetOpen(false) })
     }
   }
 
-  const columns: ColumnDef<CategoryRow, unknown>[] = [
-    { accessorKey: 'code', header: 'Kode' },
-    { accessorKey: 'name', header: 'Nama' },
-    { id: 'parent', header: 'Induk', cell: ({ row }) => row.original.parent?.name ?? '—' },
+  const columns: ColumnDef<CategoryRow>[] = [
+    { accessorKey: 'name', header: 'Nama Kategori' },
     {
-      id: 'status',
+      accessorKey: 'parent_name',
+      header: 'Induk',
+      cell: ({ row }) => row.original.parent_name ?? '—',
+    },
+    {
+      accessorKey: 'is_active',
       header: 'Status',
-      cell: ({ row }) => (row.original.is_active ? <Badge className="bg-success text-white">Aktif</Badge> : <Badge variant="destructive">Nonaktif</Badge>),
+      cell: ({ row }) => (
+        <Badge className={row.original.is_active ? 'bg-success text-white' : 'bg-muted text-content-muted'}>
+          {row.original.is_active ? 'Aktif' : 'Nonaktif'}
+        </Badge>
+      ),
     },
     {
       id: 'actions',
-      header: '',
+      header: () => <div className="text-right">Aksi</div>,
       cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-sm">
-              <MoreHorizontal className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => openEdit(row.original)}>Ubah</DropdownMenuItem>
-            <DropdownMenuItem
-              className="text-danger"
-              disabled={!row.original.is_active}
-              onClick={() => router.delete(route('admin.categories.destroy', row.original.id), { preserveScroll: true })}
-            >
-              Nonaktifkan
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="text-right">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon-sm">
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => openEdit(row.original)}>Ubah</DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-danger"
+                disabled={!row.original.is_active}
+                onClick={() => setDeactivateTarget(row.original)}
+              >
+                Nonaktifkan
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       ),
     },
   ]
@@ -113,6 +119,23 @@ export default function Index({ tab, categories }: { tab: string; categories: Ca
       ]} />
 
       <DataTable columns={columns} data={categories} getRowId={(row) => String(row.id)} />
+
+      <ConfirmDialog
+        open={deactivateTarget !== null}
+        onOpenChange={(open) => !open && setDeactivateTarget(null)}
+        title={`Nonaktifkan Kategori "${deactivateTarget?.name ?? ''}"?`}
+        description="Kategori yang dinonaktifkan tidak akan bisa dipilih untuk produk baru."
+        variant="destructive"
+        confirmLabel="Ya, Nonaktifkan"
+        onConfirm={() => {
+          if (deactivateTarget) {
+            router.delete(route('admin.categories.destroy', deactivateTarget.id), {
+              preserveScroll: true,
+              onSuccess: () => setDeactivateTarget(null),
+            })
+          }
+        }}
+      />
 
       <AppSheet
         open={sheetOpen}

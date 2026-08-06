@@ -235,32 +235,106 @@ export default function Index({ tab, stocks, categories, outlets, currentOutletI
         </TabsContent>
 
         <TabsContent value="kadaluwarsa">
-          <div className="flex flex-col divide-y divide-border rounded-lg border border-border bg-surface">
-            {expiringSoon.length === 0 && <p className="p-4 text-sm text-content-muted">Tidak ada produk akan kadaluwarsa dalam 7 hari.</p>}
-            {expiringSoon.map((layer) => (
-              <div key={layer.id} className="flex items-center justify-between p-3 text-sm">
-                <div>
-                  <p className="font-medium">{layer.product.name}</p>
-                  <p className="text-content-muted">{layer.batch_no ?? '—'} · {Number(layer.qty_remaining).toLocaleString('id-ID')} unit</p>
-                </div>
-                <Badge className="bg-warning text-white">{formatDate(layer.expired_at)}</Badge>
-              </div>
-            ))}
+          <div className="overflow-hidden rounded-xl border border-border bg-surface neu-flat">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-navy-900 text-white font-semibold uppercase tracking-wider text-[11px]">
+                  <tr>
+                    <th className="px-3 py-3 text-center w-12">No.</th>
+                    <th className="px-4 py-3">Nama Produk</th>
+                    <th className="px-4 py-3">No. Batch</th>
+                    <th className="px-4 py-3 text-right">Sisa Qty</th>
+                    <th className="px-4 py-3 text-center">Tanggal Kadaluwarsa</th>
+                    <th className="px-4 py-3 text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {expiringSoon.map((layer, idx) => (
+                    <tr key={layer.id} className="transition-colors hover:bg-navy-50/50">
+                      <td className="px-3 py-3 text-center font-mono text-content-muted font-medium">{idx + 1}</td>
+                      <td className="px-4 py-3 font-semibold text-content">{layer.product.name}</td>
+                      <td className="px-4 py-3 font-mono text-content-muted">{layer.batch_no ?? '—'}</td>
+                      <td className="px-4 py-3 text-right font-mono font-bold text-navy-800">
+                        {Number(layer.qty_remaining).toLocaleString('id-ID')} unit
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge className="bg-warning text-white font-mono text-[11px]">{formatDate(layer.expired_at)}</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => router.visit(route('admin.stock-adjustments.index'))}
+                          className="h-7 text-xs border-amber-300 text-amber-800 hover:bg-amber-50"
+                        >
+                          Penyesuaian
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                  {expiringSoon.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="p-4 text-center text-sm text-content-muted">
+                        Tidak ada produk akan kadaluwarsa dalam 7 hari.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </TabsContent>
 
         <TabsContent value="expired">
-          <div className="flex flex-col divide-y divide-border rounded-lg border border-border bg-surface">
-            {expired.length === 0 && <p className="p-4 text-sm text-content-muted">Tidak ada produk kadaluwarsa.</p>}
-            {expired.map((layer) => (
-              <div key={layer.id} className="flex items-center justify-between p-3 text-sm">
-                <div>
-                  <p className="font-medium">{layer.product.name}</p>
-                  <p className="text-content-muted">{layer.batch_no ?? '—'} · {Number(layer.qty_remaining).toLocaleString('id-ID')} unit</p>
-                </div>
-                <Badge className="bg-danger text-white">{formatDate(layer.expired_at)}</Badge>
-              </div>
-            ))}
+          <div className="overflow-hidden rounded-xl border border-border bg-surface neu-flat">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-navy-900 text-white font-semibold uppercase tracking-wider text-[11px]">
+                  <tr>
+                    <th className="px-3 py-3 text-center w-12">No.</th>
+                    <th className="px-4 py-3">Nama Produk</th>
+                    <th className="px-4 py-3">No. Batch</th>
+                    <th className="px-4 py-3 text-right">Sisa Qty</th>
+                    <th className="px-4 py-3 text-center">Status Kadaluwarsa</th>
+                    <th className="px-4 py-3 text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {expired.map((layer, idx) => (
+                    <tr key={layer.id} className="transition-colors hover:bg-navy-50/50">
+                      <td className="px-3 py-3 text-center font-mono text-content-muted font-medium">{idx + 1}</td>
+                      <td className="px-4 py-3 font-semibold text-content">{layer.product.name}</td>
+                      <td className="px-4 py-3 font-mono text-content-muted">{layer.batch_no ?? '—'}</td>
+                      <td className="px-4 py-3 text-right font-mono font-bold text-navy-800">
+                        {Number(layer.qty_remaining).toLocaleString('id-ID')} unit
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge className="bg-danger text-white font-mono text-[11px]">{formatDate(layer.expired_at)}</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => router.visit(route('admin.stock-adjustments.index'))}
+                          className="h-7 text-xs border-red-300 text-red-700 hover:bg-red-50"
+                        >
+                          Afkir / Hapus
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                  {expired.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="p-4 text-center text-sm text-content-muted">
+                        Tidak ada produk kadaluwarsa.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </TabsContent>
       </Tabs>

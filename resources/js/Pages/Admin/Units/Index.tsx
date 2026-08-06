@@ -12,6 +12,7 @@ import { Label } from '@/Components/ui/label'
 import { Badge } from '@/Components/ui/badge'
 import { Switch } from '@/Components/ui/switch'
 import { AppSheet } from '@/Components/common/AppSheet'
+import { ConfirmDialog } from '@/Components/common/ConfirmDialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/Components/ui/dropdown-menu'
 
 type UnitRow = { id: number; code: string; name: string; is_active: boolean }
@@ -19,61 +20,65 @@ type UnitRow = { id: number; code: string; name: string; is_active: boolean }
 export default function Index({ tab, units }: { tab: string; units: UnitRow[] }) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<UnitRow | null>(null)
+  const [deactivateTarget, setDeactivateTarget] = useState<UnitRow | null>(null)
   const form = useForm({ code: '', name: '', is_active: true as boolean })
 
   function openCreate() {
     setEditing(null)
-    form.reset()
-    form.clearErrors()
+    form.setData({ code: '', name: '', is_active: true })
     setSheetOpen(true)
   }
 
-  function openEdit(row: UnitRow) {
-    setEditing(row)
-    form.setData({ code: row.code, name: row.name, is_active: row.is_active })
-    form.clearErrors()
+  function openEdit(unit: UnitRow) {
+    setEditing(unit)
+    form.setData({ code: unit.code, name: unit.name, is_active: unit.is_active })
     setSheetOpen(true)
   }
 
   const submit: FormEventHandler = (e) => {
     e.preventDefault()
-    const options = { preserveScroll: true as const, onSuccess: () => setSheetOpen(false) }
     if (editing) {
-      form.put(route('admin.units.update', editing.id), options)
+      form.put(route('admin.units.update', editing.id), { onSuccess: () => setSheetOpen(false) })
     } else {
-      form.post(route('admin.units.store'), options)
+      form.post(route('admin.units.store'), { onSuccess: () => setSheetOpen(false) })
     }
   }
 
-  const columns: ColumnDef<UnitRow, unknown>[] = [
-    { accessorKey: 'code', header: 'Kode' },
-    { accessorKey: 'name', header: 'Nama' },
+  const columns: ColumnDef<UnitRow>[] = [
+    { accessorKey: 'code', header: 'Kode Satuan' },
+    { accessorKey: 'name', header: 'Nama Satuan' },
     {
-      id: 'status',
+      accessorKey: 'is_active',
       header: 'Status',
-      cell: ({ row }) => (row.original.is_active ? <Badge className="bg-success text-white">Aktif</Badge> : <Badge variant="destructive">Nonaktif</Badge>),
+      cell: ({ row }) => (
+        <Badge className={row.original.is_active ? 'bg-success text-white' : 'bg-muted text-content-muted'}>
+          {row.original.is_active ? 'Aktif' : 'Nonaktif'}
+        </Badge>
+      ),
     },
     {
       id: 'actions',
-      header: '',
+      header: () => <div className="text-right">Aksi</div>,
       cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-sm">
-              <MoreHorizontal className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => openEdit(row.original)}>Ubah</DropdownMenuItem>
-            <DropdownMenuItem
-              className="text-danger"
-              disabled={!row.original.is_active}
-              onClick={() => router.delete(route('admin.units.destroy', row.original.id), { preserveScroll: true })}
-            >
-              Nonaktifkan
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="text-right">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon-sm">
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => openEdit(row.original)}>Ubah</DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-danger"
+                disabled={!row.original.is_active}
+                onClick={() => setDeactivateTarget(row.original)}
+              >
+                Nonaktifkan
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       ),
     },
   ]
@@ -93,6 +98,23 @@ export default function Index({ tab, units }: { tab: string; units: UnitRow[] })
       ]} />
 
       <DataTable columns={columns} data={units} getRowId={(row) => String(row.id)} />
+
+      <ConfirmDialog
+        open={deactivateTarget !== null}
+        onOpenChange={(open) => !open && setDeactivateTarget(null)}
+        title={`Nonaktifkan Satuan "${deactivateTarget?.name ?? ''}"?`}
+        description="Satuan yang dinonaktifkan tidak dapat dipilih pada produk baru."
+        variant="destructive"
+        confirmLabel="Ya, Nonaktifkan"
+        onConfirm={() => {
+          if (deactivateTarget) {
+            router.delete(route('admin.units.destroy', deactivateTarget.id), {
+              preserveScroll: true,
+              onSuccess: () => setDeactivateTarget(null),
+            })
+          }
+        }}
+      />
 
       <AppSheet
         open={sheetOpen}

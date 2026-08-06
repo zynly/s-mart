@@ -17,6 +17,7 @@ import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
 import { Textarea } from '@/Components/ui/textarea'
 import { Badge } from '@/Components/ui/badge'
+import { Checkbox } from '@/Components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
@@ -105,6 +106,9 @@ export default function Index({ tab, transactions, adjustments, members, payment
   }
   const [selectedMemberId, setSelectedMemberId] = useState('')
   const [memberSearch, setMemberSearch] = useState('')
+  const [memberPage, setMemberPage] = useState(1)
+  const MEMBERS_PER_PAGE = 8
+  const [selectedMemberIds, setSelectedMemberIds] = useState<number[]>([])
   const [typeFilter, setTypeFilter] = useState(filters.type ?? '')
   const [dateRange, setDateRange] = useState<DateRange | undefined>(
     filters.from ? { from: new Date(filters.from), to: filters.to ? new Date(filters.to) : new Date(filters.from) } : undefined,
@@ -126,11 +130,35 @@ export default function Index({ tab, transactions, adjustments, members, payment
   const adjustKeyRef = useRef(newIdempotencyKey())
 
   const filteredMembers = useMemo(() => {
-    if (!memberSearch.trim()) return members.slice(0, 20)
+    if (!memberSearch.trim()) return members
     const q = memberSearch.toLowerCase()
 
-    return members.filter((m) => m.name.toLowerCase().includes(q) || m.member_number.includes(q) || (m.nis ?? '').includes(q)).slice(0, 20)
+    return members.filter((m) => m.name.toLowerCase().includes(q) || m.member_number.includes(q) || (m.nis ?? '').includes(q))
   }, [members, memberSearch])
+
+  const totalMemberPages = Math.ceil(filteredMembers.length / MEMBERS_PER_PAGE) || 1
+
+  const paginatedMembers = useMemo(() => {
+    return filteredMembers.slice((memberPage - 1) * MEMBERS_PER_PAGE, memberPage * MEMBERS_PER_PAGE)
+  }, [filteredMembers, memberPage])
+
+  const isAllMembersSelected = filteredMembers.length > 0 && selectedMemberIds.length === filteredMembers.length
+
+  function toggleSelectAllMembers() {
+    if (isAllMembersSelected) {
+      setSelectedMemberIds([])
+    } else {
+      setSelectedMemberIds(filteredMembers.map((m) => m.id))
+    }
+  }
+
+  function toggleSelectMember(id: number) {
+    if (selectedMemberIds.includes(id)) {
+      setSelectedMemberIds(selectedMemberIds.filter((item) => item !== id))
+    } else {
+      setSelectedMemberIds([...selectedMemberIds, id])
+    }
+  }
 
   const selectedMember = members.find((m) => String(m.id) === selectedMemberId) ?? null
 
@@ -242,24 +270,128 @@ export default function Index({ tab, transactions, adjustments, members, payment
 
         <TabsContent value="topup" className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4">
           {!selectedMember ? (
-            <div className="flex flex-col gap-2">
-              <Label>Cari Anggota (nama / no. anggota / NIS)</Label>
-              <Input value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} placeholder="Ketik untuk mencari…" />
-              <div className="flex max-h-64 flex-col divide-y divide-border overflow-y-auto rounded-md border border-border">
-                {filteredMembers.map((m) => (
-                  <button
-                    key={m.id}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-navy-900">Pilih Anggota / Santri</h3>
+                  <p className="text-xs text-content-muted">Pilih anggota di bawah untuk melakukan pengisian saldo deposit.</p>
+                </div>
+                <Badge variant="outline" className="text-xs font-mono">{filteredMembers.length} Anggota ditemukan</Badge>
+              </div>
+
+              <div className="relative">
+                <Input
+                  value={memberSearch}
+                  onChange={(e) => setMemberSearch(e.target.value)}
+                  placeholder="Scan kartu / NIS / ketik nama anggota…"
+                  className="h-10 rounded-xl neu-pressed pl-4 pr-10 text-sm"
+                />
+              </div>
+
+              {selectedMemberIds.length > 0 && (
+                <div className="flex items-center justify-between rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs text-amber-950 shadow-sm">
+                  <span className="font-semibold">{selectedMemberIds.length} anggota terpilih</span>
+                  <Button
                     type="button"
-                    onClick={() => pickMember(String(m.id))}
-                    className="flex items-center justify-between px-3 py-2 text-left text-sm hover:bg-bg"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setSelectedMemberIds([])}
+                    className="h-6 text-[11px] text-amber-900 hover:bg-amber-100"
                   >
-                    <span>
-                      {m.name} <span className="text-content-muted">({m.member_number})</span>
+                    Batal Pilih
+                  </Button>
+                </div>
+              )}
+
+              <div className="min-h-[420px] flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-surface neu-flat">
+                <div className="overflow-x-auto flex-1">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-navy-900 text-white font-semibold uppercase tracking-wider text-[11px] sticky top-0 z-10">
+                      <tr>
+                        <th className="px-3 py-2.5 text-center w-10">
+                          <Checkbox
+                            checked={isAllMembersSelected}
+                            onCheckedChange={toggleSelectAllMembers}
+                            className="border-white/50 data-[state=checked]:bg-amber-400 data-[state=checked]:text-navy-950"
+                          />
+                        </th>
+                        <th className="px-3 py-2.5 text-center w-12">No.</th>
+                        <th className="px-4 py-2.5">No. Anggota</th>
+                        <th className="px-4 py-2.5">Nama Member</th>
+                        <th className="px-4 py-2.5 text-right">Saldo Saat Ini</th>
+                        <th className="px-4 py-2.5 text-center">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {paginatedMembers.map((m, idx) => (
+                        <tr key={m.id} className="transition-colors hover:bg-navy-50/50">
+                          <td className="px-3 py-3 text-center">
+                            <Checkbox
+                              checked={selectedMemberIds.includes(m.id)}
+                              onCheckedChange={() => toggleSelectMember(m.id)}
+                            />
+                          </td>
+                          <td className="px-3 py-3 text-center font-mono text-content-muted font-medium">
+                            {(memberPage - 1) * MEMBERS_PER_PAGE + idx + 1}
+                          </td>
+                          <td className="px-4 py-3 font-mono font-medium text-navy-800">{m.member_number}</td>
+                          <td className="px-4 py-3 font-semibold text-content">{m.name}</td>
+                          <td className="px-4 py-3 text-right font-mono font-bold text-emerald-700">
+                            <Money amount={m.balance_cache} size="sm" />
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => pickMember(String(m.id))}
+                              className="h-7 bg-navy-800 text-white hover:bg-navy-700 font-medium px-3 text-xs rounded-lg shadow-sm"
+                            >
+                              Top-Up Deposit
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                      {paginatedMembers.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="p-4 text-center text-sm text-content-muted">
+                            Tidak ditemukan anggota dengan kata kunci tersebut.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="flex shrink-0 items-center justify-between border-t border-border bg-surface px-4 py-2.5 text-xs text-content-muted">
+                  <p>
+                    Menampilkan <span className="font-mono font-bold text-content">{filteredMembers.length > 0 ? (memberPage - 1) * MEMBERS_PER_PAGE + 1 : 0}</span> - <span className="font-mono font-bold text-content">{Math.min(memberPage * MEMBERS_PER_PAGE, filteredMembers.length)}</span> dari <span className="font-mono font-bold text-content">{filteredMembers.length}</span> anggota
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={memberPage <= 1}
+                      onClick={() => setMemberPage((p) => Math.max(1, p - 1))}
+                      className="h-7 text-xs font-medium"
+                    >
+                      ◀ Sebelum
+                    </Button>
+                    <span className="px-2 font-mono text-xs font-semibold text-content">
+                      Hal. {memberPage} / {totalMemberPages}
                     </span>
-                    <Money amount={m.balance_cache} size="sm" />
-                  </button>
-                ))}
-                {filteredMembers.length === 0 && <p className="p-3 text-sm text-content-muted">Tidak ditemukan.</p>}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={memberPage >= totalMemberPages}
+                      onClick={() => setMemberPage((p) => Math.min(totalMemberPages, p + 1))}
+                      className="h-7 text-xs font-medium"
+                    >
+                      Lanjut ▶
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
           ) : (

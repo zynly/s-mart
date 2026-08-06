@@ -2,22 +2,28 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Integrasi Midtrans — status `expired` khusus untuk Snap token yang
  * kedaluwarsa tanpa dibayar (state yang tidak mungkin terjadi di alur
  * transfer manual, makanya belum ada di enum asli).
+ * Dikonversi ke PostgreSQL-compatible syntax (tidak pakai MySQL MODIFY ENUM).
  */
 return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement("ALTER TABLE topup_requests MODIFY status ENUM('pending','approved','rejected','expired') NOT NULL DEFAULT 'pending'");
+        // PostgreSQL: tambah nilai baru ke constraint CHECK atau hapus & buat ulang constraint
+        // Cek apakah constraint check sudah ada
+        DB::statement("ALTER TABLE topup_requests DROP CONSTRAINT IF EXISTS topup_requests_status_check");
+        DB::statement("ALTER TABLE topup_requests ADD CONSTRAINT topup_requests_status_check CHECK (status IN ('pending','approved','rejected','expired'))");
     }
 
     public function down(): void
     {
         DB::statement("UPDATE topup_requests SET status = 'rejected' WHERE status = 'expired'");
-        DB::statement("ALTER TABLE topup_requests MODIFY status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending'");
+        DB::statement("ALTER TABLE topup_requests DROP CONSTRAINT IF EXISTS topup_requests_status_check");
+        DB::statement("ALTER TABLE topup_requests ADD CONSTRAINT topup_requests_status_check CHECK (status IN ('pending','approved','rejected'))");
     }
 };
