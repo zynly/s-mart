@@ -46,10 +46,15 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
       <main className="mx-auto w-full max-w-[1200px] flex-1 px-4 py-8">{children}</main>
 
       <footer className="border-t border-border bg-surface">
-        <div className="mx-auto max-w-[1200px] px-4 py-8 text-sm text-content-muted">
-          <p className="font-medium text-content">Skillage Mart</p>
-          <p>SMK Skill Village Islamic School — Jonggol, Kabupaten Bogor</p>
-          <p>Senin–Sabtu 07.00–17.00</p>
+        <div className="mx-auto flex max-w-[1200px] flex-col justify-between gap-4 px-4 py-8 text-sm text-content-muted sm:flex-row sm:items-center">
+          <div>
+            <p className="font-medium text-content">Skillage Mart</p>
+            <p>SMK Skill Village Islamic School — Jonggol, Kabupaten Bogor</p>
+            <p>Senin–Sabtu 07.00–17.00</p>
+          </div>
+          <Link href="/login" className="text-xs hover:text-content hover:underline">
+            Login Staff / Admin
+          </Link>
         </div>
       </footer>
     </div>
