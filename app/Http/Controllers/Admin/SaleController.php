@@ -305,7 +305,10 @@ class SaleController extends Controller
             throw ValidationException::withMessages(['items' => $e->getMessage()]);
         }
 
-        return redirect()->route('pos.sales.receipt', $sale)->with('success', "Transaksi {$sale->reference} selesai.");
+        return back()
+            ->with('completed_sale_id', $sale->id)
+            ->with('completed_sale_ref', $sale->reference)
+            ->with('success', "Transaksi {$sale->reference} selesai.");
     }
 
     public function hold(HoldSaleRequest $request): RedirectResponse

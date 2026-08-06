@@ -1,8 +1,8 @@
-import { useCallback, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react'
 import { router, usePage } from '@inertiajs/react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import {
-  ArrowDownCircle, ArrowUpCircle, ChevronLeft, ChevronRight, CreditCard, Pause, Phone,
+  ArrowDownCircle, ArrowUpCircle, Check, CheckCircle2, ChevronLeft, ChevronRight, CreditCard, Pause, Phone, Printer,
   ScanLine, Search, ShoppingCart, Trash2, UserCircle, Wallet, X,
 } from 'lucide-react'
 import PosLayout from '@/Layouts/PosLayout'
@@ -20,6 +20,7 @@ import { formatTime } from '@/Lib/date'
 import { formatMoney } from '@/Lib/money'
 import { apiPost, ApiError } from '@/Lib/api'
 import { useMidtransSnap } from '@/Hooks/useMidtransSnap'
+import { cn } from '@/Lib/utils'
 import type { PageProps } from '@/Types'
 
 // REVISI-UI-KASIR (perbaikan lanjutan) — Input/Select shadcn generik
@@ -137,6 +138,8 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
   const [holdsOpen, setHoldsOpen] = useState(false)
   const [paymentLines, setPaymentLines] = useState<PaymentLine[]>([])
   const [selectedMethodId, setSelectedMethodId] = useState('')
+  const [directMethodId, setDirectMethodId] = useState<number | null>(null)
+  const [cashInput, setCashInput] = useState<number>(0)
   const [creditWarning, setCreditWarning] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [paymentError, setPaymentError] = useState<string | null>(null)
@@ -148,6 +151,15 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
   const [cashDescription, setCashDescription] = useState('')
   const [cashError, setCashError] = useState<string | null>(null)
   const [cashSubmitting, setCashSubmitting] = useState(false)
+  const pageProps = usePage<PageProps & { flash?: { completed_sale_id?: number; completed_sale_ref?: string } }>().props
+  const [completedSale, setCompletedSale] = useState<{ id: number; ref: string } | null>(null)
+
+  useEffect(() => {
+    if (pageProps.flash?.completed_sale_id && pageProps.flash?.completed_sale_ref) {
+      setCompletedSale({ id: pageProps.flash.completed_sale_id, ref: pageProps.flash.completed_sale_ref })
+    }
+  }, [pageProps.flash?.completed_sale_id, pageProps.flash?.completed_sale_ref])
+
   const idempotencyKeyRef = useRef(newIdempotencyKey())
   const barcodeRef = useRef<HTMLInputElement>(null)
   const memberInputRef = useRef<HTMLInputElement>(null)
@@ -158,6 +170,18 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
   }
 
   const subtotal = useMemo(() => cart.reduce((sum, line) => sum + line.qty * line.unit_price, 0), [cart])
+
+  const activeMethod = useMemo(() => {
+    if (directMethodId) {
+      const found = paymentMethods.find((pm) => pm.id === directMethodId)
+      if (found) return found
+    }
+    return paymentMethods.find((pm) => pm.type === 'cash') ?? paymentMethods[0] ?? null
+  }, [directMethodId, paymentMethods])
+
+  const isCash = activeMethod?.type === 'cash'
+  const changeAmount = isCash && cashInput > subtotal ? cashInput - subtotal : 0
+  const underpaidAmount = isCash && cashInput > 0 && cashInput < subtotal ? subtotal - cashInput : 0
 
   function focusScan() {
     barcodeRef.current?.focus()
@@ -210,7 +234,11 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
   }
 
   function updateQty(key: string, delta: number) {
-    setCart((prev) => prev.map((l) => (l.key === key ? { ...l, qty: Math.max(0.001, Math.round((l.qty + delta) * 1000) / 1000) } : l)).filter((l) => l.qty > 0))
+    setCart((prev) =>
+      prev
+        .map((l) => (l.key === key ? { ...l, qty: Math.max(0, Math.round((l.qty + delta) * 1000) / 1000) } : l))
+        .filter((l) => l.qty > 0),
+    )
   }
 
   function removeLine(key: string) {
@@ -491,10 +519,244 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
     )
   }
 
+  // Phase 2: Dialog State untuk 6 Metode Internal/Offline
+  const [methodDialog, setMethodDialog] = useState<
+    | { type: 'deposit' }
+    | { type: 'card' }
+    | { type: 'voucher' }
+    | { type: 'point'; pointsNeeded: number }
+    | { type: 'credit'; limit: number; active: number }
+    | { type: 'payroll' }
+    | null
+  >(null)
+
+  const [depositPin, setDepositPin] = useState('')
+  const [edcRefNo, setEdcRefNo] = useState('')
+  const [edcBank, setEdcBank] = useState('BCA')
+  const [voucherCode, setVoucherCode] = useState('')
+  const [methodDialogError, setMethodDialogError] = useState<string | null>(null)
+
+  function executeSaleStore(extraPayload: {
+    pin?: string
+    reference_no?: string
+    point_used?: number
+    coupon_code?: string
+  } = {}) {
+    if (!session || !outlet || !activeMethod) return
+
+    setSubmitting(true)
+    setPaymentError(null)
+
+    const finalReceived = isCash ? (cashInput > 0 ? cashInput : subtotal) : subtotal
+
+    router.post(
+      route('pos.sales.store'),
+      {
+        outlet_id: outlet.id,
+        cashier_session_id: session.id,
+        member_id: member?.id ?? null,
+        coupon_code: extraPayload.coupon_code ?? null,
+        items: cart.map((l) => ({ product_id: l.product_id, unit_id: l.unit_id, qty: l.qty, unit_price: l.unit_price, product_name: l.product_name, unit_code: l.unit_code })),
+        payments: [
+          {
+            payment_method_id: activeMethod.id,
+            amount: subtotal,
+            received_amount: activeMethod.allows_change ? finalReceived : subtotal,
+            reference_no: extraPayload.reference_no ?? null,
+            pin: extraPayload.pin ?? null,
+            point_used: extraPayload.point_used ?? null,
+          },
+        ],
+      },
+      {
+        headers: { 'X-Idempotency-Key': idempotencyKeyRef.current },
+        onSuccess: () => {
+          setCart([])
+          setMember(null)
+          setCashInput(0)
+          setPaymentError(null)
+          setMethodDialog(null)
+          idempotencyKeyRef.current = newIdempotencyKey()
+        },
+        onError: (errors) => {
+          const msg = Object.values(errors)[0] ?? 'Gagal menyelesaikan transaksi.'
+          setPaymentError(msg)
+          setMethodDialogError(msg)
+        },
+        onFinish: () => setSubmitting(false),
+      },
+    )
+  }
+
+  async function handleDirectSubmit() {
+    if (!session || !outlet || cart.length === 0 || subtotal <= 0 || !activeMethod) return
+
+    if (isCash && cashInput > 0 && cashInput < subtotal) {
+      setPaymentError(`Uang bayar kurang dari total belanja.`)
+      return
+    }
+
+    // 1. Saldo Deposit
+    if (activeMethod.type === 'deposit') {
+      if (!member) {
+        setPaymentError('Metode Saldo Deposit membutuhkan anggota yang terpilih.')
+        return
+      }
+      if (member.balance_cache < subtotal) {
+        setPaymentError(`Saldo deposit anggota (Rp ${member.balance_cache.toLocaleString('id-ID')}) tidak mencukupi untuk pembayaran Rp ${subtotal.toLocaleString('id-ID')}.`)
+        return
+      }
+      if (subtotal >= noPinThreshold && member.has_pin) {
+        setDepositPin('')
+        setMethodDialogError(null)
+        setMethodDialog({ type: 'deposit' })
+        return
+      }
+    }
+
+    // 2. Kartu Debit / EDC
+    if (activeMethod.type === 'card') {
+      setEdcRefNo('')
+      setEdcBank('BCA')
+      setMethodDialogError(null)
+      setMethodDialog({ type: 'card' })
+      return
+    }
+
+    // 3. Voucher Belanja
+    if (activeMethod.type === 'voucher') {
+      setVoucherCode('')
+      setMethodDialogError(null)
+      setMethodDialog({ type: 'voucher' })
+      return
+    }
+
+    // 4. Poin Loyalty
+    if (activeMethod.type === 'point') {
+      if (!member) {
+        setPaymentError('Metode Poin membutuhkan anggota yang terpilih.')
+        return
+      }
+      const pointsNeeded = Math.ceil(subtotal / pointValue)
+      if (member.point_balance < pointsNeeded) {
+        setPaymentError(`Poin anggota (${member.point_balance} poin) tidak mencukupi untuk penukaran ${pointsNeeded} poin.`)
+        return
+      }
+      setMethodDialogError(null)
+      setMethodDialog({ type: 'point', pointsNeeded })
+      return
+    }
+
+    // 5. Kredit / Tempo
+    if (activeMethod.type === 'credit') {
+      if (!member) {
+        setPaymentError('Metode Kredit/Tempo membutuhkan anggota yang terpilih.')
+        return
+      }
+      try {
+        const res = await fetch(`${route('pos.credit-check')}?member_id=${member.id}&amount=${subtotal}`)
+        const data = await res.json()
+        if (!data.allowed) {
+          setPaymentError(`Limit piutang terlampaui: aktif Rp ${(data.active ?? 0).toLocaleString('id-ID')} dari limit Rp ${(data.limit ?? 0).toLocaleString('id-ID')}.`)
+          return
+        }
+        setMethodDialogError(null)
+        setMethodDialog({ type: 'credit', limit: data.limit, active: data.active })
+      } catch {
+        setMethodDialogError(null)
+        setMethodDialog({ type: 'credit', limit: member.receivable_limit, active: 0 })
+      }
+      return
+    }
+
+    // 6. Potong Gaji
+    if (activeMethod.type === 'payroll') {
+      if (!member) {
+        setPaymentError('Metode Potong Gaji membutuhkan anggota yang terpilih.')
+        return
+      }
+      if (!['fasilitator', 'staff'].includes(member.type)) {
+        setPaymentError('Metode Potong Gaji hanya berlaku untuk anggota tipe fasilitator/staf.')
+        return
+      }
+      setMethodDialogError(null)
+      setMethodDialog({ type: 'payroll' })
+      return
+    }
+
+    // 7. JIKA METODE MIDTRANS (qris, ewallet, transfer): Panggil Snap Inline Modal Overlay
+    if (activeMethod.type === 'qris' || activeMethod.type === 'ewallet' || activeMethod.type === 'transfer') {
+      try {
+        const { token } = await apiPost<{ token: string }>(route('pos.midtrans.create-transaction'), {
+          amount: subtotal,
+          type: activeMethod.type,
+        })
+
+        type SnapResult = { transaction_id?: string; transaction_status?: 'settlement' | 'capture' | 'pending' }
+
+        const completeSaleWithSnap = (result: unknown) => {
+          const r = result as SnapResult
+          const refNo = r?.transaction_id ?? `SNAP-${Date.now()}`
+          const status = r?.transaction_status ?? 'settlement'
+
+          router.post(
+            route('pos.sales.store'),
+            {
+              outlet_id: outlet.id,
+              cashier_session_id: session.id,
+              member_id: member?.id ?? null,
+              items: cart.map((l) => ({ product_id: l.product_id, unit_id: l.unit_id, qty: l.qty, unit_price: l.unit_price, product_name: l.product_name, unit_code: l.unit_code })),
+              payments: [
+                {
+                  payment_method_id: activeMethod.id,
+                  amount: subtotal,
+                  received_amount: subtotal,
+                  reference_no: refNo,
+                  gateway_status: status,
+                },
+              ],
+            },
+            {
+              headers: { 'X-Idempotency-Key': idempotencyKeyRef.current },
+              onSuccess: () => {
+                setCart([])
+                setMember(null)
+                setCashInput(0)
+                setPaymentError(null)
+                idempotencyKeyRef.current = newIdempotencyKey()
+              },
+              onError: (errors) => setPaymentError(Object.values(errors)[0] ?? 'Gagal menyelesaikan transaksi.'),
+              onFinish: () => setSubmitting(false),
+            },
+          )
+        }
+
+        snap.pay(token, {
+          onSuccess: completeSaleWithSnap,
+          onPending: completeSaleWithSnap,
+          onError: () => {
+            setPaymentError('Pembayaran Midtrans gagal diproses. Silakan coba lagi.')
+            setSubmitting(false)
+          },
+          onClose: () => {
+            setSubmitting(false)
+          },
+        })
+      } catch (err) {
+        setPaymentError(err instanceof ApiError ? err.firstError() : 'Gagal memulai transaksi Midtrans.')
+        setSubmitting(false)
+      }
+      return
+    }
+
+    // 8. Metode Tunai & Pembayaran Default
+    executeSaleStore()
+  }
+
   useHotkeys('f3', (e) => { e.preventDefault(); focusScan() })
   useHotkeys('f4', (e) => { e.preventDefault(); doHold() })
   useHotkeys('f5', (e) => { e.preventDefault(); setHoldsOpen(true) })
-  useHotkeys('f9', (e) => { e.preventDefault(); openPayment() })
+  useHotkeys('f9', (e) => { e.preventDefault(); handleDirectSubmit() })
   useHotkeys('f11', (e) => { e.preventDefault(); openCashDialog('in') })
   useHotkeys('f12', (e) => { e.preventDefault(); openCashDialog('out') })
   useHotkeys('esc', () => { setPaymentOpen(false); setHoldsOpen(false); setCashDialog(null) })
@@ -509,350 +771,517 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-    <div className="flex flex-1 overflow-hidden">
-      <div className="flex flex-1 flex-col gap-4 overflow-hidden p-4">
-        {/* Search bar */}
-        <div className="relative shrink-0">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
-          <input
-            ref={barcodeRef}
-            autoFocus
-            type="text"
-            placeholder="Scan barcode atau cari produk… (F3)"
-            value={barcode}
-            onChange={(e) => setBarcode(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                void submitScan(barcode)
-              }
-            }}
-            className="h-10 w-full rounded-xl border border-gray-300 bg-white pl-10 pr-10 text-sm text-gray-900 placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-navy-500"
-          />
-          <ScanLine className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
-        </div>
-        {scanError && <p className="-mt-2 text-sm text-danger">{scanError}</p>}
+    <PosLayout
+      outletName={outlet?.name}
+      sessionLabel={session ? `Sesi ${session.reference}` : 'Belum ada sesi'}
+      hasActiveSession={session !== null}
+      onCloseSession={() => router.visit(route('admin.cashier-session.index'))}
+      actionToolbar={
+        <div className="flex w-full max-w-4xl items-center justify-between gap-1.5 py-0.5 px-1">
+          {[
+            { key: 'F3', label: 'Cari', icon: Search, onClick: focusScan, isPrimary: false },
+            { key: 'F4', label: 'Tahan', icon: Pause, onClick: doHold, disabled: cart.length === 0, isPrimary: false },
+            { key: 'F5', label: 'Panggil', icon: Phone, onClick: () => setHoldsOpen(true), isPrimary: false },
+            { key: 'F9', label: 'Bayar', icon: CreditCard, onClick: handleDirectSubmit, disabled: cart.length === 0, isPrimary: true },
+            { key: 'F11', label: 'Cash Masuk', icon: ArrowDownCircle, onClick: () => openCashDialog('in'), isPrimary: false },
+            { key: 'F12', label: 'Cash Keluar', icon: ArrowUpCircle, onClick: () => openCashDialog('out'), isPrimary: false },
+          ].map((btn) => {
+            const Icon = btn.icon
+            const isDisabled = btn.disabled
+            const isPrimary = btn.isPrimary && !isDisabled
 
-        {/* Produk Cepat */}
-        <section className="shrink-0">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-navy-600">Produk Cepat</h2>
+            return (
+              <button
+                key={btn.key}
+                type="button"
+                onClick={btn.onClick}
+                disabled={isDisabled}
+                className={cn(
+                  'flex flex-1 items-center justify-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-bold transition-all duration-150 active:scale-95 whitespace-nowrap shadow-2xs',
+                  isDisabled
+                    ? 'border-border/60 bg-muted/40 text-content-muted opacity-40 cursor-not-allowed'
+                    : isPrimary
+                      ? 'border-emerald-500 bg-emerald-600 text-white shadow-md shadow-emerald-600/30 hover:bg-emerald-500 hover:border-emerald-400 ring-2 ring-emerald-400/40 font-extrabold'
+                      : 'border-border/90 bg-surface neu-flat text-navy-950 hover:border-amber-400/80 hover:bg-amber-50/70 hover:text-navy-950 shadow-2xs',
+                )}
+              >
+                <span
+                  className={cn(
+                    'rounded px-1.5 py-0.5 font-mono text-[10px] font-black tracking-wider shadow-2xs',
+                    isDisabled
+                      ? 'bg-muted text-content-muted'
+                      : isPrimary
+                        ? 'bg-emerald-800 text-white border border-emerald-400/40'
+                        : 'bg-amber-400 text-navy-950 shadow-2xs font-bold',
+                  )}
+                >
+                  {btn.key}
+                </span>
+                <Icon className={cn('size-3.5 shrink-0', isPrimary ? 'text-white' : 'text-navy-700')} />
+                <span className="truncate">{btn.label}</span>
+              </button>
+            )
+          })}
+        </div>
+      }
+    >
+      <div className="flex flex-1 overflow-hidden">
+        {/* GRID 1: KATALOG PRODUK & SEARCH (Kolom Kiri Terbesar - Flex Expand) */}
+        <section className="flex flex-1 min-w-0 flex-col gap-3 overflow-hidden border-r border-gray-200 bg-gray-50/60 p-3">
+          {/* Search bar Barcode */}
+          <div className="relative shrink-0">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+            <input
+              ref={barcodeRef}
+              autoFocus
+              type="text"
+              placeholder="Scan barcode atau cari produk… (F3)"
+              value={barcode}
+              onChange={(e) => setBarcode(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  void submitScan(barcode)
+                }
+              }}
+              className="h-10 w-full rounded-xl border border-gray-200 bg-white/90 pl-10 pr-10 text-sm text-gray-900 placeholder:text-gray-400 neu-pressed transition-all focus:border-navy-500 focus:outline-none focus:ring-2 focus:ring-navy-500/20"
+            />
+            <ScanLine className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+          </div>
+          {scanError && <p className="-mt-2 text-sm text-danger">{scanError}</p>}
+
+          {/* Filter Bar & Header Katalog */}
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-gray-200 pb-2">
+            <div className="flex items-center gap-2">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-navy-800">Katalog Produk</h2>
+              <Badge variant="secondary" className="text-[10px] bg-navy-100 text-navy-800 font-semibold">
+                {catalog.total} produk
+              </Badge>
+            </div>
             <div className="flex items-center gap-2">
               <Input
-                placeholder="Cari produk di katalog…"
+                placeholder="Cari produk…"
                 value={catalogSearch}
                 onChange={(e) => setCatalogSearch(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && reloadCatalog({ search: catalogSearch })}
-                className={`h-7 max-w-[150px] rounded-lg text-xs ${posFieldClass}`}
+                className={`h-7 w-32 sm:w-40 rounded-lg text-xs neu-pressed ${posFieldClass}`}
               />
-              <Select value={catalogCategory || 'all'} onValueChange={(v) => { const val = v === 'all' ? '' : v; setCatalogCategory(val); reloadCatalog({ category_id: val }) }}>
-                <SelectTrigger className={`h-7 w-32 rounded-lg text-xs ${posFieldClass}`}><SelectValue placeholder="Semua kategori" /></SelectTrigger>
+              <Select
+                value={catalogCategory || 'all'}
+                onValueChange={(v) => {
+                  const val = v === 'all' ? '' : v
+                  setCatalogCategory(val)
+                  reloadCatalog({ category_id: val })
+                }}
+              >
+                <SelectTrigger className={`h-7 w-32 rounded-lg text-xs neu-pressed ${posFieldClass}`}>
+                  <SelectValue placeholder="Semua kategori" />
+                </SelectTrigger>
                 <SelectContent className={posDropdownClass}>
                   <SelectItem value="all">Semua kategori</SelectItem>
-                  {categories.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => scrollCarousel(-1)}
-              className="absolute -ml-3 left-0 top-1/2 z-10 flex size-6 -translate-y-1/2 items-center justify-center rounded-full border border-gray-300 bg-white shadow hover:bg-gray-50"
-              aria-label="Sebelumnya"
-            >
-              <ChevronLeft className="size-3.5" />
-            </button>
-
-            <div ref={carouselRef} className="scrollbar-none flex gap-2 overflow-x-auto scroll-smooth px-1 pb-1">
+          {/* Product Cards Grid (Vertikal Scrollable) */}
+          <div className="flex-1 overflow-y-auto pr-1">
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4">
               {catalog.data.map((p) => (
                 <button
                   key={p.id}
                   type="button"
                   onClick={() => p.unit && addLine({ id: p.id, name: p.name, sku: p.sku, image_url: p.image_url }, p.unit, p.price, 1)}
-                  className="group w-[100px] shrink-0 rounded-lg border border-gray-300 bg-white p-1.5 text-left transition-all hover:border-navy-400 hover:shadow-sm"
+                  className="group relative flex flex-col justify-between rounded-xl border border-gray-200/80 bg-white p-2 text-left transition-all duration-200 neu-flat hover:-translate-y-0.5 hover:border-navy-400 hover:shadow-lg active:scale-95"
                 >
-                  <div className="relative mb-1 aspect-square w-full overflow-hidden rounded-md bg-gray-50">
-                    {p.image_url ? (
-                      <img src={p.image_url} alt={p.name} className="size-full object-contain p-1" loading="lazy" />
-                    ) : (
-                      <div className="flex size-full items-center justify-center text-center text-[9px] leading-tight text-gray-500">Tidak ada gambar</div>
-                    )}
-                    {p.has_promo && <Badge className="absolute right-0.5 top-0.5 bg-danger px-1 py-0 text-[8px] text-white">PROMO</Badge>}
+                  <div>
+                    <div className="relative mb-1.5 aspect-square w-full overflow-hidden rounded-lg bg-gray-50 border border-gray-100">
+                      {p.image_url ? (
+                        <img src={p.image_url} alt={p.name} className="size-full object-contain p-1 transition-transform group-hover:scale-105" loading="lazy" />
+                      ) : (
+                        <div className="flex size-full items-center justify-center text-center text-[10px] text-gray-400">Tidak ada gambar</div>
+                      )}
+                      {p.has_promo && (
+                        <Badge className="absolute right-1 top-1 bg-amber-500 px-1.5 py-0 text-[9px] font-bold text-white shadow-sm">PROMO</Badge>
+                      )}
+                    </div>
+                    <p className="line-clamp-2 text-xs font-semibold leading-tight text-gray-900 group-hover:text-navy-700">{p.name}</p>
                   </div>
-                  <p className="mb-0.5 line-clamp-2 text-[10px] font-medium leading-tight text-gray-800">{p.name}</p>
-                  <p className="text-xs font-bold text-navy-600"><Money amount={p.price} size="sm" /></p>
+                  <div className="mt-2 flex items-center justify-between border-t border-gray-100 pt-1.5">
+                    <p className="text-xs font-bold text-navy-700"><Money amount={p.price} size="sm" /></p>
+                    <span className="text-[10px] font-bold text-navy-500 bg-navy-50 px-1.5 py-0.5 rounded border border-navy-200/60">+ Tambah</span>
+                  </div>
                 </button>
               ))}
-              {catalog.data.length === 0 && (
-                <p className="p-6 text-center text-sm text-gray-500">Tidak ada produk berstok yang cocok di outlet ini.</p>
-              )}
             </div>
 
-            <button
-              type="button"
-              onClick={() => scrollCarousel(1)}
-              className="absolute -mr-3 right-0 top-1/2 z-10 flex size-6 -translate-y-1/2 items-center justify-center rounded-full border border-gray-300 bg-white shadow hover:bg-gray-50"
-              aria-label="Berikutnya"
-            >
-              <ChevronRight className="size-3.5" />
-            </button>
+            {catalog.data.length === 0 && (
+              <div className="flex h-48 flex-col items-center justify-center text-gray-400">
+                <Search className="mb-2 size-8 opacity-30" />
+                <p className="text-sm">Tidak ada produk berstok yang cocok.</p>
+              </div>
+            )}
           </div>
 
+          {/* Pagination */}
           {catalog.last_page > 1 && (
-            <div className="mt-2 flex items-center justify-center gap-2 text-sm text-gray-600">
-              <Button type="button" size="sm" variant="outline" disabled={catalog.current_page <= 1} onClick={() => reloadCatalog({ page: catalog.current_page - 1 })}>◀</Button>
-              <span>Hal. {catalog.current_page} / {catalog.last_page}</span>
-              <Button type="button" size="sm" variant="outline" disabled={catalog.current_page >= catalog.last_page} onClick={() => reloadCatalog({ page: catalog.current_page + 1 })}>▶</Button>
+            <div className="flex shrink-0 items-center justify-between border-t border-gray-200 pt-2 text-xs text-gray-600">
+              <Button type="button" size="sm" variant="outline" className="h-7 text-xs" disabled={catalog.current_page <= 1} onClick={() => reloadCatalog({ page: catalog.current_page - 1 })}>◀ Sebelum</Button>
+              <span className="font-medium">Hal. {catalog.current_page} dari {catalog.last_page}</span>
+              <Button type="button" size="sm" variant="outline" className="h-7 text-xs" disabled={catalog.current_page >= catalog.last_page} onClick={() => reloadCatalog({ page: catalog.current_page + 1 })}>Lanjut ▶</Button>
             </div>
           )}
         </section>
 
-        {/* Keranjang Transaksi */}
-        <section className="flex flex-1 flex-col overflow-hidden">
-          <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-navy-600">Keranjang Transaksi</h2>
-
-          <div className="flex-1 overflow-hidden rounded-xl border border-gray-200 bg-white">
-            <div className="h-full overflow-y-auto">
-              <table className="w-full text-xs">
-                <thead className="sticky top-0 border-b border-gray-200 bg-gray-50">
-                  <tr>
-                    <th className="w-[40%] px-3 py-2 text-left font-medium text-gray-600">Produk</th>
-                    <th className="w-[15%] px-2 py-2 text-center font-medium text-gray-600">Qty</th>
-                    <th className="w-[15%] px-2 py-2 text-right font-medium text-gray-600">Harga</th>
-                    <th className="w-[12%] px-2 py-2 text-right font-medium text-gray-600">Diskon</th>
-                    <th className="w-[12%] px-2 py-2 text-right font-medium text-gray-600">Total</th>
-                    <th className="w-[6%] px-2 py-2"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {cart.map((line) => (
-                    <tr key={line.key} className="transition-colors hover:bg-blue-50/30">
-                      <td className="px-3 py-2">
-                        <div className="flex items-center gap-2">
-                          {line.image_url ? (
-                            <img src={line.image_url} className="size-8 shrink-0 rounded-md border border-gray-200 bg-gray-50 object-contain" alt={line.product_name} />
-                          ) : (
-                            <div className="flex size-8 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-gray-50">
-                              <ShoppingCart className="size-3.5 text-gray-400" />
-                            </div>
-                          )}
-                          <div>
-                            <p className="font-medium text-gray-900">{line.product_name}</p>
-                            <p className="text-[10px] text-gray-500">SKU: {line.product_sku ?? '-'}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-2 py-2">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => updateQty(line.key, -1)}
-                            className="flex size-6 items-center justify-center rounded-md border border-gray-300 text-xs font-bold text-gray-600 hover:bg-gray-100"
-                          >
-                            −
-                          </button>
-                          <span className="w-6 text-center font-mono text-xs font-medium">{line.qty}</span>
-                          <button
-                            type="button"
-                            onClick={() => updateQty(line.key, 1)}
-                            className="flex size-6 items-center justify-center rounded-md border border-gray-300 text-xs font-bold text-gray-600 hover:bg-gray-100"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </td>
-                      <td className="px-2 py-2 text-right font-mono text-xs text-gray-700"><Money amount={line.unit_price} size="sm" /></td>
-                      {/* Diskon dihitung server (PromoEngine) saat checkout, belum
-                          ada perhitungan promo live di keranjang — tampilkan "−"
-                          sampai fitur itu dibangun terpisah. */}
-                      <td className="px-2 py-2 text-right font-mono text-xs text-gray-500">−</td>
-                      <td className="px-2 py-2 text-right font-mono text-xs font-bold text-gray-900"><Money amount={line.qty * line.unit_price} size="sm" /></td>
-                      <td className="px-2 py-2 text-center">
-                        <button
-                          type="button"
-                          onClick={() => removeLine(line.key)}
-                          className="mx-auto flex size-7 items-center justify-center rounded-lg border border-red-200 bg-white text-red-500 transition-colors hover:bg-red-50"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {cart.length === 0 && (
-                <div className="flex h-32 flex-col items-center justify-center text-gray-400">
-                  <ShoppingCart className="mb-2 size-8 opacity-30" />
-                  <p className="text-sm">Keranjang kosong</p>
-                </div>
-              )}
+        {/* GRID 2: KERANJANG TRANSAKSI (Kolom Tengah ~420px - 480px) */}
+        <section className="flex w-[400px] lg:w-[450px] xl:w-[480px] shrink-0 flex-col overflow-hidden border-r border-gray-200 bg-white p-3">
+          <div className="mb-3 flex items-center justify-between border-b border-gray-200 pb-2">
+            <div className="flex items-center gap-2">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-navy-800">Keranjang Transaksi</h2>
+              <Badge className="bg-navy-700 text-white font-bold text-xs">{cart.reduce((sum, item) => sum + item.qty, 0)} item</Badge>
             </div>
-          </div>
-        </section>
-      </div>
-
-      {/* Panel kanan */}
-      <aside className="flex w-[300px] shrink-0 flex-col gap-3 overflow-y-auto border-l border-gray-200 bg-white p-3">
-        {/* Pelanggan / Member */}
-        <section>
-          <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">Pelanggan / Member</h3>
-            {member && (
-              <button type="button" onClick={() => setMember(null)} className="text-gray-500 hover:text-gray-700">
-                <X className="size-3.5" />
+            {cart.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setCart([])}
+                className="text-[11px] font-medium text-red-500 hover:text-red-700 hover:underline"
+              >
+                Kosongkan
               </button>
             )}
           </div>
 
-          {!member ? (
-            <div className="flex flex-col gap-1.5">
-              <button
-                type="button"
-                onClick={() => memberInputRef.current?.focus()}
-                className="flex w-full items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-navy-300 py-2 text-xs font-medium text-navy-600 transition-colors hover:border-navy-500 hover:bg-navy-50"
-              >
-                <ScanLine className="size-4" />
-                Scan kartu member
-              </button>
-              <Input
-                ref={memberInputRef}
-                placeholder="Scan kartu / NIS / cari nama…"
-                value={memberQuery}
-                onChange={(e) => void searchMember(e.target.value)}
-                className={`h-8 rounded-lg text-xs ${posFieldClass}`}
-              />
-              {memberResults.length > 0 && (
-                <div className="flex flex-col divide-y divide-gray-100 rounded-lg border border-gray-300">
-                  {memberResults.map((m) => (
-                    <button key={m.id} type="button" onClick={() => pickMember(m)} className="p-1.5 text-left text-xs hover:bg-gray-50">
-                      <p className="font-medium text-gray-900">{m.name}</p>
-                      <p className="text-[11px] text-gray-500">{m.member_number} · <Money amount={m.balance_cache} size="sm" /></p>
+          {/* Table Keranjang Transaksi */}
+          <div className="flex-1 flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white neu-flat">
+            {/* Table Header */}
+            <div className="grid grid-cols-12 items-center gap-1.5 border-b border-gray-200 bg-navy-50/80 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-navy-800">
+              <div className="col-span-3">Produk</div>
+              <div className="col-span-3 text-right">Harga</div>
+              <div className="col-span-2 text-center">Qty</div>
+              <div className="col-span-3 text-right">Total</div>
+              <div className="col-span-1 text-center">#</div>
+            </div>
+
+            {/* Table Body Scrollable */}
+            <div className="flex-1 overflow-y-auto divide-y divide-gray-100">
+              {cart.map((line) => (
+                <div
+                  key={line.key}
+                  className="grid grid-cols-12 items-center gap-1.5 px-3 py-2.5 text-xs transition-colors hover:bg-gray-50/80"
+                >
+                  {/* Produk & SKU */}
+                  <div className="col-span-3 min-w-0 pr-1">
+                    <p className="truncate font-bold text-gray-900 text-xs" title={line.product_name}>
+                      {line.product_name}
+                    </p>
+                    {line.product_sku && (
+                      <p className="text-[10px] font-mono text-gray-400 truncate">
+                        {line.product_sku}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Harga Satuan */}
+                  <div className="col-span-3 text-right font-medium text-navy-800 text-xs whitespace-nowrap">
+                    <Money amount={line.unit_price} size="sm" />
+                  </div>
+
+                  {/* Qty Stepper */}
+                  <div className="col-span-2 flex justify-center">
+                    <div className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white p-0.5 shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => updateQty(line.key, -1)}
+                        className="flex size-5 items-center justify-center rounded text-xs font-bold text-gray-700 hover:bg-gray-100 active:scale-95"
+                      >
+                        −
+                      </button>
+                      <span className="w-4 text-center font-mono text-xs font-bold text-navy-950">{line.qty}</span>
+                      <button
+                        type="button"
+                        onClick={() => updateQty(line.key, 1)}
+                        className="flex size-5 items-center justify-center rounded text-xs font-bold text-gray-700 hover:bg-gray-100 active:scale-95"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Subtotal Item */}
+                  <div className="col-span-3 text-right font-mono font-bold text-navy-950 text-xs whitespace-nowrap">
+                    <Money amount={line.qty * line.unit_price} size="sm" />
+                  </div>
+
+                  {/* Tombol Hapus */}
+                  <div className="col-span-1 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => removeLine(line.key)}
+                      className="flex size-6 items-center justify-center rounded text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                      title="Hapus barang"
+                    >
+                      <Trash2 className="size-3.5" />
                     </button>
-                  ))}
+                  </div>
+                </div>
+              ))}
+
+              {cart.length === 0 && (
+                <div className="flex h-64 flex-col items-center justify-center p-6 text-gray-400">
+                  <ShoppingCart className="mb-3 size-10 opacity-30 text-navy-600" />
+                  <p className="text-sm font-semibold text-gray-600">Keranjang transaksi kosong</p>
+                  <p className="text-xs text-gray-400 text-center mt-1">Scan barcode (F3) atau pilih produk dari katalog.</p>
                 </div>
               )}
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 p-2">
-              <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-200">
-                <UserCircle className="size-full p-1 text-gray-500" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-semibold text-gray-900">{member.name}</p>
-                <p className="text-[11px] text-gray-500">Saldo: <span className="font-mono font-medium text-navy-700"><Money amount={member.balance_cache} size="sm" /></span></p>
-                <p className="text-[11px] text-gray-500">ID Member: {member.member_number}</p>
-                {member.level && <Badge className="mt-1 text-[10px]" variant="outline">{member.level.name}</Badge>}
-              </div>
-            </div>
-          )}
-        </section>
-
-        {/* Ringkasan */}
-        <section>
-          <h3 className="mb-2 text-xs font-bold uppercase tracking-widest text-gray-500">Ringkasan</h3>
-          <div className="space-y-1.5 text-xs">
-            <div className="flex justify-between text-gray-600">
-              <span>Subtotal</span>
-              <Money amount={subtotal} size="sm" />
-            </div>
-            <div className="flex justify-between text-gray-500">
-              <span>Diskon</span>
-              <span>−</span>
-            </div>
-            <div className="flex justify-between text-gray-600">
-              <span>Pajak</span>
-              <span>−</span>
-            </div>
-            <div className="mt-1.5 border-t border-gray-200 pt-1.5">
-              <div className="flex items-baseline justify-between">
-                <span className="text-sm font-bold text-gray-900">TOTAL</span>
-                <span className="font-mono text-lg font-bold text-navy-700"><Money amount={subtotal} size="lg" /></span>
-              </div>
             </div>
           </div>
         </section>
 
-        {holdError && <p className="text-xs text-danger">{holdError}</p>}
+        {/* GRID 3: RINGKASAN & PAYMENT (Kolom Kanan ~320px) */}
+        <aside className="flex w-[300px] lg:w-[320px] shrink-0 flex-col border-l border-gray-200 bg-white overflow-hidden">
+          {/* Top & Middle Scrollable Content Area */}
+          <div className="flex-1 overflow-y-auto p-3 space-y-3">
+            {/* Pelanggan / Member */}
+            <section>
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">Pelanggan / Member</h3>
+                {member && (
+                  <button type="button" onClick={() => setMember(null)} className="text-gray-500 hover:text-gray-700">
+                    <X className="size-3.5" />
+                  </button>
+                )}
+              </div>
 
-        {/* Tombol Bayar */}
-        <button
-          type="button"
-          onClick={openPayment}
-          disabled={cart.length === 0}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-success py-3 text-sm font-bold text-white transition-colors hover:bg-success/90 disabled:bg-gray-300"
-        >
-          <Wallet className="size-4" />
-          BAYAR <Money amount={subtotal} size="md" className="text-white" />
-        </button>
+              {!member ? (
+                <div className="flex flex-col gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => memberInputRef.current?.focus()}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-navy-300 py-2 text-xs font-medium text-navy-600 transition-colors hover:border-navy-500 hover:bg-navy-50"
+                  >
+                    <ScanLine className="size-4" />
+                    Scan kartu member
+                  </button>
+                  <Input
+                    ref={memberInputRef}
+                    placeholder="Scan kartu / NIS / cari nama…"
+                    value={memberQuery}
+                    onChange={(e) => void searchMember(e.target.value)}
+                    className={`h-8 rounded-lg text-xs ${posFieldClass}`}
+                  />
+                  {memberResults.length > 0 && (
+                    <div className="flex flex-col divide-y divide-gray-100 rounded-lg border border-gray-300">
+                      {memberResults.map((m) => (
+                        <button key={m.id} type="button" onClick={() => pickMember(m)} className="p-1.5 text-left text-xs hover:bg-gray-50">
+                          <p className="font-medium text-gray-900">{m.name}</p>
+                          <p className="text-[11px] text-gray-500">{m.member_number} · <Money amount={m.balance_cache} size="sm" /></p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 p-2">
+                  <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-200">
+                    <UserCircle className="size-full p-1 text-gray-500" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-semibold text-gray-900">{member.name}</p>
+                    <p className="text-[11px] text-gray-500">Saldo: <span className="font-mono font-medium text-navy-700"><Money amount={member.balance_cache} size="sm" /></span></p>
+                    <p className="text-[11px] text-gray-500">ID Member: {member.member_number}</p>
+                    {member.level && <Badge className="mt-1 text-[10px]" variant="outline">{member.level.name}</Badge>}
+                  </div>
+                </div>
+              )}
+            </section>
 
-        {/* Cash Masuk / Cash Keluar */}
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => openCashDialog('in')}
-            className="group flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white p-2 text-left transition-colors hover:border-green-300 hover:bg-green-50"
-          >
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-green-100 transition-colors group-hover:bg-green-200">
-              <ArrowDownCircle className="size-4 text-green-600" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-green-700">Cash Masuk</p>
-              <p className="text-[10px] text-gray-500">Tambah kas laci</p>
-            </div>
-          </button>
+            {/* Ringkasan */}
+            <section>
+              <h3 className="mb-2 text-xs font-bold uppercase tracking-widest text-gray-500">Ringkasan</h3>
+              <div className="space-y-1.5 text-xs">
+                <div className="flex justify-between text-gray-600">
+                  <span>Subtotal</span>
+                  <Money amount={subtotal} size="sm" />
+                </div>
+                <div className="flex justify-between text-gray-500">
+                  <span>Diskon</span>
+                  <span>−</span>
+                </div>
+                <div className="flex justify-between text-gray-600">
+                  <span>Pajak</span>
+                  <span>−</span>
+                </div>
+                <div className="mt-1.5 border-t border-gray-200 pt-1.5">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-sm font-bold text-gray-900">TOTAL</span>
+                    <span className="font-mono text-lg font-bold text-navy-700"><Money amount={subtotal} size="lg" /></span>
+                  </div>
+                </div>
+              </div>
+            </section>
 
-          <button
-            type="button"
-            onClick={() => openCashDialog('out')}
-            className="group flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white p-2 text-left transition-colors hover:border-red-300 hover:bg-red-50"
-          >
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-red-100 transition-colors group-hover:bg-red-200">
-              <ArrowUpCircle className="size-4 text-red-600" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-red-700">Cash Keluar</p>
-              <p className="text-[10px] text-gray-500">Pengeluaran kas kecil</p>
-            </div>
-          </button>
-        </div>
+            {/* METODE PEMBAYARAN (Grid Selector Direct - Compact Aesthetic State) */}
+            <section>
+              <h3 className="mb-1.5 text-xs font-bold uppercase tracking-widest text-gray-500">Metode Pembayaran</h3>
+              <div className="grid grid-cols-2 gap-1.5">
+                {paymentMethods.map((pm) => {
+                  const isSelected = activeMethod?.id === pm.id
+                  return (
+                    <button
+                      key={pm.id}
+                      type="button"
+                      onClick={() => setDirectMethodId(pm.id)}
+                      className={cn(
+                        'relative flex items-center justify-between rounded-lg border p-1.5 px-2.5 text-left transition-all duration-150 active:scale-95 shadow-2xs',
+                        isSelected
+                          ? 'border-navy-900 bg-navy-900 text-white shadow-md shadow-navy-900/30 ring-1 ring-navy-600 scale-[1.01]'
+                          : 'border-gray-200 bg-white text-gray-800 hover:border-navy-400 hover:bg-navy-50/40',
+                      )}
+                    >
+                      <span className={cn('text-[11px] font-bold leading-tight truncate', isSelected ? 'text-white' : 'text-gray-900')}>
+                        {pm.name}
+                      </span>
+                      {isSelected && (
+                        <div className="flex size-3.5 items-center justify-center rounded-full bg-amber-400 text-navy-950 shadow-2xs shrink-0 ml-1">
+                          <Check className="size-2.5 stroke-[3]" />
+                        </div>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
 
-        <button
-          type="button"
-          onClick={() => setHoldsOpen(true)}
-          className="w-full rounded-lg border border-gray-300 bg-white py-2 text-xs font-medium text-gray-600 hover:bg-gray-50"
-        >
-          Transaksi Ditahan ({holds.length})
-        </button>
-      </aside>
+            {/* FITUR KHUSUS CASH / TUNAI: Hitung Kembalian Otomatis */}
+            {isCash && (
+              <section className="rounded-xl border border-gray-200 bg-gray-50/70 p-2.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-gray-600">Nominal Uang Bayar</span>
+                  <button
+                    type="button"
+                    onClick={() => setCashInput(subtotal)}
+                    className="text-[11px] font-bold text-navy-700 hover:underline"
+                  >
+                    Uang Pas
+                  </button>
+                </div>
+
+                {/* Quick Nominal Chips */}
+                <div className="flex flex-wrap gap-1">
+                  {[10000, 20000, 50000, 100000].map((nominal) => (
+                    <button
+                      key={nominal}
+                      type="button"
+                      onClick={() => setCashInput(nominal)}
+                      className={`rounded-md border px-2 py-1 text-[11px] font-mono font-semibold transition-colors ${
+                        cashInput === nominal
+                          ? 'border-navy-600 bg-navy-600 text-white'
+                          : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      {(nominal / 1000).toLocaleString('id-ID')}k
+                    </button>
+                  ))}
+                </div>
+
+                {/* Input Nominal Manual dengan Titik Otomatis */}
+                <div className="relative">
+                  <MoneyInput
+                    value={cashInput}
+                    onChange={setCashInput}
+                    placeholder="Uang diterima (Rp)…"
+                    className="h-9 w-full rounded-lg border border-gray-300 bg-white px-3 text-xs font-mono font-bold text-gray-900 placeholder:text-gray-400 shadow-sm focus:border-navy-500 focus:outline-none focus:ring-2 focus:ring-navy-500"
+                  />
+                </div>
+
+                {/* Live Kembalian / Kekurangan Preview Box */}
+                {cashInput > 0 && (
+                  <div>
+                    {cashInput >= subtotal ? (
+                      <div className="flex items-center justify-between rounded-lg border border-green-300 bg-green-50 p-2 text-xs text-green-900 font-semibold">
+                        <span>Kembalian:</span>
+                        <span className="font-mono text-sm font-extrabold text-green-700">
+                          Rp {(changeAmount).toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 font-semibold">
+                        <span>Uang Kurang:</span>
+                        <span className="font-mono text-xs font-bold text-amber-700">
+                          Rp {(underpaidAmount).toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {holdError && <p className="text-xs text-danger">{holdError}</p>}
+            {paymentError && <p className="text-xs text-red-600 font-semibold bg-red-50 p-2 rounded border border-red-200">{paymentError}</p>}
+          </div>
+
+          {/* Fixed Bottom Action Footer */}
+          <div className="shrink-0 border-t border-gray-200 bg-white p-3 space-y-2 shadow-md">
+            {/* Tombol Bayar Langsung */}
+            <button
+              type="button"
+              onClick={handleDirectSubmit}
+              disabled={cart.length === 0 || submitting || (isCash && cashInput > 0 && cashInput < subtotal)}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-success py-3 text-sm font-bold text-white transition-all duration-150 hover:bg-success/90 disabled:bg-gray-300 disabled:shadow-none shadow-md shadow-emerald-900/30 neu-btn-primary active:scale-95"
+            >
+              <Wallet className="size-4" />
+              {submitting
+                ? 'Memproses…'
+                : `BAYAR Rp ${(subtotal).toLocaleString('id-ID')} (F9)`}
+            </button>
+
+            {/* Cash Masuk / Cash Keluar */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => openCashDialog('in')}
+                className="group flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white p-2 text-left transition-colors hover:border-green-300 hover:bg-green-50"
+              >
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-green-100 transition-colors group-hover:bg-green-200">
+                  <ArrowDownCircle className="size-4 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-green-700">Cash Masuk</p>
+                  <p className="text-[10px] text-gray-500">Kas laci</p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openCashDialog('out')}
+                className="group flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white p-2 text-left transition-colors hover:border-red-300 hover:bg-red-50"
+              >
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-red-100 transition-colors group-hover:bg-red-200">
+                  <ArrowUpCircle className="size-4 text-red-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-red-700">Cash Keluar</p>
+                  <p className="text-[10px] text-gray-500">Kas kecil</p>
+                </div>
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setHoldsOpen(true)}
+              className="w-full rounded-lg border border-gray-300 bg-white py-2 text-xs font-medium text-gray-600 hover:bg-gray-50"
+            >
+              Transaksi Ditahan ({holds.length})
+            </button>
+          </div>
+        </aside>
     </div>
-
-    {/* Footer hotkey bar */}
-    <footer className="flex h-11 shrink-0 items-center gap-1.5 bg-navy-900 px-3">
-      {[
-        { key: 'F3', label: 'Cari', icon: Search, onClick: focusScan },
-        { key: 'F4', label: 'Tahan', icon: Pause, onClick: doHold, disabled: cart.length === 0 },
-        { key: 'F5', label: 'Panggil', icon: Phone, onClick: () => setHoldsOpen(true) },
-        { key: 'F9', label: 'Bayar', icon: CreditCard, onClick: openPayment, disabled: cart.length === 0, className: 'bg-green-600 border-green-500 hover:bg-green-700' },
-        { key: 'F11', label: 'Cash Masuk', icon: ArrowDownCircle, onClick: () => openCashDialog('in'), className: 'bg-green-700 border-green-600 hover:bg-green-800' },
-        { key: 'F12', label: 'Cash Keluar', icon: ArrowUpCircle, onClick: () => openCashDialog('out'), className: 'bg-red-700 border-red-600 hover:bg-red-800' },
-      ].map((btn) => (
-        <button
-          key={btn.key}
-          type="button"
-          onClick={btn.onClick}
-          disabled={btn.disabled}
-          className={`flex flex-1 items-center justify-center gap-1 rounded-md border border-navy-700 bg-navy-800 px-1.5 py-1.5 text-[11px] font-medium text-white transition-colors hover:bg-navy-700 disabled:opacity-40 ${btn.className ?? ''}`}
-        >
-          <span className="font-mono text-[9px] font-bold opacity-70">{btn.key}</span>
-          <btn.icon className="size-3 shrink-0" />
-          <span className="hidden sm:inline">{btn.label}</span>
-        </button>
-      ))}
-    </footer>
 
       <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
         <DialogContent className="bg-white text-gray-900">
@@ -1044,24 +1473,191 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
-  )
-}
 
-function PosIndexShell({ children }: { children: ReactNode }) {
-  const { props } = usePage<PageProps<PosIndexProps>>()
+      {/* Dialog Modal Input Metode Pembayaran (Phase 2) */}
+      <Dialog open={methodDialog !== null} onOpenChange={(open) => !open && setMethodDialog(null)}>
+        <DialogContent className="bg-white text-gray-900 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-gray-900 font-extrabold text-base">
+              {methodDialog?.type === 'deposit' && 'Otentikasi PIN Deposit Member'}
+              {methodDialog?.type === 'card' && 'Detail Transaksi Mesin EDC (Kartu)'}
+              {methodDialog?.type === 'voucher' && 'Input Voucher Belanja Toko'}
+              {methodDialog?.type === 'point' && 'Penukaran Poin Loyalty Member'}
+              {methodDialog?.type === 'credit' && 'Konfirmasi Kredit / Tempo (Piutang)'}
+              {methodDialog?.type === 'payroll' && 'Konfirmasi Pemotongan Gaji Pegawai'}
+            </DialogTitle>
+          </DialogHeader>
 
-  return (
-    <PosLayout
-      outletName={props.outlet?.name}
-      cashierName={props.auth.user?.name ?? '-'}
-      sessionLabel={props.session ? `Sesi ${props.session.reference}` : 'Belum ada sesi'}
-      hasActiveSession={props.session !== null}
-      onCloseSession={() => router.visit(route('admin.cashier-session.index'))}
-    >
-      {children}
+          {methodDialog?.type === 'deposit' && member && (
+            <div className="flex flex-col gap-3 py-1">
+              <div className="rounded-xl border border-navy-200 bg-navy-50/60 p-3 text-xs space-y-1">
+                <p className="font-semibold text-navy-900">Anggota: <span className="font-bold">{member.name}</span> ({member.member_number})</p>
+                <p className="text-gray-600">Saldo Deposit: <span className="font-bold text-emerald-700">Rp {member.balance_cache.toLocaleString('id-ID')}</span></p>
+                <p className="text-gray-600">Total Belanja: <span className="font-bold text-navy-950">Rp {subtotal.toLocaleString('id-ID')}</span></p>
+              </div>
+              <div className="space-y-1.5 text-center">
+                <Label className="text-xs text-gray-600 font-semibold">Masukkan PIN Anggota (6-digit)</Label>
+                <PinInput value={depositPin} onChange={setDepositPin} length={6} />
+              </div>
+            </div>
+          )}
+
+          {methodDialog?.type === 'card' && (
+            <div className="flex flex-col gap-3 py-1">
+              <div className="space-y-1">
+                <Label className="text-xs text-gray-600">Pilih Bank Mesin EDC</Label>
+                <Select value={edcBank} onValueChange={setEdcBank}>
+                  <SelectTrigger className={posFieldClass}>
+                    <SelectValue placeholder="Pilih Bank" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="BCA">EDC BCA</SelectItem>
+                    <SelectItem value="Mandiri">EDC Mandiri</SelectItem>
+                    <SelectItem value="BRI">EDC BRI</SelectItem>
+                    <SelectItem value="BNI">EDC BNI</SelectItem>
+                    <SelectItem value="CIMB">EDC CIMB Niaga</SelectItem>
+                    <SelectItem value="Lainnya">Mesin EDC Lainnya</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-gray-600">No. Referensi / Trace EDC (Wajib)</Label>
+                <Input
+                  value={edcRefNo}
+                  onChange={(e) => setEdcRefNo(e.target.value)}
+                  placeholder="Contoh: 123456 (tertera di struk EDC)"
+                  className={posFieldClass}
+                  autoFocus
+                />
+              </div>
+            </div>
+          )}
+
+          {methodDialog?.type === 'voucher' && (
+            <div className="flex flex-col gap-3 py-1">
+              <div className="space-y-1">
+                <Label className="text-xs text-gray-600">Kode / Barcode Voucher</Label>
+                <Input
+                  value={voucherCode}
+                  onChange={(e) => setVoucherCode(e.target.value)}
+                  placeholder="Scan atau ketik kode voucher…"
+                  className={posFieldClass}
+                  autoFocus
+                />
+              </div>
+            </div>
+          )}
+
+          {methodDialog?.type === 'point' && member && (
+            <div className="flex flex-col gap-3 py-1">
+              <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs space-y-1.5">
+                <p className="font-semibold text-amber-950">Anggota: <span className="font-bold">{member.name}</span></p>
+                <p className="text-amber-800">Total Poin Dimiliki: <span className="font-bold font-mono">{member.point_balance} poin</span></p>
+                <p className="text-amber-800">Poin Dibutuhkan: <span className="font-bold font-mono text-amber-950">{methodDialog.pointsNeeded} poin</span></p>
+                <p className="text-xs text-amber-700 font-mono">Rate: 1 Poin = Rp {pointValue.toLocaleString('id-ID')}</p>
+              </div>
+            </div>
+          )}
+
+          {methodDialog?.type === 'credit' && member && (
+            <div className="flex flex-col gap-3 py-1">
+              <div className="rounded-xl border border-navy-200 bg-navy-50/70 p-3 text-xs space-y-1.5">
+                <p className="font-semibold text-navy-950">Anggota: <span className="font-bold">{member.name}</span> ({member.member_number})</p>
+                <p className="text-navy-800">Limit Piutang: <span className="font-bold font-mono">Rp {methodDialog.limit.toLocaleString('id-ID')}</span></p>
+                <p className="text-navy-800">Piutang Aktif: <span className="font-bold font-mono">Rp {methodDialog.active.toLocaleString('id-ID')}</span></p>
+                <p className="text-navy-900 border-t border-navy-200 pt-1">Belanja Baru (Jatuh Tempo 30 Hari): <span className="font-bold text-emerald-700 font-mono">Rp {subtotal.toLocaleString('id-ID')}</span></p>
+              </div>
+            </div>
+          )}
+
+          {methodDialog?.type === 'payroll' && member && (
+            <div className="flex flex-col gap-3 py-1">
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-xs space-y-1.5">
+                <p className="font-semibold text-emerald-950">Pegawai/Staf: <span className="font-bold">{member.name}</span> ({member.member_number})</p>
+                <p className="text-emerald-800">Jabatan/Tipe: <span className="font-bold uppercase font-mono">{member.type}</span></p>
+                <p className="text-emerald-900 border-t border-emerald-200 pt-1">Total Potong Gaji Periode Ini: <span className="font-bold text-emerald-950 font-mono">Rp {subtotal.toLocaleString('id-ID')}</span></p>
+              </div>
+            </div>
+          )}
+
+          {methodDialogError && (
+            <p className="text-xs text-red-600 font-semibold bg-red-50 p-2 rounded border border-red-200">{methodDialogError}</p>
+          )}
+
+          <DialogFooter className="bg-gray-50 flex gap-2">
+            <Button variant="outline" onClick={() => setMethodDialog(null)}>Batal</Button>
+            <Button
+              disabled={submitting}
+              onClick={() => {
+                if (methodDialog?.type === 'deposit') {
+                  if (subtotal >= noPinThreshold && depositPin.length < 6) {
+                    setMethodDialogError('PIN harus 6 digit angka.')
+                    return
+                  }
+                  executeSaleStore({ pin: depositPin })
+                } else if (methodDialog?.type === 'card') {
+                  if (!edcRefNo.trim()) {
+                    setMethodDialogError('Nomor referensi / approval EDC wajib diisi.')
+                    return
+                  }
+                  executeSaleStore({ reference_no: `${edcBank}-${edcRefNo.trim()}` })
+                } else if (methodDialog?.type === 'voucher') {
+                  if (!voucherCode.trim()) {
+                    setMethodDialogError('Kode voucher wajib diisi.')
+                    return
+                  }
+                  executeSaleStore({ reference_no: voucherCode.trim(), coupon_code: voucherCode.trim() })
+                } else if (methodDialog?.type === 'point') {
+                  executeSaleStore({ point_used: methodDialog.pointsNeeded })
+                } else if (methodDialog?.type === 'credit') {
+                  executeSaleStore()
+                } else if (methodDialog?.type === 'payroll') {
+                  executeSaleStore({ reference_no: member?.member_number ?? '' })
+                }
+              }}
+              className="bg-emerald-600 hover:bg-emerald-700 font-bold text-white"
+            >
+              {submitting ? 'Memproses…' : 'Konfirmasi & Bayar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Popup Berhasil Transaksi (Center Screen Overlay) */}
+      <Dialog open={completedSale !== null} onOpenChange={(open) => !open && setCompletedSale(null)}>
+        <DialogContent className="bg-white text-gray-900 max-w-sm text-center p-6 rounded-2xl shadow-xl">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-md">
+            <CheckCircle2 className="size-8 stroke-[2.5]" />
+          </div>
+          <div className="mt-3 space-y-1">
+            <h3 className="text-lg font-extrabold text-gray-900">Transaksi Berhasil!</h3>
+            <p className="text-xs text-gray-500 font-mono">No. Nota: <span className="font-bold text-navy-950">{completedSale?.ref}</span></p>
+          </div>
+
+          <div className="mt-5 flex flex-col gap-2">
+            <Button
+              onClick={() => {
+                if (completedSale) {
+                  window.open(route('pos.sales.receipt-pdf', completedSale.id), '_blank', 'width=400,height=600')
+                }
+              }}
+              className="bg-emerald-600 hover:bg-emerald-700 font-bold text-white w-full rounded-xl py-2.5 shadow-sm"
+            >
+              <Printer className="mr-2 size-4" /> Cetak Struk (PDF)
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCompletedSale(null)
+                focusScan()
+              }}
+              className="border-gray-300 text-gray-700 hover:bg-gray-100 font-semibold w-full rounded-xl"
+            >
+              Transaksi Baru (Esc)
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </PosLayout>
   )
 }
-
-Index.layout = (page: ReactElement) => <PosIndexShell>{page}</PosIndexShell>
