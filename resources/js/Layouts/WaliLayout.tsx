@@ -28,7 +28,7 @@ export default function WaliLayout({ children, active }: WaliLayoutProps) {
 
   return (
     <div className="flex min-h-screen flex-col bg-bg pb-16">
-      <header className="flex h-14 items-center justify-between border-b border-border bg-surface px-4">
+      <header className="flex h-14 items-center justify-between border-b border-border bg-surface px-4 sm:px-6">
         <p className="text-sm font-medium text-content">{guardianAuth.guardian?.name ?? 'Wali Santri'}</p>
         <div className="flex items-center gap-1">
           <NotificationBell
@@ -44,7 +44,7 @@ export default function WaliLayout({ children, active }: WaliLayoutProps) {
         </div>
       </header>
 
-      <main className="flex-1 px-4 py-4">{children}</main>
+      <main className="mx-auto w-full max-w-4xl flex-1 px-4 sm:px-6 py-6">{children}</main>
 
       <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-border bg-surface">
         {bottomNav.map((item) => {

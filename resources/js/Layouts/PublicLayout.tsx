@@ -19,7 +19,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
   return (
     <div className="flex min-h-screen flex-col bg-bg">
       <header className="border-b border-border bg-surface">
-        <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-4">
+        <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/" className="font-mono text-lg font-semibold text-navy-700 dark:text-navy-100">
             Skillage Mart
           </Link>
@@ -43,10 +43,10 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[1200px] flex-1 px-4 py-8">{children}</main>
+      <main className="mx-auto w-full max-w-[1280px] flex-1 px-4 sm:px-6 lg:px-8 py-8">{children}</main>
 
       <footer className="border-t border-border bg-surface">
-        <div className="mx-auto flex max-w-[1200px] flex-col justify-between gap-4 px-4 py-8 text-sm text-content-muted sm:flex-row sm:items-center">
+        <div className="mx-auto flex max-w-[1280px] flex-col justify-between gap-4 px-4 sm:px-6 lg:px-8 py-8 text-sm text-content-muted sm:flex-row sm:items-center">
           <div>
             <p className="font-medium text-content">Skillage Mart</p>
             <p>SMK Skill Village Islamic School — Jonggol, Kabupaten Bogor</p>

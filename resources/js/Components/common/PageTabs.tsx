@@ -28,16 +28,26 @@ export function PageTabs({ tabs, current }: PageTabsProps) {
   if (visible.length <= 1) return null
 
   return (
-    <Tabs value={current} onValueChange={(key) => {
-      const target = visible.find((t) => t.key === key)
-      if (target) router.visit(target.href, { preserveScroll: true })
-    }}
-    >
-      <TabsList variant="line" className="w-full justify-start overflow-x-auto">
-        {visible.map((tab) => (
-          <TabsTrigger key={tab.key} value={tab.key}>{tab.label}</TabsTrigger>
-        ))}
-      </TabsList>
-    </Tabs>
+    <div className="mb-4 overflow-hidden rounded-xl border border-border/90 bg-surface neu-flat p-1.5 shadow-sm">
+      <Tabs
+        value={current}
+        onValueChange={(key) => {
+          const target = visible.find((t) => t.key === key)
+          if (target) router.visit(target.href, { preserveScroll: true })
+        }}
+      >
+        <TabsList variant="default" className="w-full flex items-center justify-between border-none bg-transparent p-0 gap-2">
+          {visible.map((tab) => (
+            <TabsTrigger
+              key={tab.key}
+              value={tab.key}
+              className="flex-1 w-full justify-center text-center py-2.5 text-xs font-semibold uppercase tracking-wider transition-all duration-200"
+            >
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+    </div>
   )
 }

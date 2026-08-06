@@ -237,3 +237,29 @@
     background: transparent;
   }
 }
+
+/*
+ * NEUMORPHISM (SOFT UI) UTILITIES - DESIGN.md Specification
+ */
+@layer utilities {
+  .neu-flat {
+    box-shadow: 5px 5px 12px rgba(184, 196, 214, 0.45), -5px -5px 12px rgba(255, 255, 255, 0.85);
+  }
+
+  .neu-pressed {
+    box-shadow: inset 3px 3px 7px rgba(184, 196, 214, 0.5), inset -3px -3px 7px rgba(255, 255, 255, 0.9);
+  }
+
+  .neu-btn-primary {
+    background: linear-gradient(145deg, #10b981, #059669);
+    box-shadow: 4px 4px 12px rgba(5, 150, 105, 0.45), -4px -4px 12px rgba(255, 255, 255, 0.5);
+  }
+
+  .dark .neu-flat {
+    box-shadow: 5px 5px 12px #101217, -5px -5px 12px #242a36;
+  }
+
+  .dark .neu-pressed {
+    box-shadow: inset 3px 3px 7px #101217, inset -3px -3px 7px #242a36;
+  }
+}

@@ -20,7 +20,7 @@ export function Money({ amount, className, showSign = false, size = 'md' }: Mone
   return (
     <span
       className={cn(
-        'font-mono tabular-nums',
+        'font-mono tabular-nums whitespace-nowrap',
         sizeClass[size],
         amount < 0 && 'text-danger',
         showSign && amount > 0 && 'text-success',

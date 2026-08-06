@@ -11,36 +11,31 @@ type MoneyInputProps = {
   disabled?: boolean
 }
 
+function formatWithDots(val: number): string {
+  if (!val) return ''
+  return val.toLocaleString('id-ID')
+}
+
 export const MoneyInput = forwardRef<HTMLInputElement, MoneyInputProps>(
   ({ value, onChange, className, placeholder, disabled }, ref) => {
-    const [display, setDisplay] = useState(value ? formatMoney(value) : '')
-    const [focused, setFocused] = useState(false)
+    const [display, setDisplay] = useState(value ? formatWithDots(value) : '')
 
     useEffect(() => {
-      if (!focused) {
-        setDisplay(value ? formatMoney(value) : '')
-      }
-    }, [value, focused])
+      setDisplay(value ? formatWithDots(value) : '')
+    }, [value])
 
     return (
       <Input
         ref={ref}
+        type="text"
         inputMode="numeric"
         className={cn('font-mono tabular-nums', className)}
         placeholder={placeholder ?? 'Rp 0'}
         disabled={disabled}
         value={display}
-        onFocus={() => {
-          setFocused(true)
-          setDisplay(value ? String(value) : '')
-        }}
-        onBlur={() => {
-          setFocused(false)
-          setDisplay(value ? formatMoney(value) : '')
-        }}
         onChange={(e) => {
           const parsed = parseMoney(e.target.value)
-          setDisplay(e.target.value)
+          setDisplay(parsed ? formatWithDots(parsed) : '')
           onChange(parsed)
         }}
       />

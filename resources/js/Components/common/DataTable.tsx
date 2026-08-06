@@ -50,6 +50,7 @@ type DataTableProps<TData> = {
   data: TData[]
   pagination?: ServerPagination
   enableRowSelection?: boolean
+  showNumberColumn?: boolean
   bulkActions?: BulkAction[]
   getRowId?: (row: TData) => string
   emptyTitle?: string
@@ -61,6 +62,7 @@ export function DataTable<TData>({
   data,
   pagination,
   enableRowSelection = false,
+  showNumberColumn = true,
   bulkActions,
   getRowId,
   emptyTitle = 'Belum ada data',
@@ -90,9 +92,29 @@ export function DataTable<TData>({
     enableHiding: false,
   }
 
+  const hasNoCol = columns.some((col) => col.id === 'no' || col.id === 'rowNumber' || col.id === 'number')
+
+  const numberColumn: ColumnDef<TData, unknown> = {
+    id: 'rowNumber',
+    header: 'No.',
+    cell: ({ row }) => {
+      const pageIndex = pagination ? pagination.page - 1 : 0
+      const pageSize = pagination ? pagination.perPage : 10
+      return <span className="font-mono text-xs text-content-muted font-medium">{pageIndex * pageSize + row.index + 1}</span>
+    },
+    enableSorting: false,
+    enableHiding: false,
+  }
+
+  const finalColumns = [
+    ...(enableRowSelection ? [selectionColumn] : []),
+    ...(showNumberColumn && !hasNoCol ? [numberColumn] : []),
+    ...columns,
+  ]
+
   const table = useReactTable({
     data,
-    columns: enableRowSelection ? [selectionColumn, ...columns] : columns,
+    columns: finalColumns,
     state: { sorting, rowSelection, columnVisibility },
     getRowId,
     enableRowSelection,
@@ -108,7 +130,7 @@ export function DataTable<TData>({
   const totalPages = pagination ? Math.max(1, Math.ceil(pagination.total / pagination.perPage)) : 1
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 flex-1 min-h-[450px]">
       <div className="flex justify-end">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -134,7 +156,7 @@ export function DataTable<TData>({
         </DropdownMenu>
       </div>
 
-      <div className="relative max-h-[70vh] overflow-auto rounded-lg border border-border">
+      <div className="relative flex-1 min-h-[380px] overflow-auto rounded-lg border border-border">
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-surface">
             {table.getHeaderGroups().map((headerGroup) => (
@@ -186,32 +208,37 @@ export function DataTable<TData>({
       </div>
 
       {pagination && (
-        <Pagination>
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                onClick={() => pagination.page > 1 && pagination.onPageChange(pagination.page - 1)}
-                className={pagination.page <= 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-              />
-            </PaginationItem>
-            {Array.from({ length: totalPages }, (_, i) => i + 1)
-              .filter((p) => Math.abs(p - pagination.page) <= 1 || p === 1 || p === totalPages)
-              .map((p, index, arr) => (
-                <PaginationItem key={p}>
-                  {index > 0 && arr[index - 1] !== p - 1 && <span className="px-2 text-content-muted">…</span>}
-                  <PaginationLink isActive={p === pagination.page} onClick={() => pagination.onPageChange(p)} className="cursor-pointer">
-                    {p}
-                  </PaginationLink>
-                </PaginationItem>
-              ))}
-            <PaginationItem>
-              <PaginationNext
-                onClick={() => pagination.page < totalPages && pagination.onPageChange(pagination.page + 1)}
-                className={pagination.page >= totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
+        <div className="flex shrink-0 items-center justify-between border-t border-border pt-3 text-xs text-content-muted">
+          <p>
+            Menampilkan <span className="font-mono font-bold text-content">{pagination.total > 0 ? (pagination.page - 1) * pagination.perPage + 1 : 0}</span> - <span className="font-mono font-bold text-content">{Math.min(pagination.page * pagination.perPage, pagination.total)}</span> dari <span className="font-mono font-bold text-content">{pagination.total}</span> data
+          </p>
+          <Pagination className="w-auto m-0">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  onClick={() => pagination.page > 1 && pagination.onPageChange(pagination.page - 1)}
+                  className={pagination.page <= 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                />
+              </PaginationItem>
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((p) => Math.abs(p - pagination.page) <= 1 || p === 1 || p === totalPages)
+                .map((p, index, arr) => (
+                  <PaginationItem key={p}>
+                    {index > 0 && arr[index - 1] !== p - 1 && <span className="px-2 text-content-muted">…</span>}
+                    <PaginationLink isActive={p === pagination.page} onClick={() => pagination.onPageChange(p)} className="cursor-pointer">
+                      {p}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+              <PaginationItem>
+                <PaginationNext
+                  onClick={() => pagination.page < totalPages && pagination.onPageChange(pagination.page + 1)}
+                  className={pagination.page >= totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
       )}
 
       {enableRowSelection && bulkActions && (
