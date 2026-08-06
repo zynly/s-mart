@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreProductRequest;
+use App\Http\Requests\Admin\UpdateProductPriceRequest;
 use App\Http\Requests\Admin\UpdateProductRequest;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\Unit;
+use App\Services\PriceService;
 use App\Services\ProductService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,7 +21,10 @@ use Inertia\Response;
 
 class ProductController extends Controller
 {
-    public function __construct(private readonly ProductService $productService) {}
+    public function __construct(
+        private readonly ProductService $productService,
+        private readonly PriceService $priceService,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -94,6 +99,30 @@ class ProductController extends Controller
         $this->productService->update($product, $data, $request->validated('barcodes', []));
 
         return back()->with('success', 'Produk berhasil diperbarui.');
+    }
+
+    /**
+     * Gap ditemukan: `PriceService::changePrice()` hanya pernah dipanggil
+     * dari `ProductService::create()` (harga AWAL saat produk dibuat) —
+     * tidak ada satu pun jalur untuk MENGUBAH harga produk yang sudah
+     * ada. `product_prices` immutable (lihat komentar `PriceService`):
+     * "ubah harga" = tutup baris lama (`effective_to`) + insert baris
+     * baru, bukan UPDATE — persis yang dilakukan `changePrice()`.
+     */
+    public function updatePrice(UpdateProductPriceRequest $request, Product $product): RedirectResponse
+    {
+        $data = $request->validated();
+
+        $this->priceService->changePrice(
+            $product,
+            Outlet::findOrFail($data['outlet_id']),
+            Unit::findOrFail($data['unit_id']),
+            $data['price'],
+            $data['effective_from'] ?? now()->toDateString(),
+            $data['member_price'] ?? null,
+        );
+
+        return back()->with('success', 'Harga produk berhasil diperbarui.');
     }
 
     /**

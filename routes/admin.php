@@ -81,6 +81,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     });
     Route::post('/products', [ProductController::class, 'store'])->name('products.store')->middleware('can:product.create');
     Route::put('/products/{product}', [ProductController::class, 'update'])->name('products.update')->middleware('can:product.update');
+    Route::post('/products/{product}/price', [ProductController::class, 'updatePrice'])->name('products.update-price')->middleware('can:product.update');
     Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy')->middleware('can:product.delete');
 
     Route::middleware('can:category.view')->group(function () {

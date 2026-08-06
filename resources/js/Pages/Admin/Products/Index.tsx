@@ -17,6 +17,7 @@ import { Badge } from '@/Components/ui/badge'
 import { Switch } from '@/Components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { AppSheet } from '@/Components/common/AppSheet'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/Components/ui/dropdown-menu'
 import type { Paginated } from '@/Types'
@@ -35,7 +36,7 @@ type ProductRow = {
   is_favorite: boolean
   is_visible_public: boolean
   barcodes: { id: number; barcode: string; is_primary: boolean }[]
-  prices: { id: number; price: number; outlet_id: number }[]
+  prices: { id: number; price: number; member_price: number | null; outlet_id: number; unit_id: number }[]
   image_url: string | null
 }
 
@@ -79,6 +80,42 @@ export default function Index({ tab, products, categories, brands, units, outlet
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<ProductRow | null>(null)
   const form = useForm(emptyForm)
+
+  const [priceDialogOpen, setPriceDialogOpen] = useState(false)
+  const [priceTarget, setPriceTarget] = useState<ProductRow | null>(null)
+  const priceForm = useForm({
+    outlet_id: '',
+    unit_id: '',
+    price: 0,
+    member_price: null as number | null,
+    effective_from: new Date().toISOString().slice(0, 10),
+  })
+
+  function openPriceDialog(row: ProductRow) {
+    setPriceTarget(row)
+    // Prefill dari harga aktif outlet PERTAMA yang sudah punya harga
+    // (biasanya outlet utama) — admin tetap bisa ganti outlet/satuan
+    // manual kalau mau atur harga outlet lain.
+    const current = row.prices[0]
+    priceForm.setData({
+      outlet_id: current ? String(current.outlet_id) : (outlets[0] ? String(outlets[0].id) : ''),
+      unit_id: current ? String(current.unit_id) : String(row.base_unit.id),
+      price: current?.price ?? 0,
+      member_price: current?.member_price ?? null,
+      effective_from: new Date().toISOString().slice(0, 10),
+    })
+    priceForm.clearErrors()
+    setPriceDialogOpen(true)
+  }
+
+  const submitPrice: FormEventHandler = (e) => {
+    e.preventDefault()
+    if (!priceTarget) return
+    priceForm.post(route('admin.products.update-price', priceTarget.id), {
+      preserveScroll: true,
+      onSuccess: () => setPriceDialogOpen(false),
+    })
+  }
 
   function applyFilter() {
     router.get(route('admin.products.index'), { search, category_id: categoryFilter }, { preserveState: true, replace: true })
@@ -187,6 +224,7 @@ export default function Index({ tab, products, categories, brands, units, outlet
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => openEdit(row.original)}>Ubah</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openPriceDialog(row.original)}>Ubah Harga</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -436,6 +474,54 @@ export default function Index({ tab, products, categories, brands, units, outlet
             </Tabs>
           </form>
       </AppSheet>
+
+      <Dialog open={priceDialogOpen} onOpenChange={setPriceDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ubah Harga — {priceTarget?.name}</DialogTitle>
+          </DialogHeader>
+          <form id="price-form" onSubmit={submitPrice} className="flex flex-col gap-4">
+            <p className="text-sm text-content-muted">
+              Harga lama otomatis ditutup pada tanggal berlaku baru (riwayat harga tidak dihapus, hanya diakhiri).
+            </p>
+            <div className="space-y-1.5">
+              <Label>Outlet</Label>
+              <Select value={priceForm.data.outlet_id} onValueChange={(v) => priceForm.setData('outlet_id', v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {outlets.map((o) => <SelectItem key={o.id} value={String(o.id)}>{o.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Satuan Harga</Label>
+              <Select value={priceForm.data.unit_id} onValueChange={(v) => priceForm.setData('unit_id', v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {units.map((u) => <SelectItem key={u.id} value={String(u.id)}>{u.name} ({u.code})</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Harga Jual Baru</Label>
+              <MoneyInput value={priceForm.data.price} onChange={(v) => priceForm.setData('price', v)} />
+              {priceForm.errors.price && <p className="text-sm text-danger">{priceForm.errors.price}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <Label>Harga Anggota (opsional)</Label>
+              <MoneyInput value={priceForm.data.member_price ?? 0} onChange={(v) => priceForm.setData('member_price', v || null)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Berlaku Mulai</Label>
+              <Input type="date" value={priceForm.data.effective_from} onChange={(e) => priceForm.setData('effective_from', e.target.value)} />
+              {priceForm.errors.effective_from && <p className="text-sm text-danger">{priceForm.errors.effective_from}</p>}
+            </div>
+          </form>
+          <DialogFooter>
+            <Button type="submit" form="price-form" disabled={priceForm.processing}>Simpan Harga</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
