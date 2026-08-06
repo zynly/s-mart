@@ -1,8 +1,8 @@
 import type { ReactElement, ReactNode } from 'react'
 import { router, usePage } from '@inertiajs/react'
+import { Check } from 'lucide-react'
 import PosLayout from '@/Layouts/PosLayout'
 import { Money } from '@/Components/common/Money'
-import { Button } from '@/Components/ui/button'
 import type { PageProps } from '@/Types'
 
 type SaleDetail = {
@@ -23,39 +23,37 @@ type SaleDetail = {
 export default function Receipt({ sale }: { sale: SaleDetail }) {
   return (
     <div className="mx-auto flex h-full max-w-md flex-col items-center gap-4 overflow-y-auto p-6">
-      <div className="flex size-16 items-center justify-center rounded-full bg-success/10 text-success">
-        <svg xmlns="http://www.w3.org/2000/svg" className="size-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-        </svg>
+      <div className="flex size-16 items-center justify-center rounded-full bg-green-100 text-green-600">
+        <Check className="size-8" strokeWidth={2.5} />
       </div>
-      <p className="text-lg font-semibold">Transaksi Berhasil</p>
-      <p className="font-mono text-content-muted">{sale.reference}</p>
+      <p className="text-lg font-semibold text-gray-900">Transaksi Berhasil</p>
+      <p className="font-mono text-gray-500">{sale.reference}</p>
 
-      <div className="w-full rounded-lg border border-border bg-surface p-4">
+      <div className="w-full rounded-xl border border-gray-200 bg-white p-4">
         {sale.items.map((item) => (
-          <div key={item.id} className="flex justify-between py-1 text-sm">
+          <div key={item.id} className="flex justify-between py-1 text-sm text-gray-700">
             <span>{item.product.name} × {item.qty}</span>
             <Money amount={item.subtotal} size="sm" />
           </div>
         ))}
-        <div className="mt-2 flex justify-between border-t border-border pt-2 font-semibold">
+        <div className="mt-2 flex justify-between border-t border-gray-200 pt-2 font-semibold text-gray-900">
           <span>TOTAL</span>
           <Money amount={sale.grand_total} size="lg" />
         </div>
         {sale.payments.map((payment) => (
-          <div key={payment.id} className="flex justify-between text-sm text-content-muted">
+          <div key={payment.id} className="flex justify-between text-sm text-gray-500">
             <span>Bayar ({payment.payment_method.name})</span>
             <Money amount={payment.amount} size="sm" />
           </div>
         ))}
         {sale.change_amount > 0 && (
-          <div className="flex justify-between text-sm text-content-muted">
+          <div className="flex justify-between text-sm text-gray-500">
             <span>Kembalian</span>
             <Money amount={sale.change_amount} size="sm" />
           </div>
         )}
         {sale.member && sale.payments.some((p) => p.payment_method.type === 'deposit') && (
-          <div className="mt-2 flex justify-between border-t border-border pt-2 text-sm">
+          <div className="mt-2 flex justify-between border-t border-gray-200 pt-2 text-sm text-gray-700">
             <span>Saldo Akhir {sale.member.name}</span>
             <Money amount={sale.member.balance_cache} />
           </div>
@@ -63,12 +61,20 @@ export default function Receipt({ sale }: { sale: SaleDetail }) {
       </div>
 
       <div className="flex w-full gap-2">
-        <Button variant="outline" className="flex-1" onClick={() => window.open(route('pos.sales.receipt-pdf', sale.id), '_blank')}>
+        <button
+          type="button"
+          onClick={() => window.open(route('pos.sales.receipt-pdf', sale.id), '_blank')}
+          className="flex-1 rounded-xl border border-gray-300 bg-white py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+        >
           Cetak Struk
-        </Button>
-        <Button className="flex-1" onClick={() => router.visit(route('pos.index'))}>
+        </button>
+        <button
+          type="button"
+          onClick={() => router.visit(route('pos.index'))}
+          className="flex-1 rounded-xl bg-navy-700 py-2.5 text-sm font-medium text-white transition-colors hover:bg-navy-800"
+        >
           Transaksi Baru
-        </Button>
+        </button>
       </div>
     </div>
   )

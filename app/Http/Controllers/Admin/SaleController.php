@@ -27,6 +27,7 @@ use App\Services\AuthorizationService;
 use App\Services\BarcodeResolverService;
 use App\Services\CardService;
 use App\Services\CashierSessionService;
+use App\Services\Midtrans\MidtransGatewayInterface;
 use App\Services\PaymentService;
 use App\Services\PriceService;
 use App\Services\SaleService;
@@ -37,6 +38,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -52,6 +54,7 @@ class SaleController extends Controller
         private readonly PriceService $priceService,
         private readonly PaymentService $paymentService,
         private readonly AuthorizationService $authorizationService,
+        private readonly MidtransGatewayInterface $midtransGateway,
     ) {}
 
     public function index(Request $request): Response
@@ -71,7 +74,63 @@ class SaleController extends Controller
                 : [],
             'noPinThreshold' => (int) config('pos.no_pin_threshold', 0),
             'pointValue' => (int) config('pos.point_value', 100),
+            'midtransClientKey' => config('services.midtrans.client_key'),
+            'midtransIsProduction' => (bool) config('services.midtrans.is_production'),
         ]);
+    }
+
+    /**
+     * Integrasi Midtrans di kasir (QRIS/e-wallet/transfer) — order_id
+     * EPHEMERAL, sengaja TIDAK disimpan ke tabel manapun: Sale belum
+     * ada di titik ini (baru tercipta setelah kasir klik "Selesaikan
+     * Transaksi"), jadi tidak ada baris untuk dikaitkan. Kasir menunggu
+     * snap.pay() sukses/pending di BROWSER sebelum lanjut submit —
+     * transaction_id hasilnya yang dipakai sebagai reference_no
+     * pembayaran (lihat QrisHandler::handle()), sama seperti alur
+     * top-up wali.
+     */
+    public function midtransCreatePayment(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'amount' => ['required', 'integer', 'min:1'],
+            'type' => ['required', 'string', 'in:qris,ewallet,transfer'],
+        ]);
+
+        $session = $this->sessionService->getActive($request->user());
+
+        if ($session === null) {
+            abort(422, 'Tidak ada sesi kasir aktif.');
+        }
+
+        $orderId = 'POS-'.$session->id.'-'.Str::random(10);
+
+        // Batasi channel Snap sesuai metode yang dipilih kasir — tanpa
+        // ini Snap menampilkan SEMUA metode aktif di akun (QRIS, VA,
+        // kartu sekaligus), padahal kasir sudah pilih spesifik salah
+        // satu tipe di dialog pembayaran.
+        $enabledPayments = match ($data['type']) {
+            // Hanya 1 channel — kalau ada 2+ (mis. gopay + other_qris),
+            // Snap tetap menampilkan LAYAR PILIH dulu (GoPay QRIS vs
+            // QRIS biasa) sebelum QR muncul, karena keduanya dianggap
+            // opsi berbeda oleh Snap walau sama-sama scan QR. Kasir
+            // sudah pilih "QRIS" secara eksplisit di POS — channel
+            // generik `other_qris` (nampilkan QR langsung, bisa
+            // dipindai GoPay/OVO/Dana/ShopeePay apa pun) yang paling
+            // cocok, bukan channel `gopay` yang spesifik ke akun GoPay.
+            'qris' => ['other_qris'],
+            'ewallet' => ['gopay', 'shopeepay'],
+            'transfer' => ['bca_va', 'bni_va', 'bri_va', 'permata_va', 'other_va', 'echannel'],
+        };
+
+        $result = $this->midtransGateway->createTransaction(
+            $orderId,
+            $data['amount'],
+            [],
+            [['id' => 'pos-payment', 'price' => $data['amount'], 'quantity' => 1, 'name' => 'Pembayaran Kasir Skillage Mart']],
+            $enabledPayments,
+        );
+
+        return response()->json(['token' => $result['token']]);
     }
 
     /**

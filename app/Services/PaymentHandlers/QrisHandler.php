@@ -38,6 +38,15 @@ class QrisHandler implements PaymentHandler
 
         $this->sessionService->addSaleNoncash($session, $amount);
 
+        // Integrasi Midtrans — 'settlement'/'capture' berarti frontend
+        // sudah menerima konfirmasi SUKSES dari snap.pay() (GoPay/QRIS/
+        // e-wallet, biasanya instan) SEBELUM sale ini disubmit — aman
+        // langsung 'settled', tidak perlu menunggu rekonsiliasi manual.
+        // 'pending' (mis. VA bank belum ditransfer) atau tidak ada
+        // gateway_status sama sekali (reference_no diketik manual/EDC)
+        // tetap 'pending' seperti semula.
+        $isGatewayConfirmed = in_array($payload['gateway_status'] ?? null, ['settlement', 'capture'], true);
+
         return SalePayment::create([
             'sale_id' => $sale->id,
             'payment_method_id' => $method->id,
@@ -47,7 +56,8 @@ class QrisHandler implements PaymentHandler
             'mdr_percent' => $mdrPercent,
             'mdr_amount' => $mdrAmount,
             'net_amount' => $netAmount,
-            'status' => 'pending',
+            'status' => $isGatewayConfirmed ? 'settled' : 'pending',
+            'settled_at' => $isGatewayConfirmed ? now() : null,
         ]);
     }
 }

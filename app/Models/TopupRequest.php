@@ -13,7 +13,7 @@ class TopupRequest extends Model
     protected $fillable = [
         'reference', 'member_id', 'guardian_id', 'amount', 'proof_image', 'proof_hash', 'bank_name',
         'sender_name', 'transfer_date', 'status', 'verified_by',
-        'verified_at', 'reject_reason', 'payment_provider', 'payment_reference',
+        'verified_at', 'reject_reason', 'payment_provider', 'payment_reference', 'snap_token',
         'bank_verified_by', 'bank_verified_at',
     ];
 

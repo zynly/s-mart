@@ -30,6 +30,8 @@ use App\Observers\SaleReturnObserver;
 use App\Observers\StockAdjustmentObserver;
 use App\Observers\StockOpnameObserver;
 use App\Observers\StockWriteOffObserver;
+use App\Services\Midtrans\MidtransGatewayInterface;
+use App\Services\Midtrans\NullMidtransGateway;
 use App\Services\SettingsOverrideService;
 use App\Services\WhatsApp\NullGateway;
 use App\Services\WhatsApp\WhatsAppGatewayInterface;
@@ -46,6 +48,10 @@ class AppServiceProvider extends ServiceProvider
         // WablasGateway lewat services.whatsapp.gateway nanti (ADR-0010)
         // tanpa menyentuh kode pemanggil.
         $this->app->bind(WhatsAppGatewayInterface::class, config('services.whatsapp.gateway', NullGateway::class));
+
+        // Integrasi Midtrans (top-up wali) — config-driven sama seperti
+        // WhatsApp di atas, default NullMidtransGateway.
+        $this->app->bind(MidtransGatewayInterface::class, config('services.midtrans.gateway', NullMidtransGateway::class));
     }
 
     /**

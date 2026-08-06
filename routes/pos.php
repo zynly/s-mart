@@ -11,6 +11,11 @@ Route::prefix('pos')->name('pos.')->middleware(['auth'])->group(function () {
     Route::get('/search-member', [SaleController::class, 'searchMember'])->name('search-member')->middleware('can:pos.view');
     Route::get('/credit-check', [SaleController::class, 'creditCheck'])->name('credit-check')->middleware('can:pos.view');
     Route::post('/sales', [SaleController::class, 'store'])->name('sales.store')->middleware(['can:sale.create', 'idempotent']);
+    // Integrasi Midtrans (QRIS/e-wallet/transfer) — buat token Snap
+    // untuk pembayaran non-tunai SEBELUM Sale ada (lihat komentar di
+    // SaleController::midtransCreatePayment()).
+    Route::post('/midtrans/create-transaction', [SaleController::class, 'midtransCreatePayment'])
+        ->name('midtrans.create-transaction')->middleware('can:sale.create');
     Route::post('/holds', [SaleController::class, 'hold'])->name('holds.store')->middleware('can:sale.create');
     Route::get('/holds/{saleHold}/recall', [SaleController::class, 'recall'])->name('holds.recall')->middleware('can:sale.create');
     // BUKAN can:sale.void — lihat VoidSaleRequest untuk penjelasan lengkap:

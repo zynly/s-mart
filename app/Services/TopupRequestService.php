@@ -30,22 +30,7 @@ class TopupRequestService
             throw new DomainException('Nominal top-up harus lebih dari nol.');
         }
 
-        // Temuan audit keamanan: route ini pakai middleware `idempotent`
-        // (cuma cek header ADA, tidak dedup) dan tabel `topup_requests`
-        // tidak punya kolom idempotency_key — klik dobel/retry jaringan
-        // bisa bikin 2 pengajuan identik. Guard sederhana: tolak kalau
-        // ada pengajuan pending identik (wali+anak+nominal) dalam 60
-        // detik terakhir, tanpa perlu migrasi kolom baru.
-        $isDuplicate = TopupRequest::where('guardian_id', $guardian->id)
-            ->where('member_id', $member->id)
-            ->where('amount', $amount)
-            ->where('status', 'pending')
-            ->where('created_at', '>=', now()->subSeconds(60))
-            ->exists();
-
-        if ($isDuplicate) {
-            throw new DomainException('Pengajuan top-up dengan nominal yang sama baru saja dikirim — mohon tunggu sebentar sebelum mengirim ulang.');
-        }
+        $this->assertNoDuplicatePending($guardian, $member, $amount);
 
         // Temuan audit keamanan: sebelumnya disimpan di disk `public`
         // (storage/app/public — bisa diakses lewat URL /storage/... tanpa
@@ -147,5 +132,112 @@ class TopupRequestService
 
             return $locked->fresh();
         });
+    }
+
+    /**
+     * Integrasi Midtrans — alur "Bayar Otomatis". Beda dari submit()
+     * manual: tidak ada bukti transfer/hash (tidak relevan, Midtrans
+     * sendiri yang memverifikasi pembayaran), baris dibuat dulu
+     * berstatus pending SEBELUM Snap token diminta (order_id yang
+     * dikirim ke Midtrans = $topupRequest->reference).
+     */
+    public function createForGateway(Guardian $guardian, Member $member, int $amount): TopupRequest
+    {
+        if ($amount <= 0) {
+            throw new DomainException('Nominal top-up harus lebih dari nol.');
+        }
+
+        $this->assertNoDuplicatePending($guardian, $member, $amount);
+
+        return TopupRequest::create([
+            'reference' => ReferenceGenerator::generate('TRQ', 0),
+            'member_id' => $member->id,
+            'guardian_id' => $guardian->id,
+            'amount' => $amount,
+            'status' => 'pending',
+            'payment_provider' => 'midtrans',
+        ]);
+    }
+
+    /**
+     * Dipanggil dari MidtransWebhookController saat transaction_status
+     * settlement/capture. Beda dari approve(): tidak ada $approver/
+     * $bankVerified manusia — SISTEM yang memverifikasi (Midtrans
+     * sendiri sudah menangani otorisasi pembayaran), makanya
+     * verified_by/bank_verified_by dibiarkan null (bukan aksi admin).
+     * idempotency_key DepositService::record() melindungi dari webhook
+     * duplikat (Midtrans bisa retry notifikasi).
+     */
+    public function approveViaGateway(TopupRequest $topupRequest, string $gatewayTransactionId): TopupRequest
+    {
+        return DB::transaction(function () use ($topupRequest, $gatewayTransactionId) {
+            $locked = TopupRequest::lockForUpdate()->findOrFail($topupRequest->id);
+
+            if ($locked->status === 'approved') {
+                return $locked->fresh();
+            }
+
+            if ($locked->status !== 'pending') {
+                throw new DomainException('Pengajuan top-up sudah diproses sebelumnya.');
+            }
+
+            $this->depositService->record($locked->member, 'topup', abs($locked->amount), $locked, [
+                'idempotency_key' => "midtrans-{$locked->id}",
+                'note' => "Top-up wali {$locked->reference} diverifikasi otomatis via Midtrans",
+            ]);
+
+            $locked->update([
+                'status' => 'approved',
+                'verified_at' => now(),
+                'payment_reference' => $gatewayTransactionId,
+            ]);
+
+            return $locked->fresh();
+        });
+    }
+
+    /**
+     * Untuk transaction_status deny/cancel/expire/failure dari webhook
+     * Midtrans — saldo TIDAK disentuh, cuma menandai baris supaya wali
+     * tahu pengajuan itu tidak berhasil (bukan menggantung selamanya
+     * di status pending).
+     */
+    public function markGatewayFailed(TopupRequest $topupRequest, string $gatewayStatus): void
+    {
+        DB::transaction(function () use ($topupRequest, $gatewayStatus) {
+            $locked = TopupRequest::lockForUpdate()->findOrFail($topupRequest->id);
+
+            if ($locked->status !== 'pending') {
+                return;
+            }
+
+            $locked->update([
+                'status' => $gatewayStatus === 'expire' ? 'expired' : 'rejected',
+                'reject_reason' => "Midtrans: {$gatewayStatus}",
+            ]);
+        });
+    }
+
+    /**
+     * Temuan audit keamanan: route ini pakai middleware `idempotent`
+     * (cuma cek header ADA, tidak dedup) dan tabel `topup_requests`
+     * tidak punya kolom idempotency_key — klik dobel/retry jaringan
+     * bisa bikin 2 pengajuan identik. Guard sederhana: tolak kalau
+     * ada pengajuan pending identik (wali+anak+nominal) dalam 60
+     * detik terakhir, tanpa perlu migrasi kolom baru. Dipakai
+     * submit() (manual) DAN createForGateway() (Midtrans).
+     */
+    private function assertNoDuplicatePending(Guardian $guardian, Member $member, int $amount): void
+    {
+        $isDuplicate = TopupRequest::where('guardian_id', $guardian->id)
+            ->where('member_id', $member->id)
+            ->where('amount', $amount)
+            ->where('status', 'pending')
+            ->where('created_at', '>=', now()->subSeconds(60))
+            ->exists();
+
+        if ($isDuplicate) {
+            throw new DomainException('Pengajuan top-up dengan nominal yang sama baru saja dikirim — mohon tunggu sebentar sebelum mengirim ulang.');
+        }
     }
 }

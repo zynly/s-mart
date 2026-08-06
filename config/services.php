@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\Midtrans\NullMidtransGateway;
 use App\Services\WhatsApp\NullGateway;
 
 return [
@@ -42,6 +43,18 @@ return [
     // sungguhan sudah ada (ADR-0010), tanpa ubah kode.
     'whatsapp' => [
         'gateway' => env('WHATSAPP_GATEWAY', NullGateway::class),
+    ],
+
+    // Integrasi Midtrans (top-up wali via Snap) — default
+    // NullMidtransGateway (tidak memanggil API sungguhan) supaya dev
+    // lokal & test tidak butuh kredensial. Isi MIDTRANS_GATEWAY di
+    // .env produksi/sandbox dengan App\Services\Midtrans\
+    // MidtransGateway::class untuk mengaktifkan panggilan API nyata.
+    'midtrans' => [
+        'gateway' => env('MIDTRANS_GATEWAY', NullMidtransGateway::class),
+        'server_key' => env('MIDTRANS_SERVER_KEY'),
+        'client_key' => env('MIDTRANS_CLIENT_KEY'),
+        'is_production' => env('MIDTRANS_IS_PRODUCTION', false),
     ],
 
 ];

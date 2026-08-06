@@ -69,28 +69,28 @@ export default function PosLayout({
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-gray-50">
-      <header className="flex h-14 shrink-0 items-center gap-4 bg-navy-900 px-6">
-        <span className="text-xl font-bold tracking-wide text-white">{outletName.toUpperCase()}</span>
+      <header className="flex h-11 shrink-0 items-center gap-3 bg-navy-900 px-4">
+        <span className="text-base font-bold tracking-wide text-white">{outletName.toUpperCase()}</span>
 
-        <div className="ml-4 flex items-center gap-2">
-          <div className="flex items-center gap-2 rounded-full border border-navy-700 bg-navy-800 px-3 py-1.5 text-sm text-white" title={sessionLabel}>
-            <User className="size-4" />
+        <div className="ml-2 flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 rounded-full border border-navy-700 bg-navy-800 px-2.5 py-1 text-xs text-white" title={sessionLabel}>
+            <User className="size-3.5" />
             Kasir: {cashierName}
           </div>
 
           {hasActiveSession && (
-            <div className="rounded-full border border-blue-500 bg-navy-700 px-3 py-1.5 text-sm text-white" title={sessionLabel}>
+            <div className="rounded-full border border-blue-500 bg-navy-700 px-2.5 py-1 text-xs text-white" title={sessionLabel}>
               Shift Aktif
             </div>
           )}
 
-          <div className="flex items-center gap-1.5 rounded-full bg-navy-800 px-3 py-1.5 text-sm text-white">
-            <span className={`size-2 rounded-full ${online ? 'bg-green-400' : 'bg-red-400'}`} />
+          <div className="flex items-center gap-1 rounded-full bg-navy-800 px-2.5 py-1 text-xs text-white">
+            <span className={`size-1.5 rounded-full ${online ? 'bg-green-400' : 'bg-red-400'}`} />
             {online ? 'Online' : 'Offline'}
           </div>
 
-          <div className="flex items-center gap-1.5 rounded-full bg-navy-800 px-3 py-1.5 text-sm text-white">
-            <Clock className="size-4" />
+          <div className="flex items-center gap-1 rounded-full bg-navy-800 px-2.5 py-1 text-xs text-white">
+            <Clock className="size-3.5" />
             {clock}
           </div>
         </div>
@@ -99,9 +99,9 @@ export default function PosLayout({
           <button
             type="button"
             onClick={onCloseSession}
-            className="flex items-center gap-2 rounded-full border border-white/30 bg-transparent px-4 py-1.5 text-sm text-white transition-colors hover:bg-white/10"
+            className="flex items-center gap-1.5 rounded-full border border-white/30 bg-transparent px-3 py-1 text-xs text-white transition-colors hover:bg-white/10"
           >
-            <Lock className="size-4" />
+            <Lock className="size-3.5" />
             Keluar
           </button>
         </div>

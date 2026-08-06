@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthorizationOverrideController;
+use App\Http\Controllers\MidtransWebhookController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfilePinController;
 use App\Http\Controllers\Public\CheckBalanceController;
@@ -26,6 +27,15 @@ Route::post('/cek-saldo', [CheckBalanceController::class, 'check'])
     // realistis bagi penyerang sekarang jauh lebih kecil.
     ->middleware('throttle:5,1')
     ->name('cek-saldo.check');
+
+// Integrasi Midtrans (top-up wali) — Notification URL, DI LUAR
+// middleware `auth` SENGAJA: Midtrans tidak punya sesi Laravel,
+// proteksinya verifikasi signature_key di dalam controller (lihat
+// MidtransWebhookController::handle()), bukan guard login. Pola sama
+// seperti /cek-saldo di atas: publik + throttle + alasan dijelaskan.
+Route::post('/midtrans/notification', [MidtransWebhookController::class, 'handle'])
+    ->middleware('throttle:60,1')
+    ->name('midtrans.notification');
 
 // Temuan audit keamanan: halaman showcase komponen internal ini
 // sebelumnya terdaftar TANPA guard apa pun — publik di produksi,

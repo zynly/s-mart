@@ -33,6 +33,15 @@
         <env name="DB_DATABASE" value="s_mart_test"/>
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
+        <!-- Integrasi Midtrans — .env pengembang lokal BOLEH mengisi
+             MIDTRANS_GATEWAY ke kelas asli (App\Services\Midtrans\
+             MidtransGateway) supaya bisa dites manual lewat browser,
+             TAPI test suite otomatis TIDAK BOLEH ikut memanggil API
+             sungguhan (lambat, butuh internet, bikin transaksi
+             sandbox asli tiap kali `php artisan test` jalan). Paksa
+             balik ke NullMidtransGateway khusus utk testing, terlepas
+             dari isi .env lokal — pola sama seperti DB_DATABASE di atas. -->
+        <env name="MIDTRANS_GATEWAY" value="App\Services\Midtrans\NullMidtransGateway"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>

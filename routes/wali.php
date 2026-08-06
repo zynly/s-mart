@@ -40,6 +40,11 @@ Route::prefix('wali')->name('wali.')->group(function () {
         Route::post('/anak/{member}/laporkan-kartu', [MemberController::class, 'reportLostCard'])->name('members.report-lost-card');
         Route::get('/topup', [TopupController::class, 'create'])->name('topup.create');
         Route::post('/topup', [TopupController::class, 'store'])->name('topup.store')->middleware('idempotent');
+        // Integrasi Midtrans — dipanggil via fetch() JSON (bukan Inertia
+        // post) karena frontend butuh `token` balik untuk snap.pay().
+        // Dedup dijaga TopupRequestService::assertNoDuplicatePending(),
+        // bukan middleware idempotent.
+        Route::post('/topup/midtrans', [TopupController::class, 'storeMidtrans'])->name('topup.midtrans');
         Route::get('/akun', [SettingController::class, 'edit'])->name('settings.edit');
         Route::put('/akun', [SettingController::class, 'update'])->name('settings.update');
         Route::put('/akun/password', [SettingController::class, 'updatePassword'])->name('settings.password')->middleware('throttle:wali-password-change');

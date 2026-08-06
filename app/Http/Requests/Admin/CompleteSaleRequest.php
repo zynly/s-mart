@@ -41,6 +41,13 @@ class CompleteSaleRequest extends FormRequest
             'payments.*.amount' => ['required', 'integer', 'min:1'],
             'payments.*.received_amount' => ['nullable', 'integer', 'min:0'],
             'payments.*.reference_no' => ['nullable', 'string', 'max:100'],
+            // Integrasi Midtrans — diisi frontend HANYA dari callback
+            // snap.pay() sungguhan (onSuccess/onPending), bukan diketik
+            // manual. QrisHandler pakai ini utk tahu apakah pembayaran
+            // sudah benar-benar dikonfirmasi gateway (boleh 'settled'
+            // langsung) atau masih perlu rekonsiliasi manual seperti
+            // biasa (reference_no diketik manual/VA belum dibayar).
+            'payments.*.gateway_status' => ['nullable', 'string', 'in:settlement,capture,pending'],
             'payments.*.pin' => ['nullable', 'string'],
             'payments.*.point_used' => ['nullable', 'integer', 'min:1'],
             // Audit Fase 6 (Temuan Sedang): sebelumnya CreditHandler
