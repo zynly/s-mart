@@ -364,11 +364,47 @@ class SaleController extends Controller
         $width = (int) config('pos.receipt_width', 58);
 
         $pdf = Pdf::loadView('pdf.receipt', ['sale' => $sale, 'width' => $width])
-            ->setPaper([0, 0, $width * 2.8346, 1500], 'portrait');
+            ->setPaper([0, 0, $width * 2.8346, $this->estimateReceiptHeight($sale)], 'portrait');
 
         return response($pdf->output(), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => "inline; filename=\"{$sale->reference}.pdf\"",
         ]);
+    }
+
+    /**
+     * dompdf tidak punya "auto height" native untuk ukuran halaman —
+     * sebelumnya tinggi kertas di-hardcode 1500pt terlepas dari isi
+     * nota, jadi nota pendek (1-2 item) tercetak dengan banyak ruang
+     * kosong di bawah. Estimasi jumlah baris dari isi nota (item,
+     * pembayaran, dst — HARUS mengikuti struktur resources/views/pdf/
+     * receipt.blade.php baris demi baris) lalu dikonversi ke tinggi
+     * kertas. Sengaja dilebihkan sedikit (mmPerLine longgar + buffer
+     * margin) — nota kependekan MEMOTONG isi (fatal), nota kepanjangan
+     * cuma nyisa spasi kosong tipis (kosmetik, tidak fatal).
+     */
+    private function estimateReceiptHeight(Sale $sale): float
+    {
+        $lines = 7; // nama toko + subjudul + alamat (3) + garis (1) + No/Kasir/Tgl (3)
+        $lines += 1; // garis sebelum daftar item
+        $lines += $sale->items->count() * 2; // nama produk + baris qty x harga, per item
+        $lines += 1; // garis sebelum ringkasan total
+        $lines += 3; // Subtotal, Diskon, TOTAL
+        $lines += $sale->payments->count(); // satu baris "BAYAR (...)" per metode
+        $lines += $sale->change_amount > 0 ? 1 : 0;
+
+        if ($sale->member !== null) {
+            $lines += 2; // garis + baris nama/kelas anggota
+            if ($sale->payments->contains(fn ($p) => $p->paymentMethod->type === 'deposit')) {
+                $lines += 1; // baris Saldo Akhir
+            }
+        }
+
+        $lines += 3; // garis penutup + 2 baris ucapan terima kasih
+
+        $mmPerLine = 4.2; // font 9pt Courier + line-height, sengaja longgar
+        $marginMm = 8; // margin @page (2mm×2) + padding div .line berulang
+
+        return ($lines * $mmPerLine + $marginMm) * 2.8346;
     }
 }
