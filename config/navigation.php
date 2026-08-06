@@ -161,6 +161,13 @@ return [
                     'icon' => 'Settings',
                     'permissions' => ['setting.view', 'system.reset'],
                 ],
+                [
+                    'key' => 'integrations',
+                    'label' => 'Integrasi',
+                    'route' => 'admin.integrations.index',
+                    'icon' => 'Cpu',
+                    'permissions' => ['system.reset'],
+                ],
             ],
         ],
     ],

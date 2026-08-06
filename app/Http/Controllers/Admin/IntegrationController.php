@@ -1,0 +1,229 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\PaymentMethod;
+use App\Services\Midtrans\MidtransGatewayInterface;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
+use Inertia\Response;
+use Throwable;
+
+class IntegrationController extends Controller
+{
+    public function index(MidtransGatewayInterface $midtransGateway): Response
+    {
+        $storageDisk = config('filesystems.default', 'local');
+        $s3Bucket    = config('filesystems.disks.s3.bucket') ?: env('DO_SPACE', '-');
+        $s3Endpoint  = config('filesystems.disks.s3.endpoint') ?: env('DO_ENDPOINT', '-');
+
+        $smtpHost   = (string) (config('mail.mailers.smtp.host') ?: env('SMTP_HOST', '127.0.0.1'));
+        $smtpPort   = (int)    (config('mail.mailers.smtp.port') ?: env('SMTP_PORT', 465));
+        $smtpEnable = filter_var(env('SMTP_ENABLE', false), FILTER_VALIDATE_BOOLEAN);
+
+        $midtransGatewayClass = config('services.midtrans.gateway');
+        $isProduction         = filter_var(config('services.midtrans.is_production', false), FILTER_VALIDATE_BOOLEAN);
+
+        // Channel Midtrans dari API (via env credentials)
+        $midtransChannels = [];
+        try {
+            $midtransChannels = $midtransGateway->getActivePaymentChannels();
+        } catch (Throwable $e) {
+            Log::warning('getActivePaymentChannels failed', ['error' => $e->getMessage()]);
+        }
+
+        // Semua payment method dari DB
+        $paymentMethods = PaymentMethod::orderBy('sort_order')
+            ->get(['id', 'code', 'name', 'type', 'is_active', 'midtrans_code', 'midtrans_active'])
+            ->toArray();
+
+        // Channel mana saja yang sudah dicentang owner (dari settings table)
+        $savedEnabledChannels = [];
+        try {
+            $row = DB::table('settings')
+                ->where('group', 'midtrans')
+                ->where('key', 'enabled_channels')
+                ->first();
+            $savedEnabledChannels = $row ? (json_decode($row->value, true) ?? []) : [];
+        } catch (Throwable) {
+            $savedEnabledChannels = [];
+        }
+
+        return Inertia::render('Admin/Integrations/Index', [
+            'envSummary' => [
+                'appName'              => (string) config('app.name'),
+                'appEnv'               => (string) config('app.env'),
+                'dbConnection'         => (string) config('database.default'),
+                'dbHost'               => (string) config('database.connections.pgsql.host', '-'),
+                'dbDatabase'           => (string) config('database.connections.pgsql.database', '-'),
+                'storageDisk'          => $storageDisk,
+                's3Bucket'             => $s3Bucket,
+                's3Endpoint'           => $s3Endpoint,
+                'smtpHost'             => $smtpHost,
+                'smtpPort'             => $smtpPort,
+                'smtpEnable'           => $smtpEnable,
+                'midtransIsProduction' => $isProduction,
+                'midtransGatewayClass' => class_basename((string) $midtransGatewayClass),
+                'midtransServerKey'    => (string) env('MIDTRANS_SERVER_KEY', '-'),
+                'midtransClientKey'    => (string) env('MIDTRANS_CLIENT_KEY', '-'),
+            ],
+            'paymentMethods'       => $paymentMethods,
+            'midtransChannels'     => $midtransChannels,
+            'savedEnabledChannels' => $savedEnabledChannels,
+        ]);
+    }
+
+    /**
+     * Simpan:
+     * 1. is_active per payment_method → payment_methods table
+     * 2. enabled_channels (sub-channel Midtrans) → settings table
+     */
+    public function updatePaymentMethods(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'methods'                => ['required', 'array'],
+            'methods.*.id'           => ['required', 'integer', 'exists:payment_methods,id'],
+            'methods.*.is_active'    => ['required', 'boolean'],
+            'methods.*.midtrans_code' => ['nullable', 'string', 'max:50'],
+            'enabled_channels'       => ['sometimes', 'array'],
+            'enabled_channels.*'     => ['string', 'max:50'],
+        ]);
+
+        // 1. Update is_active per payment method
+        DB::transaction(function () use ($data) {
+            foreach ($data['methods'] as $m) {
+                PaymentMethod::where('id', $m['id'])->update([
+                    'is_active'     => (bool) $m['is_active'],
+                    'midtrans_code' => $m['midtrans_code'] ?: null,
+                ]);
+            }
+        });
+
+        // 2. Simpan enabled sub-channels ke settings
+        $enabledChannels = array_values($data['enabled_channels'] ?? []);
+        DB::table('settings')->updateOrInsert(
+            ['group' => 'midtrans', 'key' => 'enabled_channels'],
+            [
+                'value'      => json_encode($enabledChannels),
+                'type'       => 'json',
+                'label'      => 'Sub-Channel Midtrans Aktif',
+                'updated_at' => now(),
+                'created_at' => now(),
+            ]
+        );
+
+        $activeCount = collect($data['methods'])->where('is_active', true)->count();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Tersimpan! {$activeCount} metode aktif, " . count($enabledChannels) . ' sub-channel Midtrans dipilih.',
+        ]);
+    }
+
+    public function testStorage(): JsonResponse
+    {
+        $startTime    = microtime(true);
+        $disk         = 's3';
+        $testFileName = 'integration-tests/test-' . time() . '.txt';
+        $testContent  = 'Skillage Mart S3 RustFS Connection Test at ' . now()->toIso8601String();
+
+        try {
+            Storage::disk($disk)->put($testFileName, $testContent);
+            $exists      = Storage::disk($disk)->exists($testFileName);
+            $rawGet      = Storage::disk($disk)->get($testFileName);
+            $readContent = is_string($rawGet) ? $rawGet : (is_resource($rawGet) ? stream_get_contents($rawGet) : '');
+            Storage::disk($disk)->delete($testFileName);
+
+            $latency = round((microtime(true) - $startTime) * 1000, 2);
+
+            if ($exists && !empty($readContent)) {
+                return response()->json([
+                    'success'    => true,
+                    'message'    => 'Storage S3 (RustFS) Berhasil! Write, Read & Delete sukses.',
+                    'latency_ms' => $latency,
+                    'bucket'     => config('filesystems.disks.s3.bucket') ?: env('DO_SPACE'),
+                    'endpoint'   => config('filesystems.disks.s3.endpoint') ?: env('DO_ENDPOINT'),
+                ]);
+            }
+
+            return response()->json(['success' => false, 'message' => 'File naik tapi baca ulang kosong.'], 400);
+        } catch (Throwable $e) {
+            return response()->json(['success' => false, 'message' => 'Gagal uji Storage: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function testMidtrans(MidtransGatewayInterface $midtransGateway): JsonResponse
+    {
+        $startTime = microtime(true);
+
+        try {
+            $channels = $midtransGateway->getActivePaymentChannels();
+            $latency  = round((microtime(true) - $startTime) * 1000, 2);
+
+            return response()->json([
+                'success'       => true,
+                'message'       => 'Midtrans Berhasil! Terdeteksi ' . count($channels) . ' channel aktif.',
+                'latency_ms'    => $latency,
+                'is_production' => config('services.midtrans.is_production'),
+                'channels'      => $channels,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json(['success' => false, 'message' => 'Gagal ping Midtrans: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function testSmtp(): JsonResponse
+    {
+        $startTime = microtime(true);
+        $smtpHost  = (string) config('mail.mailers.smtp.host');
+        $smtpPort  = (int) config('mail.mailers.smtp.port', 465);
+
+        try {
+            $connection = @fsockopen($smtpHost, $smtpPort, $errno, $errstr, 5);
+
+            if (!is_resource($connection)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Gagal socket SMTP {$smtpHost}:{$smtpPort} — {$errstr} ({$errno})",
+                ], 500);
+            }
+
+            fclose($connection);
+            $latency = round((microtime(true) - $startTime) * 1000, 2);
+
+            return response()->json([
+                'success'    => true,
+                'message'    => "SMTP ({$smtpHost}:{$smtpPort}) berhasil terhubung!",
+                'latency_ms' => $latency,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json(['success' => false, 'message' => 'Gagal uji SMTP: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function testDatabase(): JsonResponse
+    {
+        $startTime = microtime(true);
+
+        try {
+            DB::connection()->getPdo();
+            $result  = DB::select('SELECT 1 as ping, current_database() as db_name');
+            $latency = round((microtime(true) - $startTime) * 1000, 2);
+
+            return response()->json([
+                'success'    => true,
+                'message'    => 'Database (PostgreSQL Neon) Berhasil terhubung!',
+                'latency_ms' => $latency,
+                'database'   => $result[0]->db_name ?? 'neondb',
+                'driver'     => config('database.default'),
+            ]);
+        } catch (Throwable $e) {
+            return response()->json(['success' => false, 'message' => 'Gagal uji Database: ' . $e->getMessage()], 500);
+        }
+    }
+}

@@ -20,4 +20,12 @@ interface MidtransGatewayInterface
      * @return array{token: string, redirect_url: string}
      */
     public function createTransaction(string $orderId, int $grossAmount, array $customerDetails, array $itemDetails, array $enabledPayments = []): array;
+
+    /**
+     * Mendapatkan daftar channel/metode pembayaran yang aktif di akun Midtrans Merchant
+     * berdasarkan kredensial ServerKey.
+     *
+     * @return array<int, array{code: string, name: string, category: string, is_active: bool}>
+     */
+    public function getActivePaymentChannels(): array;
 }

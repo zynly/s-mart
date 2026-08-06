@@ -331,5 +331,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::middleware('can:system.reset')->group(function () {
         Route::get('/settings-danger-zone', [SystemResetController::class, 'index'])->name('settings.danger-zone');
         Route::post('/settings-danger-zone/reset-transactions', [SystemResetController::class, 'resetTransactions'])->name('settings.reset-transactions');
+
+        // Modul Uji Integrasi System & Env
+        Route::get('/integrations', [\App\Http\Controllers\Admin\IntegrationController::class, 'index'])->name('integrations.index');
+        Route::post('/integrations/test-storage', [\App\Http\Controllers\Admin\IntegrationController::class, 'testStorage'])->name('integrations.test-storage');
+        Route::post('/integrations/test-midtrans', [\App\Http\Controllers\Admin\IntegrationController::class, 'testMidtrans'])->name('integrations.test-midtrans');
+        Route::post('/integrations/test-smtp', [\App\Http\Controllers\Admin\IntegrationController::class, 'testSmtp'])->name('integrations.test-smtp');
+        Route::post('/integrations/test-db', [\App\Http\Controllers\Admin\IntegrationController::class, 'testDatabase'])->name('integrations.test-db');
+        Route::post('/integrations/update-midtrans-channels', [\App\Http\Controllers\Admin\IntegrationController::class, 'updatePaymentMethods'])->name('integrations.update-midtrans-channels');
     });
 });

@@ -12,6 +12,7 @@ class PaymentMethod extends Model
     protected $fillable = [
         'code', 'name', 'type', 'cash_account_id', 'mdr_percent',
         'requires_reference', 'allows_change', 'sort_order', 'is_active',
+        'midtrans_code', 'midtrans_active',
     ];
 
     protected function casts(): array
@@ -21,6 +22,7 @@ class PaymentMethod extends Model
             'requires_reference' => 'boolean',
             'allows_change' => 'boolean',
             'is_active' => 'boolean',
+            'midtrans_active' => 'boolean',
         ];
     }
 }

@@ -55,4 +55,53 @@ class MidtransGateway implements MidtransGatewayInterface
             'redirect_url' => $response->json('redirect_url'),
         ];
     }
+
+    /**
+     * Mendapatkan daftar channel/metode pembayaran yang aktif di akun Midtrans Merchant
+     * berdasarkan kredensial ServerKey.
+     *
+     * @return array<int, array{code: string, name: string, category: string, is_active: bool}>
+     */
+    public function getActivePaymentChannels(): array
+    {
+        $serverKey = config('services.midtrans.server_key');
+        $baseUrl = config('services.midtrans.is_production')
+            ? 'https://api.midtrans.com'
+            : 'https://api.sandbox.midtrans.com';
+
+        try {
+            $response = Http::withBasicAuth($serverKey, '')
+                ->acceptJson()
+                ->get("{$baseUrl}/v2/merchant/payment_channels");
+
+            if ($response->successful() && is_array($response->json('payment_channels'))) {
+                /** @var array<int, array{code?: string, channel_name?: string, category?: string, is_active?: bool}> $channels */
+                $channels = $response->json('payment_channels');
+
+                return array_map(fn ($ch) => [
+                    'code' => $ch['code'] ?? '',
+                    'name' => $ch['channel_name'] ?? $ch['code'] ?? '',
+                    'category' => $ch['category'] ?? 'other',
+                    'is_active' => (bool) ($ch['is_active'] ?? true),
+                ], $channels);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Midtrans getActivePaymentChannels API query failed, fallback to default channel list', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        // Fallback daftar channel standar Midtrans jika endpoint merchant API belum didukung di Sandbox
+        return [
+            ['code' => 'qris', 'name' => 'QRIS (GoPay, OVO, ShopeePay, Dana, LinkAja)', 'category' => 'qris', 'is_active' => true],
+            ['code' => 'gopay', 'name' => 'GoPay', 'category' => 'ewallet', 'is_active' => true],
+            ['code' => 'shopeepay', 'name' => 'ShopeePay', 'category' => 'ewallet', 'is_active' => true],
+            ['code' => 'bca_va', 'name' => 'BCA Virtual Account', 'category' => 'bank_transfer', 'is_active' => true],
+            ['code' => 'bni_va', 'name' => 'BNI Virtual Account', 'category' => 'bank_transfer', 'is_active' => true],
+            ['code' => 'bri_va', 'name' => 'BRI Virtual Account', 'category' => 'bank_transfer', 'is_active' => true],
+            ['code' => 'cimb_va', 'name' => 'CIMB Niaga Virtual Account', 'category' => 'bank_transfer', 'is_active' => true],
+            ['code' => 'permata_va', 'name' => 'Permata Virtual Account', 'category' => 'bank_transfer', 'is_active' => true],
+            ['code' => 'credit_card', 'name' => 'Kartu Kredit / Debit', 'category' => 'card', 'is_active' => true],
+        ];
+    }
 }
