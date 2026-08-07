@@ -12,6 +12,8 @@ import { Badge } from '@/Components/ui/badge'
 import { Textarea } from '@/Components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
+import { Check } from 'lucide-react'
+import { cn } from '@/Lib/utils'
 import type { Paginated } from '@/Types'
 
 type Ref = { id: number; name: string }
@@ -123,18 +125,43 @@ export default function Index({ tab, opnames, outlets, categories, brands, produ
         { key: 'stock-adjustments', label: 'Penyesuaian', href: route('admin.stock-adjustments.index'), permission: 'adjustment.view' },
       ]} />
 
-      <div className="flex flex-wrap gap-2">
-        <Select value={statusFilter || 'all'} onValueChange={(v) => applyFilter(v === 'all' ? '' : v)}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Semua status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Semua status</SelectItem>
-            {Object.entries(STATUS_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>{label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-bold uppercase tracking-wider text-slate-500 mr-1">Status:</span>
+        <button
+          type="button"
+          onClick={() => applyFilter('')}
+          className={cn(
+            'flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition-all cursor-pointer select-none',
+            !statusFilter
+              ? 'border-amber-500 bg-amber-500/15 text-amber-950 dark:text-amber-300 ring-2 ring-amber-500/30 shadow-xs'
+              : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
+          )}
+        >
+          <span className={cn('size-2 rounded-full', !statusFilter ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-700')} />
+          <span>Semua Status</span>
+          {!statusFilter && <Check className="size-3 text-amber-600 stroke-[3]" />}
+        </button>
+
+        {Object.entries(STATUS_LABELS).map(([value, label]) => {
+          const isSelected = statusFilter === value
+          return (
+            <button
+              key={value}
+              type="button"
+              onClick={() => applyFilter(value)}
+              className={cn(
+                'flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition-all cursor-pointer select-none',
+                isSelected
+                  ? 'border-amber-500 bg-amber-500/15 text-amber-950 dark:text-amber-300 ring-2 ring-amber-500/30 shadow-xs'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
+              )}
+            >
+              <span className={cn('size-2 rounded-full', isSelected ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-700')} />
+              <span>{label}</span>
+              {isSelected && <Check className="size-3 text-amber-600 stroke-[3]" />}
+            </button>
+          )
+        })}
       </div>
 
       <DataTable

@@ -20,12 +20,7 @@ import {
 } from '@/Components/ui/table'
 import { Checkbox } from '@/Components/ui/checkbox'
 import { Button } from '@/Components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/Components/ui/dropdown-menu'
+import { Popover, PopoverContent, PopoverTrigger } from '@/Components/ui/popover'
 import {
   Pagination,
   PaginationContent,
@@ -37,6 +32,7 @@ import {
 import { EmptyState } from '@/Components/common/EmptyState'
 import { BulkActionBar, type BulkAction } from '@/Components/common/BulkActionBar'
 import { getLabel } from '@/Lib/labels'
+import { cn } from '@/Lib/utils'
 
 export type ServerPagination = {
   page: number
@@ -75,19 +71,24 @@ export function DataTable<TData>({
   const selectionColumn: ColumnDef<TData, unknown> = {
     id: 'select',
     header: ({ table }) => (
-      <Checkbox
-        checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Pilih semua baris"
-      />
+      <div className="flex items-center justify-center">
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Pilih semua baris"
+        />
+      </div>
     ),
     cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Pilih baris"
-      />
+      <div className="flex items-center justify-center">
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Pilih baris"
+        />
+      </div>
     ),
+    meta: { align: 'center', className: 'w-10 shrink-0' },
     enableSorting: false,
     enableHiding: false,
   }
@@ -102,6 +103,7 @@ export function DataTable<TData>({
       const pageSize = pagination ? pagination.perPage : 10
       return <span className="font-mono text-xs text-content-muted font-medium">{pageIndex * pageSize + row.index + 1}</span>
     },
+    meta: { align: 'center', className: 'w-12 shrink-0' },
     enableSorting: false,
     enableHiding: false,
   }
@@ -131,54 +133,61 @@ export function DataTable<TData>({
 
   return (
     <div className="flex flex-col gap-3 flex-1 min-h-[450px]">
-      <div className="flex justify-end">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              <SlidersHorizontal className="size-3.5" />
-              Kolom
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => (
-                <DropdownMenuCheckboxItem
-                  key={column.id}
-                  checked={column.getIsVisible()}
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3 dark:border-slate-800 dark:bg-slate-900/60 text-xs">
+        <span className="font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mr-1 flex items-center gap-1.5 shrink-0">
+          <SlidersHorizontal className="size-3.5 text-amber-500" />
+          <span>Tampilkan Kolom:</span>
+        </span>
+        {table
+          .getAllColumns()
+          .filter((column) => column.getCanHide())
+          .map((column) => {
+            const isVisible = column.getIsVisible()
+            return (
+              <label
+                key={column.id}
+                className={cn(
+                  'flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-bold transition-all cursor-pointer select-none',
+                  isVisible
+                    ? 'border-slate-300 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white shadow-2xs'
+                    : 'border-slate-200/60 bg-slate-100/60 text-slate-400 dark:border-slate-800 dark:bg-slate-900/40 opacity-50',
+                )}
+              >
+                <Checkbox
+                  checked={isVisible}
                   onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                >
-                  {getLabel(column.id)}
-                </DropdownMenuCheckboxItem>
-              ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                />
+                <span className={cn(!isVisible && 'line-through')}>{getLabel(column.id)}</span>
+              </label>
+            )
+          })}
       </div>
 
-      <div className="relative flex-1 min-h-[380px] overflow-auto rounded-lg border border-border">
-        <Table>
-          <TableHeader className="sticky top-0 z-10 bg-surface">
+      <div className="relative flex-1 min-h-[380px] overflow-x-auto rounded-lg border border-border">
+        <Table className="w-full text-xs">
+          <TableHeader className="sticky top-0 z-10 bg-surface-muted border-b-2 border-border">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   const canSort = header.column.getCanSort()
+                  const meta = header.column.columnDef.meta as { align?: 'left' | 'center' | 'right'; className?: string } | undefined
+                  const headerAlignClass = 'text-center justify-center'
 
                   return (
                     <TableHead
                       key={header.id}
-                      className={canSort ? 'cursor-pointer select-none' : undefined}
+                      className={`h-10 px-2 py-2 align-middle font-bold text-content text-xs tracking-wider whitespace-nowrap border-r border-border last:border-r-0 bg-surface-muted/80 ${headerAlignClass} ${canSort ? 'cursor-pointer select-none hover:text-primary transition-colors' : ''} ${meta?.className ?? ''}`}
                       onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
                     >
-                      <div className="flex items-center gap-1">
+                      <div className={`flex items-center gap-1.5 ${headerAlignClass}`}>
                         {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                         {canSort &&
                           (header.column.getIsSorted() === 'asc' ? (
-                            <ChevronUp className="size-3.5" />
+                            <ChevronUp className="size-4 text-primary shrink-0" />
                           ) : header.column.getIsSorted() === 'desc' ? (
-                            <ChevronDown className="size-3.5" />
+                            <ChevronDown className="size-4 text-primary shrink-0" />
                           ) : (
-                            <ChevronsUpDown className="size-3.5 text-content-muted" />
+                            <ChevronsUpDown className="size-3.5 text-content-muted shrink-0" />
                           ))}
                       </div>
                     </TableHead>
@@ -190,10 +199,22 @@ export function DataTable<TData>({
           <TableBody>
             {table.getRowModel().rows.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() ? 'selected' : undefined}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
-                  ))}
+                <TableRow key={row.id} data-state={row.getIsSelected() ? 'selected' : undefined} className="hover:bg-muted/30 transition-colors border-b border-border">
+                  {row.getVisibleCells().map((cell) => {
+                    const meta = cell.column.columnDef.meta as { align?: 'left' | 'center' | 'right'; className?: string } | undefined
+                    const alignClass =
+                      meta?.align === 'center'
+                        ? 'text-center justify-center'
+                        : meta?.align === 'right'
+                          ? 'text-right justify-end'
+                          : 'text-left justify-start'
+
+                    return (
+                      <TableCell key={cell.id} className={`px-2 py-2 align-middle whitespace-nowrap border-r border-border last:border-r-0 ${alignClass} ${meta?.className ?? ''}`}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    )
+                  })}
                 </TableRow>
               ))
             ) : (
