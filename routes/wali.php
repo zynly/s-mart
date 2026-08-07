@@ -7,9 +7,18 @@ use App\Http\Controllers\Wali\MemberController;
 use App\Http\Controllers\Wali\NotificationController;
 use App\Http\Controllers\Wali\SettingController;
 use App\Http\Controllers\Wali\TopupController;
+use App\Http\Controllers\Admin\RoleSwitchController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('wali')->name('wali.')->group(function () {
+    // Owner impersonation — masuk sebagai Guardian Demo tanpa password
+    // (hanya bisa diakses owner yang sudah login di guard 'web')
+    Route::post('/owner-preview', [RoleSwitchController::class, 'enterWaliPreview'])
+        ->name('owner-preview')
+        ->middleware('auth:web');
+    Route::post('/owner-preview/exit', [RoleSwitchController::class, 'exitWaliPreview'])
+        ->name('owner-preview.exit');
+
     Route::middleware('guest:guardian')->group(function () {
         Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
         Route::post('/login', [AuthController::class, 'login'])->name('login.store')->middleware('throttle:wali-login');
@@ -36,6 +45,7 @@ Route::prefix('wali')->name('wali.')->group(function () {
     Route::middleware(['auth:guardian', 'auth.session'])->group(function () {
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
         Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/anak', [MemberController::class, 'index'])->name('members.index');
         Route::get('/anak/{member}', [MemberController::class, 'show'])->name('members.show');
         Route::post('/anak/{member}/laporkan-kartu', [MemberController::class, 'reportLostCard'])->name('members.report-lost-card');
         Route::get('/topup', [TopupController::class, 'create'])->name('topup.create');

@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             MemberSeeder::class,
             StockLayerSeeder::class,
             AccountSeeder::class,
+            DemoGuardianSeeder::class,
         ]);
     }
 }

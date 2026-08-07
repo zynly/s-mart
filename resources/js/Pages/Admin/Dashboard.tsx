@@ -4,7 +4,7 @@ import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   PieChart, Pie, Cell, BarChart, Bar, Legend,
 } from 'recharts'
-import { ShoppingCart, Wallet, Cake, PackageX, HandCoins, AlertTriangle } from 'lucide-react'
+import { ShoppingCart, Wallet, PackageX, HandCoins, AlertTriangle, Receipt, CreditCard, AlertCircle, Scale, Users } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
 import { StatCard } from '@/Components/common/StatCard'
@@ -39,6 +39,7 @@ type StatCards = {
   labaKotorHariIni: number | null
   transaksiHariIni: number
   rataRataNota: number
+  saldoDeposit?: number
 }
 
 type Charts = {
@@ -52,8 +53,7 @@ type Panels = {
   stockAlerts?: { critical: number; expiringSoon: number }
   debtsDue?: number
   receivablesOverdue?: number
-  depositLiability?: number
-  memberBirthdays?: { name: string; birth_date: string }[]
+  totalMembers?: number
   reconciliationIssues?: number
 }
 
@@ -219,7 +219,7 @@ function ManagerDashboard({ statCards, charts, recentSales, topProducts, cashier
   return (
     <div className="flex flex-col gap-4">
       {statCards && (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <StatCard
             label="Penjualan Hari Ini"
             value={formatMoney(statCards.omzetHariIni)}
@@ -227,111 +227,92 @@ function ManagerDashboard({ statCards, charts, recentSales, topProducts, cashier
             trend={statCards.omzetTrend}
             trendLabel="vs kemarin"
           />
-          {statCards.labaKotorHariIni !== null && (
-            <StatCard label="Laba Kotor Hari Ini" value={formatMoney(statCards.labaKotorHariIni)} icon={HandCoins} />
-          )}
-          <StatCard label="Jumlah Transaksi" value={String(statCards.transaksiHariIni)} icon={ShoppingCart} />
-          <StatCard label="Rata-rata per Transaksi" value={formatMoney(statCards.rataRataNota)} />
-        </div>
-      )}
-
-      {charts && (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <Card>
-            <CardHeader><CardTitle>Tren Penjualan 30 Hari</CardTitle></CardHeader>
-            <CardContent><TrendChart data={charts.trend30d} /></CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle>Penjualan per Kategori (Hari Ini)</CardTitle></CardHeader>
-            <CardContent><CategoryChart data={charts.byCategory} /></CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle>Penjualan per Metode Bayar (Hari Ini)</CardTitle></CardHeader>
-            <CardContent><PaymentMethodChart data={charts.byPaymentMethod} /></CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle>Jam Ramai (Hari Ini)</CardTitle></CardHeader>
-            <CardContent><HourChart data={charts.byHour} /></CardContent>
-          </Card>
+          <StatCard
+            label="Laba Kotor Hari Ini"
+            value={statCards.labaKotorHariIni !== null ? formatMoney(statCards.labaKotorHariIni) : '-'}
+            icon={HandCoins}
+          />
+          <StatCard
+            label="Jumlah Transaksi"
+            value={String(statCards.transaksiHariIni)}
+            icon={ShoppingCart}
+          />
+          <StatCard
+            label="Rata-rata per Transaksi"
+            value={formatMoney(statCards.rataRataNota)}
+            icon={Receipt}
+          />
+          <StatCard
+            label="Saldo Deposit Beredar"
+            value={formatMoney(statCards.saldoDeposit ?? 0)}
+            icon={CreditCard}
+          />
         </div>
       )}
 
       {hasPanels && (
-        <div>
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-content-muted">Panel Perhatian</h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {panels.stockAlerts && (panels.stockAlerts.critical > 0 || panels.stockAlerts.expiringSoon > 0) && (
-              <Card>
-                <CardContent className="flex items-center gap-3 p-4">
-                  <div className="rounded-lg bg-secondary p-2 text-secondary-foreground"><PackageX className="size-5" /></div>
-                  <div>
-                    <p className="text-sm text-content-muted">Stok</p>
-                    <p className="font-medium text-content">
-                      {panels.stockAlerts.critical} kritis · {panels.stockAlerts.expiringSoon} akan kadaluwarsa
-                    </p>
-                    <Link href={route('admin.stock.index')} className="text-xs text-primary hover:underline">Buka Stok</Link>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-            {panels.debtsDue !== undefined && panels.debtsDue > 0 && (
-              <Card>
-                <CardContent className="flex items-center gap-3 p-4">
-                  <div className="rounded-lg bg-secondary p-2 text-secondary-foreground"><AlertTriangle className="size-5" /></div>
-                  <div>
-                    <p className="text-sm text-content-muted">Hutang</p>
-                    <p className="font-medium text-content">{panels.debtsDue} jatuh tempo ≤7 hari</p>
-                    <Link href={route('admin.debts.index')} className="text-xs text-primary hover:underline">Buka Hutang</Link>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-            {panels.receivablesOverdue !== undefined && panels.receivablesOverdue > 0 && (
-              <Card>
-                <CardContent className="flex items-center gap-3 p-4">
-                  <div className="rounded-lg bg-secondary p-2 text-secondary-foreground"><AlertTriangle className="size-5" /></div>
-                  <div>
-                    <p className="text-sm text-content-muted">Piutang</p>
-                    <p className="font-medium text-content">{panels.receivablesOverdue} menunggak</p>
-                    <Link href={route('admin.receivables.index')} className="text-xs text-primary hover:underline">Buka Piutang</Link>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-            {panels.depositLiability !== undefined && (
-              <Card>
-                <CardContent className="flex items-center gap-3 p-4">
-                  <div className="rounded-lg bg-secondary p-2 text-secondary-foreground"><Wallet className="size-5" /></div>
-                  <div>
-                    <p className="text-sm text-content-muted">Saldo Deposit Beredar</p>
-                    <Money amount={panels.depositLiability} size="lg" />
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-            {panels.memberBirthdays && panels.memberBirthdays.length > 0 && (
-              <Card>
-                <CardContent className="flex items-center gap-3 p-4">
-                  <div className="rounded-lg bg-secondary p-2 text-secondary-foreground"><Cake className="size-5" /></div>
-                  <div>
-                    <p className="text-sm text-content-muted">Ulang Tahun (7 hari)</p>
-                    <p className="font-medium text-content">{panels.memberBirthdays.map((m) => m.name).join(', ')}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-            {panels.reconciliationIssues !== undefined && panels.reconciliationIssues > 0 && (
-              <Card>
-                <CardContent className="flex items-center gap-3 p-4">
-                  <div className="rounded-lg bg-secondary p-2 text-secondary-foreground"><AlertTriangle className="size-5" /></div>
-                  <div>
-                    <p className="text-sm text-content-muted">Rekonsiliasi Deposit</p>
-                    <p className="font-medium text-content">{panels.reconciliationIssues} selisih belum terselesaikan</p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {panels.stockAlerts && (
+            <Card>
+              <CardContent className="flex items-center gap-3 p-4">
+                <div className="rounded-lg bg-secondary p-2 text-secondary-foreground"><PackageX className="size-5" /></div>
+                <div>
+                  <p className="text-sm text-content-muted">Stok</p>
+                  <p className="font-medium text-content">
+                    {panels.stockAlerts.critical} kritis · {panels.stockAlerts.expiringSoon} kadaluwarsa
+                  </p>
+                  <Link href={route('admin.stock.index')} className="text-xs text-primary hover:underline">Buka Stok</Link>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {panels.debtsDue !== undefined && (
+            <Card>
+              <CardContent className="flex items-center gap-3 p-4">
+                <div className="rounded-lg bg-secondary p-2 text-secondary-foreground"><AlertTriangle className="size-5" /></div>
+                <div>
+                  <p className="text-sm text-content-muted">Hutang</p>
+                  <p className="font-medium text-content">{panels.debtsDue} jatuh tempo</p>
+                  <Link href={route('admin.debts.index')} className="text-xs text-primary hover:underline">Buka Hutang</Link>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {panels.receivablesOverdue !== undefined && (
+            <Card>
+              <CardContent className="flex items-center gap-3 p-4">
+                <div className="rounded-lg bg-secondary p-2 text-secondary-foreground"><AlertTriangle className="size-5" /></div>
+                <div>
+                  <p className="text-sm text-content-muted">Piutang</p>
+                  <p className="font-medium text-content">{panels.receivablesOverdue} menunggak</p>
+                  <Link href={route('admin.receivables.index')} className="text-xs text-primary hover:underline">Buka Piutang</Link>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {panels.totalMembers !== undefined && (
+            <Card>
+              <CardContent className="flex items-center gap-3 p-4">
+                <div className="rounded-lg bg-secondary p-2 text-secondary-foreground"><Users className="size-5" /></div>
+                <div>
+                  <p className="text-sm text-content-muted">Total Santri Aktif</p>
+                  <p className="font-medium text-content">{panels.totalMembers} Santri</p>
+                  <Link href={route('admin.members.index')} className="text-xs text-primary hover:underline">Buka Santri</Link>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {panels.reconciliationIssues !== undefined && (
+            <Card>
+              <CardContent className="flex items-center gap-3 p-4">
+                <div className="rounded-lg bg-secondary p-2 text-secondary-foreground"><AlertTriangle className="size-5" /></div>
+                <div>
+                  <p className="text-sm text-content-muted">Rekonsiliasi Deposit</p>
+                  <p className="font-medium text-content">{panels.reconciliationIssues} selisih</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 
@@ -382,6 +363,27 @@ function ManagerDashboard({ statCards, charts, recentSales, topProducts, cashier
               </CardContent>
             </Card>
           )}
+        </div>
+      )}
+
+      {charts && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader><CardTitle>Tren Penjualan 30 Hari</CardTitle></CardHeader>
+            <CardContent><TrendChart data={charts.trend30d} /></CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle>Penjualan per Kategori (Hari Ini)</CardTitle></CardHeader>
+            <CardContent><CategoryChart data={charts.byCategory} /></CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle>Penjualan per Metode Bayar (Hari Ini)</CardTitle></CardHeader>
+            <CardContent><PaymentMethodChart data={charts.byPaymentMethod} /></CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle>Jam Ramai (Hari Ini)</CardTitle></CardHeader>
+            <CardContent><HourChart data={charts.byHour} /></CardContent>
+          </Card>
         </div>
       )}
 

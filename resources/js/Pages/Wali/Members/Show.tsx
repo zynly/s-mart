@@ -11,6 +11,7 @@ import { Money } from '@/Components/common/Money'
 import { EmptyState } from '@/Components/common/EmptyState'
 import { WeeklyChart, type WeeklyChartPoint } from '@/Components/wali/WeeklyChart'
 import { FavoriteProducts, type FavoriteProduct } from '@/Components/wali/FavoriteProducts'
+import { cn } from '@/Lib/utils'
 
 type RiwayatItem = {
   type: 'belanja' | 'topup'
@@ -25,6 +26,12 @@ type CardInfo = {
   last_used_at: string | null
 }
 
+type ChildSummary = {
+  id: number
+  name: string
+  class_name: string | null
+}
+
 type ShowProps = {
   member: {
     id: number
@@ -34,6 +41,7 @@ type ShowProps = {
     balance_cache: number
     photo: string | null
   }
+  allMembers?: ChildSummary[]
   riwayat: RiwayatItem[]
   weeklyChart: WeeklyChartPoint[]
   favoriteProducts: FavoriteProduct[]
@@ -61,7 +69,7 @@ const cardStatusLabel: Record<string, string> = {
   replaced: 'Diganti',
 }
 
-export default function Show({ member, riwayat, weeklyChart, favoriteProducts, card }: ShowProps) {
+export default function Show({ member, allMembers = [], riwayat, weeklyChart, favoriteProducts, card }: ShowProps) {
   const [reportOpen, setReportOpen] = useState(false)
   const [reporting, setReporting] = useState(false)
 
@@ -78,6 +86,27 @@ export default function Show({ member, riwayat, weeklyChart, favoriteProducts, c
 
   return (
     <div className="flex flex-col gap-4">
+      {allMembers.length > 1 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          <span className="text-xs font-semibold text-slate-500 shrink-0">Pilih Anak:</span>
+          {allMembers.map((m) => (
+            <Link
+              key={m.id}
+              href={route('wali.members.show', m.id)}
+              className={cn(
+                'flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition-all shrink-0 border',
+                m.id === member.id
+                  ? 'bg-navy-950 text-white border-navy-950 dark:bg-amber-500 dark:text-navy-950 dark:border-amber-500 shadow-xs'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800',
+              )}
+            >
+              <span>{m.name}</span>
+              {m.class_name && <span className="opacity-70 text-[10px]">({m.class_name})</span>}
+            </Link>
+          ))}
+        </div>
+      )}
+
       <div>
         <h1 className="text-lg font-semibold text-content">{member.name}</h1>
         <p className="text-sm text-content-muted">

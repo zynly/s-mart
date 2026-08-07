@@ -79,7 +79,7 @@ class HandleInertiaRequests extends Middleware
             'overrideToken' => fn () => $request->session()->get('overrideToken'),
             // T-116 (Fase UI-01): sidebar admin dibangun dari sini, bukan
             // hardcoded di React — lihat NavigationService.
-            'navigation' => fn () => $user ? app(NavigationService::class)->forUser($user) : [],
+            'navigation' => fn () => $user ? app(NavigationService::class)->forUser($user, $request->session()->get('masquerade_role')) : [],
             // REVISI-R1-v2.md §1.5 — label "Outlet: {nama}" statis di
             // footer sidebar (switcher UI sengaja DITUNDA sampai outlet
             // kedua benar-benar ada). Owner belum tentu punya outlet
@@ -95,6 +95,14 @@ class HandleInertiaRequests extends Middleware
                 'location' => $request->url(),
             ],
             'appName' => config('app.name'),
+            // Owner Switch Role — masquerade session state
+            'masquerade' => fn () => [
+                'active' => (bool) $request->session()->get('masquerade_role'),
+                'role'   => $request->session()->get('masquerade_role'),
+                'label'  => $request->session()->get('masquerade_label'),
+            ],
+            // Owner Wali Preview flag
+            'ownerWaliPreview' => fn () => (bool) $request->session()->get('owner_wali_preview'),
         ];
     }
 }

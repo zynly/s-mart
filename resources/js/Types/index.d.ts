@@ -58,4 +58,12 @@ export type PageProps<T extends Record<string, unknown> = Record<string, unknown
   // REVISI-R1-v2.md §1.5 — null untuk owner (bypass semua outlet, tidak
   // punya satu outlet primary tunggal).
   activeOutlet: { id: number; name: string } | null
+  // Owner Switch Role — masquerade session state
+  masquerade: {
+    active: boolean
+    role: string | null
+    label: string | null
+  }
+  // Owner Wali Preview flag
+  ownerWaliPreview: boolean
 }

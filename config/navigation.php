@@ -41,7 +41,6 @@ return [
                     'route' => 'pos.index',
                     'icon' => 'ShoppingCart',
                     'permissions' => ['pos.view'],
-                    'highlight' => true,
                 ],
                 [
                     'key' => 'cashier-session',

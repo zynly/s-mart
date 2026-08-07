@@ -306,7 +306,7 @@ export default function Index({ tab, transactions, adjustments, members, payment
               <div className="min-h-[420px] flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-surface neu-flat">
                 <div className="overflow-x-auto flex-1">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-navy-900 text-white font-semibold uppercase tracking-wider text-[11px] sticky top-0 z-10">
+                    <thead className="bg-navy-900 text-white font-bold uppercase tracking-wider text-[11px] sticky top-0 z-10 text-center">
                       <tr>
                         <th className="px-3 py-2.5 text-center w-10">
                           <Checkbox
@@ -315,11 +315,11 @@ export default function Index({ tab, transactions, adjustments, members, payment
                             className="border-white/50 data-[state=checked]:bg-amber-400 data-[state=checked]:text-navy-950"
                           />
                         </th>
-                        <th className="px-3 py-2.5 text-center w-12">No.</th>
-                        <th className="px-4 py-2.5">No. Anggota</th>
-                        <th className="px-4 py-2.5">Nama Member</th>
-                        <th className="px-4 py-2.5 text-right">Saldo Saat Ini</th>
-                        <th className="px-4 py-2.5 text-center">Aksi</th>
+                        <th className="px-3 py-2.5 text-center w-12 font-bold">No.</th>
+                        <th className="px-4 py-2.5 text-center font-bold">No. Anggota</th>
+                        <th className="px-4 py-2.5 text-center font-bold">Nama Member</th>
+                        <th className="px-4 py-2.5 text-center font-bold">Saldo Saat Ini</th>
+                        <th className="px-4 py-2.5 text-center font-bold">Aksi</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -500,16 +500,16 @@ export default function Index({ tab, transactions, adjustments, members, payment
 
           <div className="overflow-x-auto rounded-md border border-border">
             <table className="w-full text-sm">
-              <thead className="bg-bg">
+              <thead className="bg-bg text-center font-bold">
                 <tr>
-                  <th className="p-2 text-left">Tanggal</th>
-                  <th className="p-2 text-left">Anggota</th>
-                  <th className="p-2 text-left">Jenis</th>
-                  <th className="p-2 text-right">Nominal</th>
-                  <th className="p-2 text-right">Saldo Sebelum</th>
-                  <th className="p-2 text-right">Saldo Sesudah</th>
-                  <th className="p-2 text-left">Alasan</th>
-                  <th className="p-2 text-left">Dilakukan Oleh</th>
+                  <th className="p-2 text-center font-bold">Tanggal</th>
+                  <th className="p-2 text-center font-bold">Anggota</th>
+                  <th className="p-2 text-center font-bold">Jenis</th>
+                  <th className="p-2 text-center font-bold">Nominal</th>
+                  <th className="p-2 text-center font-bold">Saldo Sebelum</th>
+                  <th className="p-2 text-center font-bold">Saldo Sesudah</th>
+                  <th className="p-2 text-center font-bold">Alasan</th>
+                  <th className="p-2 text-center font-bold">Dilakukan Oleh</th>
                 </tr>
               </thead>
               <tbody>

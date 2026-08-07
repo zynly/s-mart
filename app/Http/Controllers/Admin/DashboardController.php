@@ -114,12 +114,9 @@ class DashboardController extends Controller
             $panels['receivablesOverdue'] = $this->receivablesOverdue();
         }
 
-        if ($user->can('deposit.view')) {
-            $panels['depositLiability'] = (int) Member::sum('balance_cache');
-        }
 
         if ($user->can('member.view')) {
-            $panels['memberBirthdays'] = $this->memberBirthdays();
+            $panels['totalMembers'] = Member::where('status', 'active')->count();
         }
 
         if ($user->can('deposit.adjust')) {
@@ -150,6 +147,7 @@ class DashboardController extends Controller
             'labaKotorHariIni' => $user->can('product.view_cost') ? $labaKotor : null,
             'transaksiHariIni' => $transaksi,
             'rataRataNota' => $transaksi > 0 ? (int) round($omzetToday / $transaksi) : 0,
+            'saldoDeposit' => (int) Member::sum('balance_cache'),
         ];
     }
 

@@ -63,7 +63,9 @@ class MasterDataSeeder extends Seeder
 
         $cashAccounts = [
             ['code' => 'LACI-1', 'name' => 'Laci Kasir 1', 'type' => 'cash', 'is_drawer' => true, 'is_default' => true],
-            ['code' => 'BRANKAS', 'name' => 'Brankas', 'type' => 'cash', 'is_drawer' => false],
+            ['code' => 'LACI-2', 'name' => 'Laci Kasir 2', 'type' => 'cash', 'is_drawer' => true],
+            ['code' => 'LACI-3', 'name' => 'Laci Kasir 3', 'type' => 'cash', 'is_drawer' => true],
+            ['code' => 'BRANKAS', 'name' => 'Brankas Utama', 'type' => 'cash', 'is_drawer' => false],
             ['code' => 'BANK-BCA', 'name' => 'Bank BCA', 'type' => 'bank', 'bank_name' => 'BCA', 'account_number' => '1234567890', 'account_holder' => 'Skillage Mart', 'is_drawer' => false],
         ];
 

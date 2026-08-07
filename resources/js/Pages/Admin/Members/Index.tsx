@@ -1,7 +1,7 @@
 import { useState, type FormEventHandler, type ReactElement } from 'react'
 import { router, useForm } from '@inertiajs/react'
 import type { ColumnDef } from '@tanstack/react-table'
-import { MoreHorizontal, Printer } from 'lucide-react'
+import { MoreHorizontal, Printer, CreditCard, Pencil, RefreshCw, KeyRound, Lock, UserX } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
 import { PageTabs } from '@/Components/common/PageTabs'
@@ -115,6 +115,7 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
   const [typeFilter, setTypeFilter] = useState(filters.type ?? '')
   const [statusFilter, setStatusFilter] = useState(filters.status ?? '')
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [sampleCardOpen, setSampleCardOpen] = useState(false)
   const [editing, setEditing] = useState<MemberRow | null>(null)
   const [resetPinTarget, setResetPinTarget] = useState<MemberRow | null>(null)
   const [setPinTarget, setSetPinTarget] = useState<MemberRow | null>(null)
@@ -125,10 +126,28 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
   const [reissueTarget, setReissueTarget] = useState<MemberRow | null>(null)
   const [reissueReason, setReissueReason] = useState('')
   const [newGuardian, setNewGuardian] = useState({ name: '', phone: '', relation: '', is_primary: false })
+  const [pdfModal, setPdfModal] = useState<{ open: boolean; title: string; url: string }>({ open: false, title: '', url: '' })
   const form = useForm(emptyForm)
 
   function applyFilter() {
     router.get(route('admin.members.index'), { search, type: typeFilter, status: statusFilter }, { preserveState: true, replace: true })
+  }
+
+  function openCardPreview(memberId: number, memberName: string) {
+    setPdfModal({
+      open: true,
+      title: `Pratinjau Kartu Santri - ${memberName}`,
+      url: `${route('admin.members.preview-card', memberId)}#zoom=PageWidth&navpanes=0&pagemode=none`,
+    })
+  }
+
+  function printCards(ids: number[]) {
+    const params = ids.map((id) => `ids[]=${id}`).join('&')
+    setPdfModal({
+      open: true,
+      title: `Cetak Kartu Santri (${ids.length} Kartu)`,
+      url: `${route('admin.members.print-cards')}?${params}#zoom=PageWidth&navpanes=0&pagemode=none`,
+    })
   }
 
   function openCreate() {
@@ -140,11 +159,6 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
 
   function openEdit(row: MemberRow) {
     setEditing(row)
-    // Gap G-07: sebelumnya sebagian besar field di bawah SELALU direset ke
-    // kosong/default di sini, walau datanya sudah ada di `row` — kalau
-    // staf hanya mengubah satu field (mis. Level Keanggotaan) lalu
-    // langsung simpan, data lama ini tertimpa kosong. Sekarang seluruh
-    // field diisi dari data anggota yang sebenarnya.
     form.setData({
       name: row.name,
       nis: row.nis ?? '',
@@ -188,10 +202,6 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
     )
   }
 
-  function printCards(ids: number[]) {
-    const params = ids.map((id) => `ids[]=${id}`).join('&')
-    window.open(`${route('admin.members.print-cards')}?${params}`, '_blank')
-  }
 
   function addGuardian() {
     if (!editing || !newGuardian.name.trim() || !newGuardian.phone.trim()) return
@@ -216,48 +226,148 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
   }
 
   const columns: ColumnDef<MemberRow, unknown>[] = [
-    { accessorKey: 'member_number', header: 'No. Anggota' },
-    { accessorKey: 'name', header: 'Nama' },
-    { id: 'type', header: 'Tipe', cell: ({ row }) => <Badge variant="outline">{TYPE_LABELS[row.original.type]}</Badge> },
+    {
+      accessorKey: 'member_number',
+      header: 'No. Anggota',
+      meta: { align: 'center', className: 'w-20 shrink-0' },
+      cell: ({ row }) => (
+        <span className="font-mono text-xs font-semibold text-content-muted whitespace-nowrap">{row.original.member_number}</span>
+      ),
+    },
+    {
+      accessorKey: 'name',
+      header: 'Nama',
+      meta: { align: 'center', className: 'w-64 shrink-0' },
+      cell: ({ row }) => (
+        <div className="max-w-[240px] text-left">
+          <span className="font-semibold text-content text-xs sm:text-sm line-clamp-1">{row.original.name}</span>
+          {row.original.nis && <span className="text-[10px] text-content-muted block font-mono">NIS: {row.original.nis}</span>}
+        </div>
+      ),
+    },
+    {
+      id: 'type',
+      header: 'Tipe',
+      meta: { align: 'center', className: 'w-16 shrink-0' },
+      cell: ({ row }) => <Badge variant="outline" className="text-xs px-2 py-0.5 whitespace-nowrap">{TYPE_LABELS[row.original.type]}</Badge>,
+    },
     {
       id: 'class',
       header: 'Kelas/Jurusan',
-      cell: ({ row }) => (row.original.class_name ? `${row.original.class_name} · ${row.original.major ?? '-'}` : '—'),
+      meta: { align: 'center', className: 'w-24 shrink-0' },
+      cell: ({ row }) => (
+        <span className="text-xs text-content whitespace-nowrap">
+          {row.original.class_name ? `${row.original.class_name} · ${row.original.major ?? '-'}` : '—'}
+        </span>
+      ),
     },
-    { id: 'level', header: 'Level', cell: ({ row }) => row.original.level?.name ?? '—' },
-    { id: 'balance', header: 'Saldo', cell: ({ row }) => <Money amount={row.original.balance_cache} /> },
+    {
+      id: 'level',
+      header: 'Level',
+      meta: { align: 'center', className: 'w-16 shrink-0' },
+      cell: ({ row }) => <span className="text-xs text-content whitespace-nowrap">{row.original.level?.name ?? '—'}</span>,
+    },
+    {
+      id: 'balance',
+      header: 'Saldo',
+      meta: { align: 'center', className: 'w-44 shrink-0' },
+      cell: ({ row }) => (
+        <div className="text-left font-semibold text-xs text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+          <Money amount={row.original.balance_cache} />
+        </div>
+      ),
+    },
     {
       id: 'status',
       header: 'Status',
-      cell: ({ row }) => <Badge className={STATUS_BADGE[row.original.status] ?? ''}>{STATUS_LABELS[row.original.status] ?? row.original.status}</Badge>,
+      meta: { align: 'center', className: 'w-16 shrink-0' },
+      cell: ({ row }) => <Badge className={`text-xs px-2 py-0.5 whitespace-nowrap ${STATUS_BADGE[row.original.status] ?? ''}`}>{STATUS_LABELS[row.original.status] ?? row.original.status}</Badge>,
     },
     {
       id: 'actions',
-      header: '',
+      header: 'Aksi',
+      meta: { align: 'center' },
       cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-sm">
-              <MoreHorizontal className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => openEdit(row.original)}>Ubah</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => window.open(route('admin.members.preview-card', row.original.id), '_blank')}>Pratinjau Kartu</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => printCards([row.original.id])}>Cetak Kartu</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setReissueTarget(row.original)}>Terbitkan Ulang Kartu</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setResetPinTarget(row.original)}>Reset PIN</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => { setSetPinTarget(row.original); setNewPin(''); setSetPinError(null) }}>Buat/Ganti PIN</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-danger"
-              disabled={row.original.status !== 'active'}
+        <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
+          <Button
+            variant="outline"
+            size="xs"
+            onClick={() => openCardPreview(row.original.id, row.original.name)}
+            className="h-7 text-xs px-2 gap-1 text-blue-700 bg-blue-50/50 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/50 border-blue-200 dark:border-blue-800"
+            title="Pratinjau Kartu Santri PDF"
+          >
+            <CreditCard className="size-3.5 text-blue-600" />
+            Kartu
+          </Button>
+
+          <Button
+            variant="outline"
+            size="xs"
+            onClick={() => printCards([row.original.id])}
+            className="h-7 text-xs px-2 gap-1 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/50 border-emerald-200 dark:border-emerald-800"
+            title="Cetak Kartu"
+          >
+            <Printer className="size-3.5 text-emerald-600" />
+            Cetak
+          </Button>
+
+          <Button
+            variant="outline"
+            size="xs"
+            onClick={() => openEdit(row.original)}
+            className="h-7 text-xs px-2 gap-1 text-amber-700 bg-amber-50/50 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-900/50 border-amber-200 dark:border-amber-800"
+            title="Ubah Data Anggota"
+          >
+            <Pencil className="size-3.5 text-amber-600" />
+            Edit
+          </Button>
+
+          <Button
+            variant="outline"
+            size="xs"
+            onClick={() => setReissueTarget(row.original)}
+            className="h-7 text-xs px-2 gap-1 text-purple-700 bg-purple-50/50 hover:bg-purple-100 dark:bg-purple-950/40 dark:text-purple-300 dark:hover:bg-purple-900/50 border-purple-200 dark:border-purple-800"
+            title="Terbitkan Ulang Kartu"
+          >
+            <RefreshCw className="size-3.5 text-purple-600" />
+            Reissue
+          </Button>
+
+          <Button
+            variant="outline"
+            size="xs"
+            onClick={() => setResetPinTarget(row.original)}
+            className="h-7 text-xs px-2 gap-1 text-cyan-700 bg-cyan-50/50 hover:bg-cyan-100 dark:bg-cyan-950/40 dark:text-cyan-300 dark:hover:bg-cyan-900/50 border-cyan-200 dark:border-cyan-800"
+            title="Reset PIN"
+          >
+            <KeyRound className="size-3.5 text-cyan-600" />
+            Reset PIN
+          </Button>
+
+          <Button
+            variant="outline"
+            size="xs"
+            onClick={() => { setSetPinTarget(row.original); setNewPin(''); setSetPinError(null) }}
+            className="h-7 text-xs px-2 gap-1 text-indigo-700 bg-indigo-50/50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-900/50 border-indigo-200 dark:border-indigo-800"
+            title="Buat / Ganti PIN"
+          >
+            <Lock className="size-3.5 text-indigo-600" />
+            PIN
+          </Button>
+
+          {row.original.status === 'active' && (
+            <Button
+              variant="outline"
+              size="xs"
               onClick={() => setDeactivateTarget(row.original)}
+              className="h-7 text-xs px-2 gap-1 text-rose-700 bg-rose-50/50 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-900/50 border-rose-200 dark:border-rose-800"
+              title="Nonaktifkan Anggota"
             >
-              Nonaktifkan
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <UserX className="size-3.5 text-rose-600" />
+              Nonaktif
+            </Button>
+          )}
+        </div>
       ),
     },
   ]
@@ -267,7 +377,25 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
       <PageHeader
         title="Anggota"
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Anggota' }]}
-        actions={<Button onClick={openCreate}>Tambah Anggota</Button>}
+        actions={
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (members.data.length > 0) {
+                  openCardPreview(members.data[0].id, members.data[0].name)
+                } else {
+                  setSampleCardOpen(true)
+                }
+              }}
+              className="gap-1.5 text-blue-700 bg-blue-50/60 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800 border-blue-200 font-semibold"
+            >
+              <CreditCard className="size-4 text-blue-600" />
+              Pratinjau Contoh Kartu
+            </Button>
+            <Button onClick={openCreate}>Tambah Anggota</Button>
+          </div>
+        }
       />
       <PageTabs current={tab} tabs={[
         { key: 'members', label: 'Anggota', href: route('admin.members.index'), permission: 'member.view' },
@@ -628,6 +756,129 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
               Terbitkan Kartu Baru
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={sampleCardOpen} onOpenChange={setSampleCardOpen}>
+        <DialogContent className="sm:max-w-3xl w-full">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-bold">
+              <CreditCard className="size-5 text-blue-600" />
+              Pratinjau Contoh Desain Kartu Santri Digital
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="py-3 flex flex-col md:flex-row gap-4 items-center justify-center bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border">
+            {/* Depan Kartu */}
+            <div className="w-[290px] h-[180px] rounded-2xl bg-gradient-to-br from-blue-900 via-indigo-900 to-slate-900 text-white p-4 shadow-xl flex flex-col justify-between relative overflow-hidden border border-blue-500/30">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+              <div className="flex items-center justify-between z-10">
+                <div className="flex items-center gap-2">
+                  <div className="size-7 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-xs shadow-md">
+                    SM
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-bold tracking-wide uppercase text-blue-200">KARTU SANTRI DIGITAL</h4>
+                    <p className="text-[8px] text-blue-300">Pondok Pesantren S-Mart</p>
+                  </div>
+                </div>
+                <div className="text-[8px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold">
+                  RFID ACTIVE
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 my-auto z-10">
+                <div className="size-12 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-white font-bold text-base shadow-inner shrink-0">
+                  👤
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-extrabold tracking-tight text-white truncate">Ahmad Fauzan Ridho</span>
+                  <span className="text-[10px] font-mono text-blue-200">NO: 202600001</span>
+                  <span className="text-[9px] text-blue-300">XI · PPLG (Santri)</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-[8px] text-blue-300 border-t border-white/10 pt-1.5 z-10">
+                <span>BERLAKU: 2026 - 2029</span>
+                <span className="font-mono">S-MART POS</span>
+              </div>
+            </div>
+
+            {/* Belakang Kartu */}
+            <div className="w-[290px] h-[180px] rounded-2xl bg-slate-800 text-white p-4 shadow-xl flex flex-col justify-between relative overflow-hidden border border-slate-700">
+              <div className="w-full h-7 bg-slate-900 -mx-4 -mt-4 px-4 flex items-center justify-end">
+                <span className="text-[7px] font-mono text-slate-400">MAGNETIC STRIPE / NFC CHIP INTEGRATED</span>
+              </div>
+
+              <div className="flex flex-col items-center justify-center my-auto gap-1">
+                <div className="bg-white p-1.5 rounded-lg shadow-sm">
+                  <div className="flex items-center gap-0.5 h-6 w-36 justify-center">
+                    <div className="w-1 h-full bg-black"></div>
+                    <div className="w-0.5 h-full bg-black"></div>
+                    <div className="w-1.5 h-full bg-black"></div>
+                    <div className="w-0.5 h-full bg-black"></div>
+                    <div className="w-1 h-full bg-black"></div>
+                    <div className="w-2 h-full bg-black"></div>
+                    <div className="w-0.5 h-full bg-black"></div>
+                    <div className="w-1 h-full bg-black"></div>
+                    <div className="w-1.5 h-full bg-black"></div>
+                  </div>
+                  <span className="text-[9px] font-mono font-bold text-center block text-black">202600001</span>
+                </div>
+                <span className="text-[8px] text-slate-400">Pindai barcode ini di Kasir POS S-Mart</span>
+              </div>
+
+              <p className="text-[8px] text-slate-400 text-center border-t border-slate-700 pt-1">
+                Kartu ini milik Pondok Pesantren S-Mart. Harap dikembalikan jika ditemukan.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSampleCardOpen(false)}>Tutup Pratinjau</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* PDF Card Preview & Print Pop-up Modal */}
+      <Dialog open={pdfModal.open} onOpenChange={(open) => setPdfModal((prev) => ({ ...prev, open }))}>
+        <DialogContent className="sm:max-w-2xl w-full h-[88vh] flex flex-col p-4 gap-3 bg-surface border border-border rounded-xl shadow-2xl">
+          <DialogHeader className="flex flex-row items-center justify-between pb-2 border-b border-border gap-4">
+            <DialogTitle className="text-base font-bold flex items-center gap-2 text-content whitespace-nowrap truncate min-w-0 flex-1">
+              <CreditCard className="size-5 text-primary shrink-0" />
+              <span className="truncate">{pdfModal.title}</span>
+            </DialogTitle>
+            <div className="flex items-center gap-2 pr-6 shrink-0">
+              <Button
+                variant="default"
+                size="sm"
+                className="gap-1.5 text-xs h-8 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm"
+                onClick={() => {
+                  const iframe = document.getElementById('pdf-preview-iframe') as HTMLIFrameElement
+                  if (iframe?.contentWindow) {
+                    iframe.contentWindow.print()
+                  } else {
+                    window.open(pdfModal.url, '_blank')
+                  }
+                }}
+              >
+                <Printer className="size-4" />
+                Cetak Sekarang
+              </Button>
+            </div>
+          </DialogHeader>
+
+          <div className="flex-1 w-full bg-slate-900 rounded-lg overflow-hidden border border-border relative">
+            {pdfModal.url ? (
+              <iframe
+                id="pdf-preview-iframe"
+                src={pdfModal.url}
+                className="w-full h-full border-0"
+                title="Pratinjau PDF Kartu"
+              />
+            ) : null}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

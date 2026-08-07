@@ -46,7 +46,7 @@
                 @foreach ($row as $item)
                     <td>
                         <div class="cut-guide">
-                            @include('pdf.partials.member-card-back', ['member' => $item['member'], 'card' => $item['card']])
+                            @include('pdf.partials.member-card-back', ['member' => $item['member'], 'card' => $item['card'], 'barcode' => $item['barcode'] ?? null])
                         </div>
                     </td>
                 @endforeach

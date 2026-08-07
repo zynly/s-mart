@@ -13,6 +13,7 @@ use App\Models\Product;
 use App\Models\Unit;
 use App\Services\PriceService;
 use App\Services\ProductService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -44,23 +45,25 @@ class ProductController extends Controller
             ))
             ->when($request->integer('category_id'), fn ($q, $categoryId) => $q->where('category_id', $categoryId))
             ->when($request->integer('brand_id'), fn ($q, $brandId) => $q->where('brand_id', $brandId))
-            ->when($request->has('status'), fn ($q) => $q->where('is_active', $request->string('status')->toString() === 'active'))
+            ->when($request->has('is_favorite') && $request->string('is_favorite')->toString() !== '', fn ($q) => $q->where('is_favorite', $request->boolean('is_favorite')))
+            ->when($request->has('status') && $request->string('status')->toString() !== '', fn ($q) => $q->where('is_active', $request->string('status')->toString() === 'active'))
             ->orderBy('name')
             ->paginate(20)
             ->withQueryString();
 
         $products->getCollection()->transform(function (Product $product) {
-            $product->setAttribute('image_url', $product->images->first()
-                ? Storage::disk('public')->url($product->images->first()->path)
-                : null);
+            $firstImage = $product->images->first();
+            $url = null;
+            if ($firstImage && $firstImage->path) {
+                $url = str_starts_with($firstImage->path, 'http')
+                    ? $firstImage->path
+                    : '/storage/' . ltrim($firstImage->path, '/');
+            }
+            $product->setAttribute('image_url', $url);
 
             return $product;
         });
 
-        // Kolom HPP/margin belum ada di tabel products (dihitung dari
-        // stock_layers, Fase 5/13) — belum ada apa pun untuk disaring hari
-        // ini. $canViewCost sudah dikirim ke frontend supaya kolom itu bisa
-        // langsung disembunyikan/ditampilkan begitu datanya ada nanti.
         return Inertia::render('Admin/Products/Index', [
             'tab' => 'products',
             'products' => $products,
@@ -68,14 +71,146 @@ class ProductController extends Controller
             'brands' => Brand::orderBy('name')->get(['id', 'name']),
             'units' => Unit::where('is_active', true)->orderBy('name')->get(['id', 'code', 'name']),
             'outlets' => Outlet::where('is_active', true)->orderBy('name')->get(['id', 'name']),
-            'filters' => $request->only('search', 'category_id', 'brand_id', 'status'),
+            'filters' => $request->only('search', 'category_id', 'brand_id', 'status', 'is_favorite'),
             'canViewCost' => $canViewCost,
-            // REVISI-R1-v2.md §4.4 — 3 kartu statistik di atas tabel.
             'stats' => [
                 'total' => Product::count(),
                 'active' => Product::where('is_active', true)->count(),
                 'inactive' => Product::where('is_active', false)->count(),
+                'favorite' => Product::where('is_favorite', true)->count(),
             ],
+        ]);
+    }
+
+    public function show(Product $product): Response
+    {
+        $product->load([
+            'category:id,name',
+            'brand:id,name',
+            'baseUnit:id,code,name',
+            'barcodes.unit:id,code,name',
+            'prices.outlet:id,name',
+            'prices.unit:id,code,name',
+            'images',
+        ]);
+
+        $formattedImages = $product->images->map(function ($img) {
+            return [
+                'id' => $img->id,
+                'url' => str_starts_with($img->path, 'http') ? $img->path : '/storage/' . ltrim($img->path, '/'),
+                'alt' => $img->alt,
+                'is_primary' => $img->is_primary,
+            ];
+        });
+
+        return Inertia::render('Admin/Products/Show', [
+            'product' => array_merge($product->toArray(), [
+                'formatted_images' => $formattedImages,
+            ]),
+        ]);
+    }
+
+    public function toggleFavorite(Product $product): RedirectResponse
+    {
+        $product->update(['is_favorite' => ! $product->is_favorite]);
+
+        $message = $product->is_favorite ? "{$product->name} ditandai sebagai favorit." : "Tanda favorit {$product->name} dihapus.";
+
+        return back()->with('success', $message);
+    }
+
+    public function addBarcode(Request $request, Product $product): RedirectResponse
+    {
+        $data = $request->validate([
+            'barcode' => ['nullable', 'string', 'max:50'],
+            'unit_id' => ['required', 'exists:units,id'],
+            'is_primary' => ['nullable', 'boolean'],
+        ]);
+
+        $barcode = trim($data['barcode'] ?? '');
+
+        if ($barcode === '') {
+            do {
+                $base = '899' . str_pad((string) mt_rand(1, 99999999), 8, '0', STR_PAD_LEFT);
+                $checksum = 0;
+                for ($i = 0; $i < 11; $i++) {
+                    $checksum += (int) $base[$i] * ($i % 2 === 0 ? 1 : 3);
+                }
+                $checkDigit = (10 - ($checksum % 10)) % 10;
+                $barcode = $base . $checkDigit;
+            } while (\App\Models\ProductBarcode::where('barcode', $barcode)->exists());
+        } else {
+            if (\App\Models\ProductBarcode::where('barcode', $barcode)->where('product_id', '!=', $product->id)->exists()) {
+                throw ValidationException::withMessages([
+                    'barcode' => "Barcode {$barcode} sudah digunakan oleh produk lain.",
+                ]);
+            }
+        }
+
+        $isPrimary = $request->boolean('is_primary') || $product->barcodes()->count() === 0;
+
+        if ($isPrimary) {
+            $product->barcodes()->update(['is_primary' => false]);
+        }
+
+        $product->barcodes()->updateOrCreate(
+            ['product_id' => $product->id, 'barcode' => $barcode],
+            [
+                'unit_id' => $data['unit_id'],
+                'is_primary' => $isPrimary,
+            ]
+        );
+
+        return back()->with('success', "Barcode \"{$barcode}\" berhasil ditambahkan ke {$product->name}.");
+    }
+
+    public function deleteBarcode(Product $product, \App\Models\ProductBarcode $barcode): RedirectResponse
+    {
+        if ($barcode->product_id !== $product->id) {
+            abort(404);
+        }
+
+        $code = $barcode->barcode;
+        $wasPrimary = $barcode->is_primary;
+        $barcode->delete();
+
+        if ($wasPrimary) {
+            $product->barcodes()->first()?->update(['is_primary' => true]);
+        }
+
+        return back()->with('success', "Barcode \"{$code}\" berhasil dihapus.");
+    }
+
+    public function checkBarcode(Request $request): JsonResponse
+    {
+        $barcode = trim((string) $request->query('barcode'));
+        $excludeProductId = $request->query('exclude_product_id');
+
+        if ($barcode === '') {
+            return response()->json(['valid' => false, 'message' => 'Kode barcode tidak boleh kosong.']);
+        }
+
+        $query = ProductBarcode::where('barcode', $barcode)->with('product');
+        if ($excludeProductId) {
+            $query->where('product_id', '!=', $excludeProductId);
+        }
+        $existing = $query->first();
+
+        if ($existing) {
+            return response()->json([
+                'valid' => false,
+                'message' => "Barcode \"{$barcode}\" sudah terdaftar pada produk \"{$existing->product->name}\" (SKU: {$existing->product->sku}).",
+                'product' => [
+                    'id' => $existing->product->id,
+                    'name' => $existing->product->name,
+                    'sku' => $existing->product->sku,
+                ],
+            ]);
+        }
+
+        return response()->json([
+            'valid' => true,
+            'message' => "Barcode \"{$barcode}\" tersedia dan belum digunakan.",
         ]);
     }
 

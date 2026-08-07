@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, t
 import { router, usePage } from '@inertiajs/react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import {
-  ArrowDownCircle, ArrowUpCircle, Check, CheckCircle2, ChevronLeft, ChevronRight, CreditCard, Pause, Phone, Printer,
-  ScanLine, Search, ShoppingCart, Trash2, UserCircle, Wallet, X,
+  ArrowDownCircle, ArrowUpCircle, Check, CheckCircle2, ChevronLeft, ChevronRight, CreditCard, Lock, Pause, Phone, PlusCircle, Printer,
+  ScanLine, Search, ShoppingCart, Store, Trash2, UserCircle, Wallet, X,
 } from 'lucide-react'
 import PosLayout from '@/Layouts/PosLayout'
 import { Money } from '@/Components/common/Money'
@@ -763,16 +763,64 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
 
   if (!session) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 text-content">
-        <p className="text-lg font-medium">Belum ada sesi kasir aktif.</p>
-        <Button onClick={() => router.visit(route('admin.cashier-session.index'))}>Buka Sesi Kasir</Button>
-      </div>
+      <PosLayout
+        outletName={outlet?.name}
+        cashierName={pageProps.auth.user?.name ?? 'Kasir'}
+        sessionLabel="Belum Ada Sesi"
+        hasActiveSession={false}
+        onCloseSession={() => router.visit(route('admin.cashier-session.index'))}
+      >
+        <div className="flex h-[calc(100vh-3.5rem)] w-full items-center justify-center bg-slate-50/70 p-4 dark:bg-slate-950/70 sm:p-6">
+          <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200/80 bg-white/95 p-6 sm:p-8 text-center shadow-xl shadow-slate-900/5 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95">
+            {/* Ambient Accent Glows */}
+            <div className="absolute -top-16 -left-16 size-40 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-16 -right-16 size-40 rounded-full bg-navy-500/10 blur-3xl pointer-events-none" />
+
+            <div className="relative flex flex-col items-center">
+              {/* Icon Container with Floating Lock Badge */}
+              <div className="relative mb-5 flex size-20 items-center justify-center rounded-2xl bg-gradient-to-tr from-amber-500/15 via-amber-400/10 to-amber-500/5 border border-amber-500/20 text-amber-600 shadow-inner dark:from-amber-500/25 dark:to-amber-500/10 dark:text-amber-400">
+                <Store className="size-9" />
+                <span className="absolute -bottom-1 -right-1 flex size-7 items-center justify-center rounded-full bg-amber-500 text-navy-950 ring-4 ring-white dark:ring-slate-900 shadow-md">
+                  <Lock className="size-3.5 stroke-[2.5]" />
+                </span>
+              </div>
+
+              {/* Status Pill */}
+              <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-3.5 py-1 text-xs font-semibold text-amber-700 dark:text-amber-300">
+                <span className="size-2 rounded-full bg-amber-500 animate-pulse" />
+                Sesi Kasir Nonaktif
+              </div>
+
+              {/* Heading */}
+              <h2 className="mb-2 text-xl font-bold tracking-tight text-navy-950 dark:text-white sm:text-2xl">
+                Belum Ada Sesi Kasir Aktif
+              </h2>
+
+              {/* Description */}
+              <p className="mb-6 text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm">
+                Untuk mulai melayani transaksi penjualan &amp; mencatat alur kas secara otomatis, silakan buka sesi kasir baru terlebih dahulu.
+              </p>
+
+              {/* Primary Action Button */}
+              <Button
+                size="lg"
+                onClick={() => router.visit(route('admin.cashier-session.index'))}
+                className="w-full gap-2 rounded-xl bg-gradient-to-r from-navy-900 via-navy-800 to-navy-950 py-6 text-base font-bold text-white shadow-lg shadow-navy-950/20 hover:from-navy-950 hover:to-navy-900 hover:shadow-xl dark:from-amber-500 dark:via-amber-400 dark:to-amber-500 dark:text-navy-950 dark:hover:from-amber-400 dark:hover:to-amber-500 transition-all duration-200 active:scale-[0.98]"
+              >
+                <PlusCircle className="size-5" />
+                Buka Sesi Kasir Sekarang
+              </Button>
+            </div>
+          </div>
+        </div>
+      </PosLayout>
     )
   }
 
   return (
     <PosLayout
       outletName={outlet?.name}
+      cashierName={pageProps.auth.user?.name ?? 'Kasir'}
       sessionLabel={session ? `Sesi ${session.reference}` : 'Belum ada sesi'}
       hasActiveSession={session !== null}
       onCloseSession={() => router.visit(route('admin.cashier-session.index'))}

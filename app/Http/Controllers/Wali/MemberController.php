@@ -22,11 +22,35 @@ class MemberController extends Controller
 {
     private const DAY_LABELS = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 
+    public function index(Request $request): Response
+    {
+        $guardian = $request->user('guardian');
+
+        $members = $guardian->members()
+            ->where('status', 'active')
+            ->get(['members.id', 'members.name', 'members.member_number', 'members.class_name', 'members.balance_cache', 'members.photo']);
+
+        return Inertia::render('Wali/Members/Index', [
+            'members' => $members->map(fn ($m) => [
+                'id' => $m->id,
+                'name' => $m->name,
+                'member_number' => $m->member_number,
+                'class_name' => $m->class_name,
+                'balance_cache' => (int) $m->balance_cache,
+                'photo' => $m->photo,
+            ]),
+        ]);
+    }
+
     public function show(Request $request, Member $member): Response
     {
         $guardian = $request->user('guardian');
 
         $this->assertOwnsChild($guardian, $member);
+
+        $allMembers = $guardian->members()
+            ->where('status', 'active')
+            ->get(['members.id', 'members.name', 'members.class_name']);
 
         $sales = Sale::where('member_id', $member->id)
             ->where('status', 'completed')
@@ -55,11 +79,16 @@ class MemberController extends Controller
                 'balance_cache' => $member->balance_cache,
                 'photo' => $member->photo,
             ],
+            'allMembers' => $allMembers->map(fn ($m) => [
+                'id' => $m->id,
+                'name' => $m->name,
+                'class_name' => $m->class_name,
+            ]),
             'riwayat' => $riwayat,
             'weeklyChart' => $this->weeklyChart($member),
             'favoriteProducts' => $this->favoriteProducts($member),
             // fase-16-v2.md §10 — jangan tampilkan nomor kartu lengkap,
-            // hanya 4 digit/karakter terakhir.
+            // hanya 4 digit/karakter me-masked_number.
             'card' => $card ? [
                 'status' => $card->status,
                 'masked_number' => 'XXXX'.substr($card->card_number, -4),

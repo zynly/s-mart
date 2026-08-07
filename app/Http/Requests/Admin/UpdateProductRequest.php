@@ -12,6 +12,21 @@ class UpdateProductRequest extends FormRequest
         return $this->user()->can('product.update');
     }
 
+    protected function prepareForValidation(): void
+    {
+        $barcodes = collect($this->input('barcodes', []))
+            ->filter(fn ($b) => is_array($b) && filled($b['barcode'] ?? null))
+            ->map(fn ($b) => [
+                'barcode' => trim((string) $b['barcode']),
+                'unit_id' => $b['unit_id'] ?? $this->input('base_unit_id'),
+                'is_primary' => (bool) ($b['is_primary'] ?? false),
+            ])
+            ->values()
+            ->all();
+
+        $this->merge(['barcodes' => $barcodes]);
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -38,7 +53,7 @@ class UpdateProductRequest extends FormRequest
 
             'barcodes' => ['array'],
             'barcodes.*.barcode' => [
-                'required', 'string', 'distinct',
+                'required', 'string', 'max:50', 'distinct',
                 Rule::unique('product_barcodes', 'barcode')->ignore($productId, 'product_id'),
             ],
             'barcodes.*.unit_id' => ['required', 'exists:units,id'],

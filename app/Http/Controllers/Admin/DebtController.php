@@ -21,7 +21,11 @@ class DebtController extends Controller
     public function index(Request $request): Response
     {
         $debts = Debt::query()
-            ->with(['supplier:id,name', 'purchase:id,reference'])
+            ->with([
+                'supplier:id,name',
+                'purchase:id,reference',
+                'payments' => fn ($q) => $q->with(['paymentMethod:id,name', 'creator:id,name'])->latest(),
+            ])
             ->when($request->string('status')->toString(), fn ($q, $status) => $q->where('status', $status))
             ->when($request->integer('supplier_id'), fn ($q, $id) => $q->where('supplier_id', $id))
             ->orderBy('due_date')

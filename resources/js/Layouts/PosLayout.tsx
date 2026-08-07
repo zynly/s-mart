@@ -142,10 +142,15 @@ export default function PosLayout({
             <button
               type="button"
               onClick={onCloseSession}
-              className="flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 px-3 py-1 text-xs font-bold transition-all duration-150 shadow-2xs active:scale-95"
+              className={cn(
+                'flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold transition-all duration-150 shadow-2xs active:scale-95',
+                hasActiveSession
+                  ? 'border-red-200 bg-red-50 hover:bg-red-100 text-red-700'
+                  : 'border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800'
+              )}
             >
-              <Lock className="size-3 text-red-600" />
-              <span className="hidden sm:inline">Keluar</span>
+              <Lock className={cn('size-3', hasActiveSession ? 'text-red-600' : 'text-amber-600')} />
+              <span className="hidden sm:inline">{hasActiveSession ? 'Keluar' : 'Kelola Sesi'}</span>
             </button>
           </div>
         </header>

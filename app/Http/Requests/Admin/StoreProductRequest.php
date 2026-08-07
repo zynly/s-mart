@@ -11,6 +11,21 @@ class StoreProductRequest extends FormRequest
         return $this->user()->can('product.create');
     }
 
+    protected function prepareForValidation(): void
+    {
+        $barcodes = collect($this->input('barcodes', []))
+            ->filter(fn ($b) => is_array($b) && filled($b['barcode'] ?? null))
+            ->map(fn ($b) => [
+                'barcode' => trim((string) $b['barcode']),
+                'unit_id' => $b['unit_id'] ?? $this->input('base_unit_id'),
+                'is_primary' => (bool) ($b['is_primary'] ?? false),
+            ])
+            ->values()
+            ->all();
+
+        $this->merge(['barcodes' => $barcodes]);
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -34,7 +49,7 @@ class StoreProductRequest extends FormRequest
             'description_public' => ['nullable', 'string'],
 
             'barcodes' => ['array'],
-            'barcodes.*.barcode' => ['required', 'string', 'distinct', 'unique:product_barcodes,barcode'],
+            'barcodes.*.barcode' => ['required', 'string', 'max:50', 'distinct', 'unique:product_barcodes,barcode'],
             'barcodes.*.unit_id' => ['required', 'exists:units,id'],
             'barcodes.*.is_primary' => ['boolean'],
 
