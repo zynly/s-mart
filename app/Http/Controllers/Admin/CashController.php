@@ -87,6 +87,34 @@ class CashController extends Controller
         return back()->with('success', 'Akun kas berhasil diperbarui.');
     }
 
+    public function bulkUpdateAccounts(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'ids' => ['required', 'array'],
+            'ids.*' => ['integer', 'exists:cash_accounts,id'],
+            'action' => ['required', 'string', 'in:activate,deactivate'],
+        ]);
+
+        $ids = $request->input('ids');
+        $action = $request->input('action');
+        $isActive = $action === 'activate';
+
+        if (! $isActive) {
+            $hasOpenSession = CashierSession::withoutGlobalScope('outlet')
+                ->whereIn('cash_account_id', $ids)
+                ->where('status', 'open')
+                ->exists();
+
+            if ($hasOpenSession) {
+                return back()->with('error', 'Salah satu laci yang dipilih sedang dipakai sesi kasir yang masih terbuka.');
+            }
+        }
+
+        CashAccount::whereIn('id', $ids)->update(['is_active' => $isActive]);
+
+        return back()->with('success', count($ids).' Akun kas berhasil diubah statusnya.');
+    }
+
     public function storeIn(StoreCashTransactionRequest $request): RedirectResponse
     {
         $account = CashAccount::findOrFail($request->validated('cash_account_id'));

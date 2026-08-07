@@ -30,6 +30,7 @@ use App\Http\Controllers\Admin\PurchaseOrderController;
 use App\Http\Controllers\Admin\ReceivableController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\RoleSwitchController;
 use App\Http\Controllers\Admin\SaleReturnController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\StockAdjustmentController;
@@ -46,6 +47,13 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Owner Switch Role (masquerade for testing)
+    Route::prefix('role-switch')->name('role-switch.')->group(function () {
+        Route::get('/roles', [RoleSwitchController::class, 'roles'])->name('roles');
+        Route::post('/switch', [RoleSwitchController::class, 'switchRole'])->name('switch');
+        Route::post('/exit', [RoleSwitchController::class, 'exitSwitch'])->name('exit');
+    });
 
     Route::prefix('notifications')->name('notifications.')->group(function () {
         Route::get('/', [NotificationController::class, 'index'])->name('index');
@@ -78,9 +86,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // Master Data (Fase 2)
     Route::middleware('can:product.view')->group(function () {
         Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+        Route::get('/products/check-barcode', [ProductController::class, 'checkBarcode'])->name('products.check-barcode');
+        Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
     });
     Route::post('/products', [ProductController::class, 'store'])->name('products.store')->middleware('can:product.create');
     Route::put('/products/{product}', [ProductController::class, 'update'])->name('products.update')->middleware('can:product.update');
+    Route::put('/products/{product}/toggle-favorite', [ProductController::class, 'toggleFavorite'])->name('products.toggle-favorite')->middleware('can:product.update');
+    Route::post('/products/{product}/barcodes', [ProductController::class, 'addBarcode'])->name('products.add-barcode')->middleware('can:product.update');
+    Route::delete('/products/{product}/barcodes/{barcode}', [ProductController::class, 'deleteBarcode'])->name('products.delete-barcode')->middleware('can:product.update');
     Route::post('/products/{product}/price', [ProductController::class, 'updatePrice'])->name('products.update-price')->middleware('can:product.update');
     Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy')->middleware('can:product.delete');
 
@@ -210,6 +223,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::post('/cash/transfer', [CashController::class, 'transfer'])->name('cash.transfer')->middleware('can:cash.create');
     // REVISI-R1-v2.md §1.7 — Kelola Laci.
     Route::post('/cash-accounts', [CashController::class, 'storeAccount'])->name('cash-accounts.store')->middleware('can:cash.create');
+    Route::post('/cash-accounts/bulk-update', [CashController::class, 'bulkUpdateAccounts'])->name('cash-accounts.bulk-update')->middleware('can:cash.update');
     Route::put('/cash-accounts/{cashAccount}', [CashController::class, 'updateAccount'])->name('cash-accounts.update')->middleware('can:cash.update');
 
     // Piutang Anggota (Fase 9 — T-060)
