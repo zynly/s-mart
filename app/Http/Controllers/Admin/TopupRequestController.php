@@ -33,7 +33,7 @@ class TopupRequestController extends Controller
     {
         $topupRequests = TopupRequest::with(['member:id,name,member_number', 'guardian:id,name,phone', 'verifier:id,name'])
             ->when($request->string('status')->toString(), fn ($q, $status) => $q->where('status', $status))
-            ->orderByRaw("FIELD(status, 'pending', 'approved', 'rejected')")
+            ->orderByRaw("CASE status WHEN 'pending' THEN 1 WHEN 'approved' THEN 2 WHEN 'rejected' THEN 3 ELSE 4 END")
             ->latest()
             ->paginate(20)
             ->withQueryString();
