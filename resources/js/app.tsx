@@ -15,6 +15,22 @@ import type { ComponentType } from 'react'
 
 const appName = import.meta.env.VITE_APP_NAME || 'Skillage Mart'
 
+// ── Inisialisasi tema saat app boot ──────────────────────────────────────────
+// Baca dari localStorage; jika belum ada, default = 'light'.
+// Ini harus dieksekusi SEBELUM React mount agar tidak ada flash/flicker.
+;(function initTheme() {
+  const saved = localStorage.getItem('theme') ?? 'light'
+  const isDark =
+    saved === 'dark' ||
+    (saved === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+  document.documentElement.classList.toggle('dark', isDark)
+  // Pastikan localStorage selalu terisi supaya Zustand tidak jatuh ke 'system'
+  if (!localStorage.getItem('theme')) {
+    localStorage.setItem('theme', 'light')
+  }
+})()
+// ─────────────────────────────────────────────────────────────────────────────
+
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function route(name?: string, params?: any, absolute?: boolean): string

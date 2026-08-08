@@ -1,9 +1,11 @@
 import { useState, useRef, type FormEventHandler, type ReactElement } from 'react'
 import { Link, router, useForm } from '@inertiajs/react'
+import { toast } from 'sonner'
 import { ArrowLeft, Star, Edit, DollarSign, Package, Tag, Barcode, Eye, Plus, Trash2, Printer, Sparkles, Upload, CheckCircle2, XCircle } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
 import { Money } from '@/Components/common/Money'
+import { ConfirmDialog } from '@/Components/common/ConfirmDialog'
 import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
@@ -89,9 +91,13 @@ export default function Show({ product }: ShowProps) {
       onSuccess: () => {
         setIsUploading(false)
         if (fileInputRef.current) fileInputRef.current.value = ''
+        toast.success('Foto produk berhasil diunggah.')
       },
-      onError: () => {
+      onError: (errors) => {
         setIsUploading(false)
+        if (fileInputRef.current) fileInputRef.current.value = ''
+        const msg = errors.image ?? 'Gagal mengunggah foto, coba lagi.'
+        toast.error(msg)
       },
     })
   }
@@ -100,10 +106,17 @@ export default function Show({ product }: ShowProps) {
     router.put(route('admin.products.primary-image', [product.id, imgId]), {}, { preserveScroll: true })
   }
 
+  const [deleteImageId, setDeleteImageId] = useState<number | null>(null)
+  const [deleteBarcodeItem, setDeleteBarcodeItem] = useState<BarcodeItem | null>(null)
+
   function handleDeleteImage(imgId: number) {
-    if (confirm('Hapus foto produk ini?')) {
-      router.delete(route('admin.products.delete-image', [product.id, imgId]), { preserveScroll: true })
-    }
+    setDeleteImageId(imgId)
+  }
+
+  function confirmDeleteImage() {
+    if (deleteImageId === null) return
+    router.delete(route('admin.products.delete-image', [product.id, deleteImageId]), { preserveScroll: true })
+    setDeleteImageId(null)
   }
 
   function toggleFavorite() {
@@ -122,9 +135,13 @@ export default function Show({ product }: ShowProps) {
   }
 
   function handleDeleteBarcode(b: BarcodeItem) {
-    if (confirm(`Hapus barcode "${b.barcode}"?`)) {
-      router.delete(route('admin.products.delete-barcode', [product.id, b.id]), { preserveScroll: true })
-    }
+    setDeleteBarcodeItem(b)
+  }
+
+  function confirmDeleteBarcode() {
+    if (!deleteBarcodeItem) return
+    router.delete(route('admin.products.delete-barcode', [product.id, deleteBarcodeItem.id]), { preserveScroll: true })
+    setDeleteBarcodeItem(null)
   }
 
   return (
@@ -579,6 +596,28 @@ export default function Show({ product }: ShowProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Custom confirm: hapus foto */}
+      <ConfirmDialog
+        open={deleteImageId !== null}
+        onOpenChange={(open) => { if (!open) setDeleteImageId(null) }}
+        title="Hapus Foto Produk"
+        description="Foto ini akan dihapus permanen dan tidak bisa dikembalikan."
+        variant="destructive"
+        confirmLabel="Ya, Hapus"
+        onConfirm={confirmDeleteImage}
+      />
+
+      {/* Custom confirm: hapus barcode */}
+      <ConfirmDialog
+        open={deleteBarcodeItem !== null}
+        onOpenChange={(open) => { if (!open) setDeleteBarcodeItem(null) }}
+        title="Hapus Barcode"
+        description={deleteBarcodeItem ? `Barcode "${deleteBarcodeItem.barcode}" akan dihapus permanen.` : ''}
+        variant="destructive"
+        confirmLabel="Ya, Hapus"
+        onConfirm={confirmDeleteBarcode}
+      />
     </div>
   )
 }

@@ -22,7 +22,7 @@ function applyTheme(theme: Theme) {
 }
 
 export const useThemeStore = create<ThemeState>((set, get) => ({
-  theme: (localStorage.getItem('theme') as Theme) ?? 'system',
+  theme: (localStorage.getItem('theme') as Theme) ?? 'light',
   setTheme: (theme) => {
     applyTheme(theme)
     set({ theme })

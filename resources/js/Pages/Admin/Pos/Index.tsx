@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react'
 import { router, usePage } from '@inertiajs/react'
 import { useHotkeys } from 'react-hotkeys-hook'
+import { toast } from 'sonner'
 import {
   ArrowDownCircle, ArrowUpCircle, Check, CheckCircle2, ChevronLeft, ChevronRight, CreditCard, Lock, Pause, Phone, PlusCircle, Printer,
-  ScanLine, Search, ShoppingCart, Store, Trash2, UserCircle, Wallet, X,
+  QrCode, ScanLine, Search, ShoppingCart, Store, Trash2, UserCircle, Wallet, X,
 } from 'lucide-react'
 import PosLayout from '@/Layouts/PosLayout'
 import { Money } from '@/Components/common/Money'
@@ -892,7 +893,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
     >
       <div className="flex flex-1 overflow-hidden">
         {/* GRID 1: KATALOG PRODUK & SEARCH (Kolom Kiri Terbesar - Flex Expand) */}
-        <section className="flex flex-1 min-w-0 flex-col gap-3 overflow-hidden border-r border-gray-200 bg-gray-50/60 p-3">
+        <section className="flex flex-1 min-w-0 flex-col gap-3 overflow-hidden border-r border-gray-200 bg-gray-50/60 p-3 min-h-0">
           {/* Search bar Barcode */}
           <div className="relative shrink-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
@@ -955,7 +956,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
           </div>
 
           {/* Product Cards Grid (Vertikal Scrollable) */}
-          <div className="flex-1 overflow-y-auto pr-1">
+          <div className="flex-1 overflow-y-auto pr-1 min-h-0">
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4">
               {catalog.data.map((p) => (
                 <button
@@ -966,11 +967,13 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                 >
                   <div>
                     <div className="relative mb-1.5 aspect-square w-full overflow-hidden rounded-lg bg-gray-50 border border-gray-100">
-                      {p.image_url ? (
-                        <img src={p.image_url} alt={p.name} className="size-full object-contain p-1 transition-transform group-hover:scale-105" loading="lazy" />
-                      ) : (
-                        <div className="flex size-full items-center justify-center text-center text-[10px] text-gray-400">Tidak ada gambar</div>
-                      )}
+                      <img
+                        src={p.image_url ?? '/images/default-product.webp'}
+                        alt={p.name}
+                        className="size-full object-contain p-1 transition-transform group-hover:scale-105"
+                        loading="lazy"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/default-product.webp' }}
+                      />
                       {p.has_promo && (
                         <Badge className="absolute right-1 top-1 bg-amber-500 px-1.5 py-0 text-[9px] font-bold text-white shadow-sm">PROMO</Badge>
                       )}
@@ -1777,7 +1780,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                   router.post(
                     route('pos.sales.store'),
                     {
-                      outlet_id: outlet.id,
+                      outlet_id: outlet?.id,
                       cashier_session_id: session.id,
                       member_id: member?.id ?? null,
                       items: cart.map((l) => ({ product_id: l.product_id, unit_id: l.unit_id, qty: l.qty, unit_price: l.unit_price, product_name: l.product_name, unit_code: l.unit_code })),

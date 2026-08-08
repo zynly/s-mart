@@ -1,9 +1,14 @@
 import { useState, useEffect, useRef, type FormEventHandler, type ReactElement } from 'react'
 import { Link, router, useForm } from '@inertiajs/react'
 import type { ColumnDef } from '@tanstack/react-table'
-import { MoreHorizontal, Plus, Trash2, Star, Eye, Sparkles, Pencil, DollarSign } from 'lucide-react'
+import {
+  MoreHorizontal, Plus, Trash2, Star, Eye, Sparkles, Pencil, DollarSign, Upload, ImageIcon,
+  Package, QrCode, Tag, Boxes, Store, CheckCircle2, AlertCircle, Info, Ruler, Award, FileText, Check, Layers, ShieldCheck
+} from 'lucide-react'
 import { toast } from 'sonner'
 import axios from 'axios'
+import JsBarcode from 'jsbarcode'
+import { QRCodeSVG } from 'qrcode.react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
 import { PageTabs } from '@/Components/common/PageTabs'
@@ -60,6 +65,87 @@ type ProductsIndexProps = {
 
 type BarcodeField = { barcode: string; unit_id: string; is_primary: boolean }
 
+function BarcodeQrPreview({ code, productName, unitName }: { code: string; productName?: string; unitName?: string }) {
+  const barcodeRef = useRef<SVGSVGElement>(null)
+
+  useEffect(() => {
+    if (code && barcodeRef.current) {
+      try {
+        JsBarcode(barcodeRef.current, code, {
+          format: code.length === 13 && /^\d+$/.test(code) ? 'EAN13' : 'CODE128',
+          width: 1.6,
+          height: 44,
+          displayValue: true,
+          fontSize: 11,
+          margin: 4,
+          background: '#ffffff',
+          lineColor: '#0f172a',
+        })
+      } catch {
+        try {
+          JsBarcode(barcodeRef.current, code, {
+            format: 'CODE128',
+            width: 1.4,
+            height: 42,
+            displayValue: true,
+            fontSize: 11,
+            margin: 4,
+            background: '#ffffff',
+            lineColor: '#0f172a',
+          })
+        } catch {
+          // ignore error
+        }
+      }
+    }
+  }, [code])
+
+  const trimCode = code.trim()
+
+  if (!trimCode) {
+    return (
+      <div className="flex h-20 items-center justify-center rounded-xl border border-dashed border-border bg-surface-muted/30 text-xs text-content-muted">
+        <span>Belum ada kode barcode. Ketik atau scan kode di atas.</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-2.5 flex flex-col sm:flex-row items-center gap-4 rounded-xl border border-blue-200/80 bg-gradient-to-r from-blue-50/60 via-surface to-indigo-50/50 p-3.5 dark:border-blue-900/40 dark:from-blue-950/20 dark:to-indigo-950/20 shadow-2xs">
+      {/* Visual Kode QR */}
+      <div className="flex flex-col items-center gap-1.5 shrink-0 bg-white p-2 rounded-xl border border-border shadow-xs">
+        <QRCodeSVG value={trimCode} size={90} level="M" includeMargin />
+        <div className="flex items-center gap-1 text-[10px] font-bold text-blue-700 dark:text-blue-400">
+          <QrCode className="size-3" />
+          <span>Kode QR</span>
+        </div>
+      </div>
+
+      {/* Visual Barcode 1D & Detail Badge */}
+      <div className="flex flex-1 flex-col items-center sm:items-start justify-center gap-1.5 w-full min-w-0">
+        <div className="flex items-center gap-2">
+          <Badge className="bg-navy-900 text-white font-mono text-[10px] uppercase font-bold">
+            {trimCode.length === 13 && /^\d+$/.test(trimCode) ? 'EAN-13' : 'CODE-128'}
+          </Badge>
+          {unitName && (
+            <Badge variant="outline" className="text-[10px] border-blue-300 text-blue-800 dark:border-blue-700 dark:text-blue-300">
+              Satuan: {unitName}
+            </Badge>
+          )}
+        </div>
+        <div className="overflow-x-auto max-w-full bg-white p-1.5 rounded-lg border border-border">
+          <svg ref={barcodeRef} className="max-h-14" />
+        </div>
+        {productName && (
+          <p className="text-[11px] font-medium text-content-muted truncate max-w-full">
+            📦 {productName}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 const emptyForm = {
   sku: '',
   name: '',
@@ -88,6 +174,11 @@ export default function Index({ tab, products, categories, brands, units, outlet
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<ProductRow | null>(null)
   const form = useForm(emptyForm)
+  // State untuk upload gambar di form
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [imageUploading, setImageUploading] = useState(false)
+  const imageInputRef = useRef<HTMLInputElement>(null)
 
   const [priceDialogOpen, setPriceDialogOpen] = useState(false)
   const [priceTarget, setPriceTarget] = useState<ProductRow | null>(null)
@@ -140,7 +231,7 @@ export default function Index({ tab, products, categories, brands, units, outlet
     const base = '899' + Math.floor(Math.random() * 100000000).toString().padStart(8, '0')
     let checksum = 0
     for (let i = 0; i < 11; i++) {
-      checksum += parseInt(base[i]) * (i % 2 === 0 ? 1 : 3)
+      checksum += parseInt(base.charAt(i)) * (i % 2 === 0 ? 1 : 3)
     }
     const checkDigit = (10 - (checksum % 10)) % 10
     return base + checkDigit
@@ -149,6 +240,8 @@ export default function Index({ tab, products, categories, brands, units, outlet
   function openCreate() {
     setEditing(null)
     setActiveTab('umum')
+    setImageFile(null)
+    setImagePreview(null)
     const defaultUnitId = units[0] ? String(units[0].id) : ''
     form.setData({
       ...emptyForm,
@@ -162,6 +255,8 @@ export default function Index({ tab, products, categories, brands, units, outlet
   function openEdit(row: ProductRow) {
     setEditing(row)
     setActiveTab('umum')
+    setImageFile(null)
+    setImagePreview(row.image_url)
     const baseUnitId = String(row.base_unit.id)
     form.setData({
       sku: row.sku,
@@ -186,6 +281,27 @@ export default function Index({ tab, products, categories, brands, units, outlet
     })
     form.clearErrors()
     setSheetOpen(true)
+  }
+
+  function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+  }
+
+  function uploadImageToProduct(productId: number) {
+    if (!imageFile) return
+    const fd = new FormData()
+    fd.append('image', imageFile)
+    fd.append('alt', form.data.name)
+    setImageUploading(true)
+    router.post(route('admin.products.upload-image', productId), fd, {
+      preserveScroll: true,
+      onFinish: () => setImageUploading(false),
+      onSuccess: () => toast.success('Foto produk berhasil diunggah! 📸'),
+      onError: (errs) => toast.error(errs.image ?? 'Gagal upload foto.'),
+    })
   }
 
   async function verifyBarcodeScan(index: number, rawCode: string) {
@@ -361,11 +477,19 @@ export default function Index({ tab, products, categories, brands, units, outlet
     e.preventDefault()
     const options = {
       preserveScroll: true as const,
-      onSuccess: () => {
+      onSuccess: (page: any) => {
         toast.success(editing ? 'Produk Berhasil Diperbarui! 🎉' : 'Produk Berhasil Ditambahkan! 🎉', {
           description: `Produk "${form.data.name}" telah disimpan ke sistem.`,
           duration: 4000,
         })
+        // Upload gambar jika ada file yang dipilih
+        if (imageFile) {
+          // Untuk create baru, ambil ID dari flash atau dari data terbaru
+          const targetId = editing?.id ?? (page?.props?.flash?.new_product_id as number | undefined)
+          if (targetId) {
+            uploadImageToProduct(targetId)
+          }
+        }
         setSheetOpen(false)
       },
       onError: (errors: Record<string, string>) => {
@@ -377,7 +501,7 @@ export default function Index({ tab, products, categories, brands, units, outlet
             duration: 5000,
           })
         } else {
-          const firstMsg = errors[errorKeys[0]] || 'Mohon lengkapi data yang ditandai merah.'
+          const firstMsg = (errorKeys[0] ? errors[errorKeys[0]] : null) || 'Mohon lengkapi data yang ditandai merah.'
           toast.error('Gagal Menyimpan Produk ⚠️', {
             description: firstMsg,
             duration: 5000,
@@ -421,15 +545,12 @@ export default function Index({ tab, products, categories, brands, units, outlet
       cell: ({ row }) => (
         <Link href={route('admin.products.show', row.original.id)} className="flex items-center justify-center">
           <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface border border-border shadow-2xs transition-transform hover:scale-105">
-            {row.original.image_url ? (
-              <img
-                src={row.original.image_url}
-                alt={row.original.name}
-                className="size-full object-cover"
-              />
-            ) : (
-              <span className="text-[9px] font-medium text-content-muted">Tidak ada</span>
-            )}
+            <img
+              src={row.original.image_url ?? '/images/default-product.webp'}
+              alt={row.original.name}
+              className="size-full object-cover"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/default-product.webp' }}
+            />
           </div>
         </Link>
       ),
@@ -609,48 +730,156 @@ export default function Index({ tab, products, categories, brands, units, outlet
       <AppSheet
         open={sheetOpen}
         onOpenChange={setSheetOpen}
-        title={editing ? 'Ubah Produk' : 'Tambah Produk'}
+        title={editing ? 'Ubah Produk' : 'Tambah Produk Baru'}
+        description={editing ? `Sunting informasi & data produk "${editing.name}"` : 'Lengkapi informasi produk, barcode/QR, dan pengaturan persediaan.'}
         size="xl"
-        footer={<Button type="submit" form="product-form" disabled={form.processing}>Simpan</Button>}
+        footer={
+          <div className="flex items-center justify-between w-full">
+            <span className="text-xs text-content-muted">
+              {editing ? `ID Produk: #${editing.id}` : 'Form Produk Baru'}
+            </span>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => setSheetOpen(false)}>
+                Batal
+              </Button>
+              <Button type="submit" form="product-form" disabled={form.processing} className="gap-2 bg-navy-900 text-white hover:bg-navy-950">
+                <CheckCircle2 className="size-4" />
+                {editing ? 'Simpan Perubahan' : 'Simpan Produk'}
+              </Button>
+            </div>
+          </div>
+        }
       >
-          <form id="product-form" onSubmit={submit} className="flex flex-col gap-4">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList>
-                <TabsTrigger value="umum">Umum</TabsTrigger>
-                <TabsTrigger value="barcode" className="relative">
-                  Barcode
-                  {Object.keys(form.errors).some((k) => k.startsWith('barcodes')) && (
-                    <span className="ml-1.5 rounded-full bg-danger px-1.5 py-0.2 text-[9px] font-bold text-white">!</span>
-                  )}
+        <form id="product-form" onSubmit={submit} className="flex flex-col gap-5">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 h-11 p-1 bg-surface-muted/70 rounded-xl border border-border">
+              <TabsTrigger value="umum" className="rounded-lg text-xs font-semibold gap-1.5 data-[state=active]:bg-white data-[state=active]:text-navy-900 data-[state=active]:shadow-xs">
+                <Package className="size-3.5 text-blue-600" />
+                <span>Umum</span>
+              </TabsTrigger>
+              <TabsTrigger value="barcode" className="relative rounded-lg text-xs font-semibold gap-1.5 data-[state=active]:bg-white data-[state=active]:text-navy-900 data-[state=active]:shadow-xs">
+                <QrCode className="size-3.5 text-indigo-600" />
+                <span>Barcode & QR</span>
+                {Object.keys(form.errors).some((k) => k.startsWith('barcodes')) && (
+                  <span className="ml-1 rounded-full bg-danger px-1.5 py-0.2 text-[9px] font-bold text-white animate-pulse">!</span>
+                )}
+              </TabsTrigger>
+              {!editing && (
+                <TabsTrigger value="harga" className="rounded-lg text-xs font-semibold gap-1.5 data-[state=active]:bg-white data-[state=active]:text-navy-900 data-[state=active]:shadow-xs">
+                  <Tag className="size-3.5 text-emerald-600" />
+                  <span>Harga Awal</span>
                 </TabsTrigger>
-                {!editing && <TabsTrigger value="harga">Harga</TabsTrigger>}
-                <TabsTrigger value="stok">Stok Min-Maks</TabsTrigger>
-              </TabsList>
+              )}
+              <TabsTrigger value="stok" className="rounded-lg text-xs font-semibold gap-1.5 data-[state=active]:bg-white data-[state=active]:text-navy-900 data-[state=active]:shadow-xs">
+                <Boxes className="size-3.5 text-amber-600" />
+                <span>Stok Min-Maks</span>
+              </TabsTrigger>
+            </TabsList>
 
-              <TabsContent value="umum" className="flex flex-col gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="p-sku">SKU</Label>
-                  <Input id="p-sku" value={form.data.sku} onChange={(e) => form.setData('sku', e.target.value)} />
-                  {form.errors.sku && <p className="text-sm text-danger">{form.errors.sku}</p>}
+            {/* ── TAB 1: UMUM ── */}
+            <TabsContent value="umum" className="mt-4 flex flex-col gap-4">
+              {/* Card 1: Foto Produk */}
+              <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-2xs space-y-3">
+                <div className="flex items-center gap-2 border-b border-border/60 pb-2">
+                  <ImageIcon className="size-4 text-blue-600" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-navy-900">Foto Produk</h3>
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="p-name">Nama</Label>
-                  <Input id="p-name" value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} />
-                  {form.errors.name && <p className="text-sm text-danger">{form.errors.name}</p>}
+                <div className="flex items-center gap-4">
+                  <div className="relative flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-border bg-surface-muted/40 transition-colors hover:border-primary/50 shadow-2xs">
+                    {imagePreview ? (
+                      <img src={imagePreview} alt="Preview" className="size-full object-cover" />
+                    ) : (
+                      <div className="flex flex-col items-center gap-1 p-2 text-center">
+                        <ImageIcon className="size-6 text-content-muted/50" />
+                        <span className="text-[10px] text-content-muted">Belum Ada Foto</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-2 w-fit rounded-xl border-border bg-surface"
+                      onClick={() => imageInputRef.current?.click()}
+                      disabled={imageUploading}
+                    >
+                      <Upload className="size-3.5 text-primary" />
+                      {imagePreview ? 'Ganti Foto Produk' : 'Pilih Foto Produk'}
+                    </Button>
+                    {imageFile && (
+                      <p className="text-[11px] font-medium text-emerald-600 max-w-[200px] truncate">
+                        📎 {imageFile.name}
+                      </p>
+                    )}
+                    {!imageFile && editing && !editing.image_url && (
+                      <p className="text-[11px] text-amber-600">Menggunakan logo default mart</p>
+                    )}
+                    <p className="text-[10px] text-content-muted">Format JPG, PNG, WEBP (Maksimal 5MB)</p>
+                  </div>
                 </div>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/jpg,image/webp,image/svg+xml"
+                  className="hidden"
+                  onChange={handleImageSelect}
+                />
+              </div>
+
+              {/* Card 2: Identitas Utama (SKU & Nama) */}
+              <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-2xs space-y-4">
+                <div className="flex items-center gap-2 border-b border-border/60 pb-2">
+                  <FileText className="size-4 text-indigo-600" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-navy-900">Identitas Produk</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1.5 sm:col-span-1">
+                    <Label htmlFor="p-sku" className="text-xs font-semibold text-content">Kode SKU</Label>
+                    <Input
+                      id="p-sku"
+                      placeholder="mis. SKU-0012"
+                      value={form.data.sku}
+                      onChange={(e) => form.setData('sku', e.target.value)}
+                      className="font-mono text-xs rounded-xl"
+                    />
+                    {form.errors.sku && <p className="text-xs text-danger font-medium">{form.errors.sku}</p>}
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label htmlFor="p-name" className="text-xs font-semibold text-content">Nama Produk <span className="text-danger">*</span></Label>
+                    <Input
+                      id="p-name"
+                      placeholder="Masukkan nama produk..."
+                      value={form.data.name}
+                      onChange={(e) => form.setData('name', e.target.value)}
+                      className="text-xs font-medium rounded-xl"
+                    />
+                    {form.errors.name && <p className="text-xs text-danger font-medium">{form.errors.name}</p>}
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3: Klasifikasi (Kategori, Brand, Satuan) */}
+              <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-2xs space-y-4">
+                <div className="flex items-center gap-2 border-b border-border/60 pb-2">
+                  <Award className="size-4 text-emerald-600" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-navy-900">Klasifikasi & Satuan</h3>
+                </div>
+
+                {/* Kategori */}
                 <div className="space-y-2">
-                  <Label className="text-xs font-semibold text-content">Kategori</Label>
+                  <Label className="text-xs font-semibold text-content">Kategori Produk</Label>
                   <div className="flex flex-wrap gap-1.5">
                     <button
                       type="button"
                       onClick={() => form.setData('category_id', '')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all cursor-pointer ${
                         !form.data.category_id
                           ? 'bg-navy-900 text-white border-navy-900 shadow-xs font-semibold'
-                          : 'bg-surface border-border text-content-muted hover:border-gray-400 hover:text-content'
+                          : 'bg-surface-muted/60 border-border text-content-muted hover:border-gray-400 hover:text-content'
                       }`}
                     >
-                      Tanpa kategori
+                      Tanpa Kategori
                     </button>
                     {categories.map((c) => {
                       const isSelected = form.data.category_id === String(c.id)
@@ -659,10 +888,10 @@ export default function Index({ tab, products, categories, brands, units, outlet
                           key={c.id}
                           type="button"
                           onClick={() => form.setData('category_id', String(c.id))}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
+                          className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all cursor-pointer ${
                             isSelected
                               ? 'bg-navy-900 text-white border-navy-900 shadow-xs font-semibold'
-                              : 'bg-surface border-border text-content-muted hover:border-gray-400 hover:text-content'
+                              : 'bg-surface-muted/60 border-border text-content-muted hover:border-gray-400 hover:text-content'
                           }`}
                         >
                           {c.name}
@@ -672,19 +901,20 @@ export default function Index({ tab, products, categories, brands, units, outlet
                   </div>
                 </div>
 
+                {/* Brand */}
                 <div className="space-y-2">
-                  <Label className="text-xs font-semibold text-content">Brand</Label>
+                  <Label className="text-xs font-semibold text-content">Brand / Merek</Label>
                   <div className="flex flex-wrap gap-1.5">
                     <button
                       type="button"
                       onClick={() => form.setData('brand_id', '')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all cursor-pointer ${
                         !form.data.brand_id
                           ? 'bg-navy-900 text-white border-navy-900 shadow-xs font-semibold'
-                          : 'bg-surface border-border text-content-muted hover:border-gray-400 hover:text-content'
+                          : 'bg-surface-muted/60 border-border text-content-muted hover:border-gray-400 hover:text-content'
                       }`}
                     >
-                      Tanpa brand
+                      Tanpa Brand
                     </button>
                     {brands.map((b) => {
                       const isSelected = form.data.brand_id === String(b.id)
@@ -693,10 +923,10 @@ export default function Index({ tab, products, categories, brands, units, outlet
                           key={b.id}
                           type="button"
                           onClick={() => form.setData('brand_id', String(b.id))}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
+                          className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all cursor-pointer ${
                             isSelected
                               ? 'bg-navy-900 text-white border-navy-900 shadow-xs font-semibold'
-                              : 'bg-surface border-border text-content-muted hover:border-gray-400 hover:text-content'
+                              : 'bg-surface-muted/60 border-border text-content-muted hover:border-gray-400 hover:text-content'
                           }`}
                         >
                           {b.name}
@@ -706,8 +936,9 @@ export default function Index({ tab, products, categories, brands, units, outlet
                   </div>
                 </div>
 
+                {/* Satuan Dasar */}
                 <div className="space-y-2">
-                  <Label className="text-xs font-semibold text-content">Satuan Dasar</Label>
+                  <Label className="text-xs font-semibold text-content">Satuan Dasar <span className="text-danger">*</span></Label>
                   <div className="flex flex-wrap gap-1.5">
                     {units.map((u) => {
                       const isSelected = form.data.base_unit_id === String(u.id)
@@ -716,10 +947,10 @@ export default function Index({ tab, products, categories, brands, units, outlet
                           key={u.id}
                           type="button"
                           onClick={() => handleSelectBaseUnit(String(u.id))}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
+                          className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all cursor-pointer ${
                             isSelected
                               ? 'bg-navy-900 text-white border-navy-900 shadow-xs font-semibold'
-                              : 'bg-surface border-border text-content-muted hover:border-gray-400 hover:text-content'
+                              : 'bg-surface-muted/60 border-border text-content-muted hover:border-gray-400 hover:text-content'
                           }`}
                         >
                           {u.name} <span className="font-mono text-[10px] opacity-75">({u.code})</span>
@@ -727,308 +958,399 @@ export default function Index({ tab, products, categories, brands, units, outlet
                       )
                     })}
                   </div>
-                  {form.errors.base_unit_id && <p className="text-sm text-danger">{form.errors.base_unit_id}</p>}
+                  {form.errors.base_unit_id && <p className="text-xs text-danger font-medium">{form.errors.base_unit_id}</p>}
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="p-desc">Deskripsi</Label>
-                  <Textarea id="p-desc" value={form.data.description} onChange={(e) => form.setData('description', e.target.value)} />
+              </div>
+
+              {/* Card 4: Deskripsi & Catatan */}
+              <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-2xs space-y-2">
+                <Label htmlFor="p-desc" className="text-xs font-semibold text-content">Deskripsi Produk (Opsional)</Label>
+                <Textarea
+                  id="p-desc"
+                  rows={2}
+                  placeholder="Catatan internal atau rincian deskripsi produk..."
+                  value={form.data.description}
+                  onChange={(e) => form.setData('description', e.target.value)}
+                  className="text-xs rounded-xl"
+                />
+              </div>
+
+              {/* Card 5: Opsi & Status Produk */}
+              <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-2xs space-y-3">
+                <div className="flex items-center gap-2 border-b border-border/60 pb-2">
+                  <ShieldCheck className="size-4 text-amber-600" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-navy-900">Opsi & Status Produk</h3>
                 </div>
-                <div className="space-y-2 pt-1">
-                  <Label className="text-xs font-semibold text-content">Opsi & Status Produk</Label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <label
-                      htmlFor="p-expirable"
-                      className={`flex items-center gap-2.5 p-2.5 rounded-lg border transition-all cursor-pointer select-none ${
-                        form.data.is_expirable
-                          ? 'bg-blue-50/60 border-blue-300 text-blue-950 dark:bg-blue-950/30 dark:border-blue-700 dark:text-blue-200 font-medium'
-                          : 'bg-surface border-border text-content-muted hover:border-gray-300'
-                      }`}
-                    >
-                      <Checkbox
-                        id="p-expirable"
-                        checked={form.data.is_expirable}
-                        onCheckedChange={(c) => form.setData('is_expirable', c === true)}
-                      />
-                      <div className="flex flex-col">
-                        <span className="text-xs font-semibold">Produk Kadaluwarsa</span>
-                        <span className="text-[10px] text-content-muted">Wajib tanggal saat terima barang</span>
-                      </div>
-                    </label>
-
-                    <label
-                      htmlFor="p-favorite"
-                      className={`flex items-center gap-2.5 p-2.5 rounded-lg border transition-all cursor-pointer select-none ${
-                        form.data.is_favorite
-                          ? 'bg-amber-50/60 border-amber-300 text-amber-950 dark:bg-amber-950/30 dark:border-amber-700 dark:text-amber-200 font-medium'
-                          : 'bg-surface border-border text-content-muted hover:border-gray-300'
-                      }`}
-                    >
-                      <Checkbox
-                        id="p-favorite"
-                        checked={form.data.is_favorite}
-                        onCheckedChange={(c) => form.setData('is_favorite', c === true)}
-                      />
-                      <div className="flex flex-col">
-                        <span className="text-xs font-semibold">Favorit Kasir</span>
-                        <span className="text-[10px] text-content-muted">Tombol akses cepat di kasir</span>
-                      </div>
-                    </label>
-
-                    <label
-                      htmlFor="p-public"
-                      className={`flex items-center gap-2.5 p-2.5 rounded-lg border transition-all cursor-pointer select-none ${
-                        form.data.is_visible_public
-                          ? 'bg-emerald-50/60 border-emerald-300 text-emerald-950 dark:bg-emerald-950/30 dark:border-emerald-700 dark:text-emerald-200 font-medium'
-                          : 'bg-surface border-border text-content-muted hover:border-gray-300'
-                      }`}
-                    >
-                      <Checkbox
-                        id="p-public"
-                        checked={form.data.is_visible_public}
-                        onCheckedChange={(c) => form.setData('is_visible_public', c === true)}
-                      />
-                      <div className="flex flex-col">
-                        <span className="text-xs font-semibold">Storefront Publik</span>
-                        <span className="text-[10px] text-content-muted">Tampil di katalog web publik</span>
-                      </div>
-                    </label>
-
-                    <label
-                      htmlFor="p-consignment"
-                      className={`flex items-center gap-2.5 p-2.5 rounded-lg border transition-all cursor-pointer select-none ${
-                        form.data.is_consignment
-                          ? 'bg-purple-50/60 border-purple-300 text-purple-950 dark:bg-purple-950/30 dark:border-purple-700 dark:text-purple-200 font-medium'
-                          : 'bg-surface border-border text-content-muted hover:border-gray-300'
-                      }`}
-                    >
-                      <Checkbox
-                        id="p-consignment"
-                        checked={form.data.is_consignment}
-                        onCheckedChange={(c) => form.setData('is_consignment', c === true)}
-                      />
-                      <div className="flex flex-col">
-                        <span className="text-xs font-semibold">Barang Titipan (Konsinyasi)</span>
-                        <span className="text-[10px] text-content-muted">Bukan aset mart, komisi diakui saat jual</span>
-                      </div>
-                    </label>
-
-                    <label
-                      htmlFor="p-active"
-                      className={`flex items-center gap-2.5 p-2.5 rounded-lg border transition-all cursor-pointer select-none ${
-                        form.data.is_active
-                          ? 'bg-indigo-50/60 border-indigo-300 text-indigo-950 dark:bg-indigo-950/30 dark:border-indigo-700 dark:text-indigo-200 font-medium'
-                          : 'bg-surface border-border text-content-muted hover:border-gray-300'
-                      }`}
-                    >
-                      <Checkbox
-                        id="p-active"
-                        checked={form.data.is_active}
-                        onCheckedChange={(c) => form.setData('is_active', c === true)}
-                      />
-                      <div className="flex flex-col">
-                        <span className="text-xs font-semibold">Status Aktif</span>
-                        <span className="text-[10px] text-content-muted">Produk dapat ditransaksikan</span>
-                      </div>
-                    </label>
-                  </div>
-
-                  {form.data.is_consignment && (
-                    <div className="space-y-1.5 pt-2">
-                      <Label htmlFor="p-consignment-percent">Komisi Mart (%)</Label>
-                      <Input
-                        id="p-consignment-percent"
-                        type="number"
-                        min={0}
-                        max={100}
-                        step="1"
-                        placeholder="mis. 20"
-                        value={form.data.consignment_percent}
-                        onChange={(e) => form.setData('consignment_percent', e.target.value)}
-                      />
-                      <p className="text-[11px] text-content-muted">Persentase komisi yang dipotong mart saat barang titipan ini terjual di kasir.</p>
-                      {form.errors.consignment_percent && <p className="text-sm text-danger">{form.errors.consignment_percent}</p>}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label
+                    htmlFor="p-expirable"
+                    className={`flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer select-none ${
+                      form.data.is_expirable
+                        ? 'bg-blue-50/70 border-blue-300 text-blue-950 dark:bg-blue-950/40 dark:border-blue-700 dark:text-blue-200'
+                        : 'bg-surface border-border text-content-muted hover:border-gray-300'
+                    }`}
+                  >
+                    <Checkbox
+                      id="p-expirable"
+                      checked={form.data.is_expirable}
+                      onCheckedChange={(c) => form.setData('is_expirable', c === true)}
+                      className="mt-0.5"
+                    />
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-navy-950 dark:text-white">Produk Kadaluwarsa</span>
+                      <span className="text-[10px] text-content-muted">Wajib tanggal kadaluwarsa saat terima barang</span>
                     </div>
-                  )}
-                </div>
-              </TabsContent>
+                  </label>
 
-              <TabsContent value="barcode" className="flex flex-col gap-3">
-                <div className="rounded-xl border border-border bg-surface-muted/40 p-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-content">Input Barcode Scanner USB</span>
+                  <label
+                    htmlFor="p-favorite"
+                    className={`flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer select-none ${
+                      form.data.is_favorite
+                        ? 'bg-amber-50/70 border-amber-300 text-amber-950 dark:bg-amber-950/40 dark:border-amber-700 dark:text-amber-200'
+                        : 'bg-surface border-border text-content-muted hover:border-gray-300'
+                    }`}
+                  >
+                    <Checkbox
+                      id="p-favorite"
+                      checked={form.data.is_favorite}
+                      onCheckedChange={(c) => form.setData('is_favorite', c === true)}
+                      className="mt-0.5"
+                    />
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-navy-950 dark:text-white">Favorit Kasir</span>
+                      <span className="text-[10px] text-content-muted">Tampil di tombol akses cepat layar kasir</span>
                     </div>
-                    {scannerTestResult ? (
-                      <Badge className="bg-emerald-600 text-white text-[10px] font-bold shrink-0">
-                        Scan Berhasil Terdeteksi! 🎉
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-[10px] text-content-muted shrink-0">
-                        Siap Membaca
-                      </Badge>
-                    )}
-                  </div>
+                  </label>
 
+                  <label
+                    htmlFor="p-public"
+                    className={`flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer select-none ${
+                      form.data.is_visible_public
+                        ? 'bg-emerald-50/70 border-emerald-300 text-emerald-950 dark:bg-emerald-950/40 dark:border-emerald-700 dark:text-emerald-200'
+                        : 'bg-surface border-border text-content-muted hover:border-gray-300'
+                    }`}
+                  >
+                    <Checkbox
+                      id="p-public"
+                      checked={form.data.is_visible_public}
+                      onCheckedChange={(c) => form.setData('is_visible_public', c === true)}
+                      className="mt-0.5"
+                    />
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-navy-950 dark:text-white">Storefront Publik</span>
+                      <span className="text-[10px] text-content-muted">Ditampilkan di katalog web publik mart</span>
+                    </div>
+                  </label>
+
+                  <label
+                    htmlFor="p-consignment"
+                    className={`flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer select-none ${
+                      form.data.is_consignment
+                        ? 'bg-purple-50/70 border-purple-300 text-purple-950 dark:bg-purple-950/40 dark:border-purple-700 dark:text-purple-200'
+                        : 'bg-surface border-border text-content-muted hover:border-gray-300'
+                    }`}
+                  >
+                    <Checkbox
+                      id="p-consignment"
+                      checked={form.data.is_consignment}
+                      onCheckedChange={(c) => form.setData('is_consignment', c === true)}
+                      className="mt-0.5"
+                    />
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-navy-950 dark:text-white">Barang Titipan (Konsinyasi)</span>
+                      <span className="text-[10px] text-content-muted">Bukan aset mart, komisi diakui saat terjual</span>
+                    </div>
+                  </label>
+
+                  <label
+                    htmlFor="p-active"
+                    className={`flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer select-none sm:col-span-2 ${
+                      form.data.is_active
+                        ? 'bg-indigo-50/70 border-indigo-300 text-indigo-950 dark:bg-indigo-950/40 dark:border-indigo-700 dark:text-indigo-200'
+                        : 'bg-surface border-border text-content-muted hover:border-gray-300'
+                    }`}
+                  >
+                    <Checkbox
+                      id="p-active"
+                      checked={form.data.is_active}
+                      onCheckedChange={(c) => form.setData('is_active', c === true)}
+                      className="mt-0.5"
+                    />
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-navy-950 dark:text-white">Status Produk Aktif</span>
+                      <span className="text-[10px] text-content-muted">Produk aktif dapat ditransaksikan di kasir & stok</span>
+                    </div>
+                  </label>
+                </div>
+
+                {form.data.is_consignment && (
+                  <div className="space-y-1.5 pt-2 border-t border-border/60">
+                    <Label htmlFor="p-consignment-percent" className="text-xs font-semibold text-content">Komisi Mart (%)</Label>
+                    <Input
+                      id="p-consignment-percent"
+                      type="number"
+                      min={0}
+                      max={100}
+                      step="1"
+                      placeholder="mis. 20"
+                      value={form.data.consignment_percent}
+                      onChange={(e) => form.setData('consignment_percent', e.target.value)}
+                      className="text-xs rounded-xl max-w-xs"
+                    />
+                    <p className="text-[11px] text-content-muted">Persentase komisi yang dipotong mart saat barang titipan ini terjual di kasir.</p>
+                    {form.errors.consignment_percent && <p className="text-xs text-danger font-medium">{form.errors.consignment_percent}</p>}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* ── TAB 2: BARCODE & KODE QR ── */}
+            <TabsContent value="barcode" className="mt-4 flex flex-col gap-4">
+              {/* Banner Status Scanner USB */}
+              <div className="rounded-2xl border border-indigo-200/80 bg-gradient-to-r from-indigo-50/70 via-surface to-blue-50/60 p-4 shadow-2xs dark:border-indigo-900/40">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <QrCode className="size-4 text-indigo-600" />
+                    <span className="text-xs font-bold text-navy-950 dark:text-white">Hardware Barcode & QR Scanner USB</span>
+                  </div>
                   {scannerTestResult ? (
-                    <div className="mt-2.5 grid grid-cols-2 sm:grid-cols-4 gap-2 rounded-lg bg-surface p-2.5 border border-border text-xs">
-                      <div>
-                        <span className="text-[10px] text-content-muted block">Kode Terbaca</span>
-                        <span className="font-mono font-bold text-blue-700 dark:text-blue-300">{scannerTestResult.code}</span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-content-muted block">Panjang Digit</span>
-                        <span className="font-semibold text-content">{scannerTestResult.charCount} Karakter</span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-content-muted block">Kecepatan Respon</span>
-                        <span className="font-semibold text-emerald-600">Sangat Baik ({scannerTestResult.speedMs}ms/char)</span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-content-muted block">Deteksi Suffix</span>
-                        <span className="font-semibold text-content">{scannerTestResult.suffix}</span>
-                      </div>
-                    </div>
+                    <Badge className="bg-emerald-600 text-white text-[10px] font-bold shrink-0">
+                      Scan Terdeteksi! 🎉
+                    </Badge>
                   ) : (
-                    <p className="mt-1 text-[11px] text-content-muted">
-                      Tembakkan alat barcode scanner USB Anda ke kemasan produk. Hasil scan akan otomatis dimasukkan ke kolom di bawah.
-                    </p>
+                    <Badge variant="outline" className="text-[10px] text-indigo-700 border-indigo-300 dark:border-indigo-700 dark:text-indigo-300 shrink-0">
+                      Siap Membaca
+                    </Badge>
                   )}
                 </div>
 
-                <p className="text-xs text-content-muted">
-                  Arahkan kursor atau langsung tembakkan scanner ke kemasan produk, atau klik <strong>Auto EAN-13</strong>.
-                </p>
-                {form.data.barcodes.map((b, index) => (
-                  <div key={index} className="flex items-end gap-2">
-                    <div className="flex-1 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <Label>Kode Barcode #{index + 1}</Label>
-                        {b.is_primary && <Badge className="text-[9px] bg-blue-600 text-white">Utama</Badge>}
-                      </div>
-                      <div className="flex gap-1.5">
-                        <Input
-                          ref={index === 0 ? firstBarcodeRef : undefined}
-                          data-barcode-field="true"
-                          placeholder="Scan barcode dengan alat atau ketik di sini…"
-                          value={b.barcode}
-                          onChange={(e) => updateBarcode(index, { barcode: e.target.value })}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault()
-                              verifyBarcodeScan(index, b.barcode)
-                              addBarcode()
-                            }
-                          }}
-                          onBlur={() => {
-                            if (b.barcode.trim()) {
-                              verifyBarcodeScan(index, b.barcode)
-                            }
-                          }}
-                          className="font-mono text-xs flex-1"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          title="Generate Barcode EAN-13 Otomatis"
-                          onClick={() => updateBarcode(index, { barcode: generateEan13() })}
-                          className="gap-1 text-xs text-blue-700 bg-blue-50/50 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 shrink-0"
-                        >
-                          <Sparkles className="size-3.5 text-blue-600" />
-                          Auto EAN-13
-                        </Button>
-                      </div>
+                {scannerTestResult ? (
+                  <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 rounded-xl bg-white p-3 border border-border text-xs shadow-2xs">
+                    <div>
+                      <span className="text-[10px] text-content-muted block">Kode Terbaca</span>
+                      <span className="font-mono font-bold text-indigo-700 dark:text-indigo-400">{scannerTestResult.code}</span>
                     </div>
-                    <div className="w-28 space-y-1.5">
-                      <Label>Satuan</Label>
-                      <Select value={b.unit_id} onValueChange={(v) => updateBarcode(index, { unit_id: v })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Satuan" />
+                    <div>
+                      <span className="text-[10px] text-content-muted block">Panjang Digit</span>
+                      <span className="font-semibold text-content">{scannerTestResult.charCount} Karakter</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-content-muted block">Kecepatan Respon</span>
+                      <span className="font-semibold text-emerald-600">{scannerTestResult.speedMs}ms/char</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-content-muted block">Status</span>
+                      <span className="font-semibold text-emerald-600">Tersimpan</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-1.5 text-[11px] text-content-muted leading-relaxed">
+                    Arahkan kursor atau langsung tembakkan scanner USB Anda ke kemasan produk. Hasil scan otomatis masuk &amp; menghasilkan kode QR visual.
+                  </p>
+                )}
+              </div>
+
+              {/* List Barcode & QR rendering */}
+              <div className="space-y-4">
+                {form.data.barcodes.map((b, index) => {
+                  const selectedUnit = units.find((u) => String(u.id) === b.unit_id)
+                  return (
+                    <div key={index} className="rounded-2xl border border-border/80 bg-surface p-4 shadow-2xs space-y-3">
+                      <div className="flex items-center justify-between border-b border-border/60 pb-2">
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-navy-900 text-white font-mono text-[10px]">
+                            Barcode #{index + 1}
+                          </Badge>
+                          {b.is_primary && <Badge className="bg-blue-600 text-white text-[9px] font-bold">Utama</Badge>}
+                        </div>
+                        {form.data.barcodes.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeBarcode(index)}
+                            className="text-danger hover:bg-danger/10 text-xs gap-1 h-7"
+                          >
+                            <Trash2 className="size-3.5" /> Hapus
+                          </Button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
+                        <div className="sm:col-span-8 space-y-1.5">
+                          <Label className="text-xs font-semibold text-content">Kode Barcode / QR</Label>
+                          <div className="flex gap-1.5">
+                            <Input
+                              ref={index === 0 ? firstBarcodeRef : undefined}
+                              data-barcode-field="true"
+                              placeholder="Scan atau ketik kode barcode..."
+                              value={b.barcode}
+                              onChange={(e) => updateBarcode(index, { barcode: e.target.value })}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault()
+                                  verifyBarcodeScan(index, b.barcode)
+                                  addBarcode()
+                                }
+                              }}
+                              onBlur={() => {
+                                if (b.barcode.trim()) {
+                                  verifyBarcodeScan(index, b.barcode)
+                                }
+                              }}
+                              className="font-mono text-xs flex-1 rounded-xl"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              title="Generate Barcode EAN-13 Otomatis"
+                              onClick={() => updateBarcode(index, { barcode: generateEan13() })}
+                              className="gap-1 text-xs text-blue-700 bg-blue-50/50 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 shrink-0 rounded-xl"
+                            >
+                              <Sparkles className="size-3.5 text-blue-600" />
+                              Auto EAN-13
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="sm:col-span-4 space-y-1.5">
+                          <Label className="text-xs font-semibold text-content">Satuan Kemasan</Label>
+                          <Select value={b.unit_id} onValueChange={(v) => updateBarcode(index, { unit_id: v })}>
+                            <SelectTrigger className="rounded-xl text-xs">
+                              <SelectValue placeholder="Pilih Satuan" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {units.map((u) => (
+                                <SelectItem key={u.id} value={String(u.id)}>{u.name} ({u.code})</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      {/* Visual QR Code & Barcode Graphic Rendering */}
+                      <BarcodeQrPreview
+                        code={b.barcode}
+                        productName={form.data.name}
+                        unitName={selectedUnit?.code}
+                      />
+                    </div>
+                  )
+                })}
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addBarcode}
+                className="w-fit gap-2 rounded-xl border-dashed border-border"
+              >
+                <Plus className="size-4" /> Tambah Barcode / QR Lain
+              </Button>
+            </TabsContent>
+
+            {/* ── TAB 3: HARGA AWAL (Hanya Saat Create Produk Baru) ── */}
+            {!editing && (
+              <TabsContent value="harga" className="mt-4 flex flex-col gap-4">
+                <div className="rounded-2xl border border-emerald-200/80 bg-gradient-to-r from-emerald-50/60 via-surface to-teal-50/50 p-4 shadow-2xs space-y-4">
+                  <div className="flex items-center gap-2 border-b border-emerald-200/60 pb-2">
+                    <Tag className="size-4 text-emerald-600" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-navy-900">Harga Jual Awal</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-content">Outlet</Label>
+                      <Select value={form.data.price.outlet_id} onValueChange={(v) => form.setData('price', { ...form.data.price, outlet_id: v })}>
+                        <SelectTrigger className="rounded-xl text-xs">
+                          <SelectValue placeholder="Pilih outlet..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {units.map((u) => (
-                            <SelectItem key={u.id} value={String(u.id)}>{u.code}</SelectItem>
+                          {outlets.map((o) => (
+                            <SelectItem key={o.id} value={String(o.id)}>{o.name}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
-                    <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeBarcode(index)}>
-                      <Trash2 className="size-4 text-danger" />
-                    </Button>
-                  </div>
-                ))}
-                <Button type="button" variant="outline" size="sm" onClick={addBarcode} className="w-fit">
-                  <Plus className="size-3.5" /> Tambah Barcode Lain
-                </Button>
-              </TabsContent>
 
-              {!editing && (
-                <TabsContent value="harga" className="flex flex-col gap-4">
-                  <div className="space-y-1.5">
-                    <Label>Outlet</Label>
-                    <Select value={form.data.price.outlet_id} onValueChange={(v) => form.setData('price', { ...form.data.price, outlet_id: v })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih outlet" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {outlets.map((o) => (
-                          <SelectItem key={o.id} value={String(o.id)}>{o.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-content">Satuan Harga</Label>
+                      <Select value={form.data.price.unit_id} onValueChange={(v) => form.setData('price', { ...form.data.price, unit_id: v })}>
+                        <SelectTrigger className="rounded-xl text-xs">
+                          <SelectValue placeholder="Pilih satuan..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {units.map((u) => (
+                            <SelectItem key={u.id} value={String(u.id)}>{u.name} ({u.code})</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-content">Harga Jual Normal (Rp) <span className="text-danger">*</span></Label>
+                      <MoneyInput
+                        value={form.data.price.price}
+                        onChange={(v) => form.setData('price', { ...form.data.price, price: v })}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-content">Harga Khusus Anggota (Opsional)</Label>
+                      <MoneyInput
+                        value={form.data.price.member_price ?? 0}
+                        onChange={(v) => form.setData('price', { ...form.data.price, member_price: v || null })}
+                      />
+                    </div>
                   </div>
+                </div>
+              </TabsContent>
+            )}
+
+            {/* ── TAB 4: STOK MIN-MAKS ── */}
+            <TabsContent value="stok" className="mt-4 flex flex-col gap-4">
+              <div className="rounded-2xl border border-amber-200/80 bg-gradient-to-r from-amber-50/60 via-surface to-orange-50/50 p-4 shadow-2xs space-y-4">
+                <div className="flex items-center gap-2 border-b border-amber-200/60 pb-2">
+                  <Boxes className="size-4 text-amber-600" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-navy-900">Batas Minimum &amp; Maksimum Stok</h3>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label>Satuan Harga</Label>
-                    <Select value={form.data.price.unit_id} onValueChange={(v) => form.setData('price', { ...form.data.price, unit_id: v })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih satuan" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {units.map((u) => (
-                          <SelectItem key={u.id} value={String(u.id)}>{u.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Harga Jual</Label>
-                    <MoneyInput value={form.data.price.price} onChange={(v) => form.setData('price', { ...form.data.price, price: v })} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Harga Anggota (opsional)</Label>
-                    <MoneyInput
-                      value={form.data.price.member_price ?? 0}
-                      onChange={(v) => form.setData('price', { ...form.data.price, member_price: v || null })}
+                    <Label htmlFor="p-min" className="text-xs font-semibold text-content">Stok Minimum (Alert Restok)</Label>
+                    <Input
+                      id="p-min"
+                      type="number"
+                      min={0}
+                      placeholder="mis. 5"
+                      value={form.data.min_stock}
+                      onChange={(e) => form.setData('min_stock', Number(e.target.value))}
+                      className="text-xs rounded-xl"
                     />
+                    <p className="text-[11px] text-content-muted">Sistem akan memberi peringatan jika stok produk di bawah batas ini.</p>
                   </div>
-                </TabsContent>
-              )}
 
-              <TabsContent value="stok" className="flex flex-col gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="p-min">Stok Minimum</Label>
-                  <Input
-                    id="p-min"
-                    type="number"
-                    min={0}
-                    value={form.data.min_stock}
-                    onChange={(e) => form.setData('min_stock', Number(e.target.value))}
-                  />
+                  <div className="space-y-1.5">
+                    <Label htmlFor="p-max" className="text-xs font-semibold text-content">Stok Maksimum (Gudang)</Label>
+                    <Input
+                      id="p-max"
+                      type="number"
+                      min={0}
+                      placeholder="mis. 100"
+                      value={form.data.max_stock}
+                      onChange={(e) => form.setData('max_stock', e.target.value)}
+                      className="text-xs rounded-xl"
+                    />
+                    <p className="text-[11px] text-content-muted">Batas kapasitas maksimal stok produk yang disarankan di mart.</p>
+                    {form.errors.max_stock && <p className="text-xs text-danger font-medium">{form.errors.max_stock}</p>}
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="p-max">Stok Maksimum</Label>
-                  <Input
-                    id="p-max"
-                    type="number"
-                    min={0}
-                    value={form.data.max_stock}
-                    onChange={(e) => form.setData('max_stock', e.target.value)}
-                  />
-                  {form.errors.max_stock && <p className="text-sm text-danger">{form.errors.max_stock}</p>}
-                </div>
-              </TabsContent>
-            </Tabs>
-          </form>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </form>
       </AppSheet>
 
       <Dialog open={priceDialogOpen} onOpenChange={setPriceDialogOpen}>

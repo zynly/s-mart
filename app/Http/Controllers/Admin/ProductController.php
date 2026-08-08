@@ -16,6 +16,7 @@ use App\Services\ProductService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -122,17 +123,34 @@ class ProductController extends Controller
     {
         $request->validate([
             'image' => ['required', 'image', 'mimes:jpeg,png,jpg,webp,svg', 'max:5120'],
-            'alt' => ['nullable', 'string', 'max:255'],
+            'alt'   => ['nullable', 'string', 'max:255'],
         ]);
 
         $disk = config('filesystems.default', 'public');
-        $path = $request->file('image')->store('products', $disk);
+
+        try {
+            $path = $request->file('image')->store('products', $disk);
+        } catch (\Throwable $e) {
+            Log::error('Upload gambar produk gagal', [
+                'product_id' => $product->id,
+                'disk'       => $disk,
+                'error'      => $e->getMessage(),
+            ]);
+
+            return back()->withErrors([
+                'image' => 'Gagal mengunggah foto ke storage: '.$e->getMessage(),
+            ]);
+        }
+
+        if (! $path) {
+            return back()->withErrors(['image' => 'Gagal mengunggah foto, coba lagi.']);
+        }
 
         $isPrimary = $product->images()->count() === 0;
 
         $product->images()->create([
-            'path' => $path,
-            'alt' => $request->input('alt') ?: $product->name,
+            'path'       => $path,
+            'alt'        => $request->input('alt') ?: $product->name,
             'sort_order' => $product->images()->count() + 1,
             'is_primary' => $isPrimary,
         ]);
@@ -281,13 +299,16 @@ class ProductController extends Controller
     {
         $data = $request->safe()->except(['barcodes', 'price']);
 
-        $this->productService->create(
+        $product = $this->productService->create(
             $data,
             $request->validated('barcodes', []),
             $request->validated('price'),
         );
 
-        return back()->with('success', 'Produk berhasil dibuat.');
+        return back()->with([
+            'success'        => 'Produk berhasil dibuat.',
+            'new_product_id' => $product->id,
+        ]);
     }
 
     public function update(UpdateProductRequest $request, Product $product): RedirectResponse

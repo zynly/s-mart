@@ -56,8 +56,8 @@ return [
             'url' => env('DO_BASEURL', env('AWS_URL')),
             'endpoint' => env('DO_ENDPOINT', env('AWS_ENDPOINT')),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', true),
-            'throw' => false,
-            'report' => false,
+            'throw' => true,  // Lempar exception jika upload gagal (bukan silent fail)
+            'report' => true,
         ],
 
     ],
