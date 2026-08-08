@@ -169,6 +169,13 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
   const [pakasirModalUrl, setPakasirModalUrl] = useState<string | null>(null)
   const [pakasirModalOrderId, setPakasirModalOrderId] = useState<string | null>(null)
   const [pakasirModalAmount, setPakasirModalAmount] = useState<number | null>(null)
+  const [insufficientDepositModal, setInsufficientDepositModal] = useState<{
+    memberName: string
+    memberNumber: string
+    currentBalance: number
+    requiredAmount: number
+    shortage: number
+  } | null>(null)
 
 
   function scrollCarousel(direction: -1 | 1) {
@@ -639,9 +646,16 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
         return
       }
       if (member.balance_cache < subtotal) {
+        const shortage = subtotal - member.balance_cache
         const msg = `Saldo deposit anggota (Rp ${member.balance_cache.toLocaleString('id-ID')}) tidak mencukupi untuk pembayaran Rp ${subtotal.toLocaleString('id-ID')}.`
         setPaymentError(msg)
-        toast.error(msg)
+        setInsufficientDepositModal({
+          memberName: member.name,
+          memberNumber: member.member_number,
+          currentBalance: member.balance_cache,
+          requiredAmount: subtotal,
+          shortage,
+        })
         return
       }
       if (subtotal >= noPinThreshold && member.has_pin) {
@@ -1777,6 +1791,62 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
               className="border-gray-300 text-gray-700 hover:bg-gray-100 font-semibold w-full rounded-xl"
             >
               Transaksi Baru (Esc)
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Modal Dialog Popup Estetik: Saldo Deposit Tidak Mencukupi ── */}
+      <Dialog open={insufficientDepositModal !== null} onOpenChange={(open) => !open && setInsufficientDepositModal(null)}>
+        <DialogContent className="bg-white text-gray-900 max-w-md rounded-2xl p-6 shadow-2xl border border-rose-200">
+          <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 border border-rose-200 shadow-sm shrink-0">
+              <AlertCircle className="size-6 stroke-[2.5]" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-base text-gray-900">Saldo Deposit Kurang</h3>
+              <p className="text-xs text-rose-600 font-medium">Pembayaran deposit santri ditolak sistem</p>
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            <div className="rounded-xl bg-gray-50 border border-gray-200/80 p-3.5 space-y-2">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-gray-500">Anggota / Santri:</span>
+                <span className="font-bold text-gray-900">{insufficientDepositModal?.memberName} <span className="font-mono text-[11px] text-gray-400">({insufficientDepositModal?.memberNumber})</span></span>
+              </div>
+              <div className="flex justify-between items-center text-xs border-t border-gray-200/60 pt-2">
+                <span className="text-gray-500">Saldo Deposit Saat Ini:</span>
+                <span className="font-bold text-emerald-600">Rp {(insufficientDepositModal?.currentBalance || 0).toLocaleString('id-ID')}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs border-t border-gray-200/60 pt-2">
+                <span className="text-gray-500">Total Tagihan Belanja:</span>
+                <span className="font-bold text-navy-950">Rp {(insufficientDepositModal?.requiredAmount || 0).toLocaleString('id-ID')}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between rounded-xl bg-rose-50 border border-rose-200/80 p-3.5 text-rose-900">
+              <span className="text-xs font-bold uppercase tracking-wider text-rose-700">Kekurangan Saldo</span>
+              <span className="text-lg font-black text-rose-600">Rp {(insufficientDepositModal?.shortage || 0).toLocaleString('id-ID')}</span>
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-col gap-2">
+            <Button
+              onClick={() => {
+                setInsufficientDepositModal(null)
+                toast.info('Silakan pilih metode pembayaran lain (Tunai / QRIS).')
+              }}
+              className="bg-navy-900 hover:bg-navy-800 text-white font-bold w-full rounded-xl py-2.5 shadow-sm"
+            >
+              Ganti Metode Pembayaran (Tunai / QRIS)
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setInsufficientDepositModal(null)}
+              className="border-gray-300 text-gray-700 hover:bg-gray-100 font-semibold w-full rounded-xl"
+            >
+              Tutup
             </Button>
           </div>
         </DialogContent>
