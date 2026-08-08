@@ -4,7 +4,7 @@ import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   PieChart, Pie, Cell, BarChart, Bar, Legend,
 } from 'recharts'
-import { ShoppingCart, Wallet, PackageX, HandCoins, AlertTriangle, Receipt, CreditCard, AlertCircle, Scale, Users } from 'lucide-react'
+import { ShoppingCart, Wallet, PackageX, HandCoins, AlertTriangle, Receipt, CreditCard, Scale, Users, ArrowUpRight, Trophy, Package, Sparkles } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
 import { StatCard } from '@/Components/common/StatCard'
@@ -80,47 +80,48 @@ function formatTime(iso: string) {
 function CashierDashboard({ session, todayStats }: CashierViewProps) {
   return (
     <div className="flex flex-col gap-4">
-      <Card>
+      <Card className="border-amber-200/80 bg-gradient-to-r from-amber-500/10 via-white to-white dark:from-amber-950/20 dark:via-navy-950 dark:to-navy-950 shadow-xs rounded-2xl overflow-hidden">
         <CardContent className="flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
             {session ? (
               <>
-                <p className="text-sm text-content-muted">Sesi berjalan — {session.reference}</p>
-                <p className="mt-1 text-lg font-semibold text-content">Dibuka {formatTime(session.opened_at)}</p>
-                <p className="mt-1 text-sm text-content-muted">
-                  Modal awal <Money amount={session.opening_cash} size="sm" /> · {session.transaction_count} transaksi
+                <p className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">Sesi Kasir Aktif — {session.reference}</p>
+                <p className="mt-1 text-xl font-extrabold text-navy-950 dark:text-white">Dibuka Pukul {formatTime(session.opened_at)}</p>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Modal awal <Money amount={session.opening_cash} size="sm" /> · Total {session.transaction_count} Transaksi
                 </p>
               </>
             ) : (
               <>
-                <p className="text-sm text-content-muted">Belum ada sesi berjalan</p>
-                <p className="mt-1 text-lg font-semibold text-content">Buka kasir untuk mulai</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Status Sesi</p>
+                <p className="mt-1 text-xl font-extrabold text-navy-950 dark:text-white">Belum Ada Sesi Kasir Aktif</p>
+                <p className="mt-1 text-xs text-slate-500">Buka sesi kasir untuk mulai memproses transaksi POS.</p>
               </>
             )}
           </div>
-          <Button asChild size="lg">
+          <Button asChild size="lg" className="bg-amber-400 hover:bg-amber-500 text-navy-950 font-black shadow-md shadow-amber-400/20 rounded-xl">
             <Link href={route('pos.index')}>
-              <ShoppingCart className="size-4" />
-              {session ? 'Lanjut Kasir' : 'Buka Kasir'}
+              <ShoppingCart className="size-4 mr-1.5" />
+              {session ? 'Lanjut Kasir POS' : 'Buka Kasir POS'}
             </Link>
           </Button>
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <StatCard label="Penjualan Saya Hari Ini" value={formatMoney(todayStats.omzet)} icon={Wallet} />
-        <StatCard label="Transaksi Saya Hari Ini" value={String(todayStats.transaksi)} icon={ShoppingCart} />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <StatCard label="Penjualan Saya Hari Ini" value={formatMoney(todayStats.omzet)} icon={Wallet} color="emerald" />
+        <StatCard label="Transaksi Saya Hari Ini" value={String(todayStats.transaksi)} icon={ShoppingCart} color="blue" />
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <Button asChild variant="outline">
+      <div className="flex flex-wrap gap-2.5">
+        <Button asChild variant="outline" className="rounded-xl font-bold border-slate-200 dark:border-slate-800">
           <Link href={route('admin.cashier-session.index')}>Sesi &amp; Kas</Link>
         </Button>
-        <Button asChild variant="outline">
+        <Button asChild variant="outline" className="rounded-xl font-bold border-slate-200 dark:border-slate-800">
           <Link href={route('admin.deposit.index')}>Top-Up · Cek Saldo</Link>
         </Button>
-        <Button asChild variant="outline">
-          <Link href={route('admin.sale-returns.index')}>Retur</Link>
+        <Button asChild variant="outline" className="rounded-xl font-bold border-slate-200 dark:border-slate-800">
+          <Link href={route('admin.sale-returns.index')}>Retur Penjualan</Link>
         </Button>
       </div>
     </div>
@@ -131,17 +132,17 @@ function TrendChart({ data }: { data: Charts['trend30d'] }) {
   const colors = useChartColors()
 
   return (
-    <ResponsiveContainer width="100%" height={220}>
+    <ResponsiveContainer width="100%" height={230}>
       <LineChart data={data}>
         <CartesianGrid strokeDasharray="3 3" stroke={colors.gridColor} />
         <XAxis dataKey="tanggal" tickFormatter={formatDateShort} stroke={colors.axisColor} fontSize={11} />
         <YAxis stroke={colors.axisColor} fontSize={11} tickFormatter={(v: number) => `${Math.round(v / 1000)}k`} />
         <Tooltip
-          contentStyle={{ backgroundColor: colors.tooltipBg, border: `1px solid ${colors.tooltipBorder}`, fontSize: 12 }}
+          contentStyle={{ backgroundColor: colors.tooltipBg, border: `1px solid ${colors.tooltipBorder}`, borderRadius: '12px', fontSize: 12, fontWeight: 'bold' }}
           labelFormatter={(v) => formatDateShort(String(v))}
           formatter={(v) => [formatMoney(Number(v)), 'Omzet']}
         />
-        <Line type="monotone" dataKey="omzet" stroke={colors.palette[0]} strokeWidth={2} dot={false} />
+        <Line type="monotone" dataKey="omzet" stroke={colors.palette[0]} strokeWidth={3} dot={false} />
       </LineChart>
     </ResponsiveContainer>
   )
@@ -153,15 +154,15 @@ function CategoryChart({ data }: { data: Charts['byCategory'] }) {
   if (data.length === 0) return <EmptyState title="Belum ada penjualan hari ini" />
 
   return (
-    <ResponsiveContainer width="100%" height={220}>
+    <ResponsiveContainer width="100%" height={230}>
       <PieChart>
-        <Pie data={data} dataKey="total" nameKey="kategori" innerRadius={50} outerRadius={80} paddingAngle={2}>
+        <Pie data={data} dataKey="total" nameKey="kategori" innerRadius={50} outerRadius={80} paddingAngle={3}>
           {data.map((_, i) => (
             <Cell key={i} fill={colors.palette[i % colors.palette.length]} />
           ))}
         </Pie>
         <Tooltip
-          contentStyle={{ backgroundColor: colors.tooltipBg, border: `1px solid ${colors.tooltipBorder}`, fontSize: 12 }}
+          contentStyle={{ backgroundColor: colors.tooltipBg, border: `1px solid ${colors.tooltipBorder}`, borderRadius: '12px', fontSize: 12, fontWeight: 'bold' }}
           formatter={(v) => formatMoney(Number(v))}
         />
         <Legend wrapperStyle={{ fontSize: 11, color: colors.axisColor }} />
@@ -176,16 +177,16 @@ function PaymentMethodChart({ data }: { data: Charts['byPaymentMethod'] }) {
   if (data.length === 0) return <EmptyState title="Belum ada penjualan hari ini" />
 
   return (
-    <ResponsiveContainer width="100%" height={220}>
+    <ResponsiveContainer width="100%" height={230}>
       <BarChart data={data}>
         <CartesianGrid strokeDasharray="3 3" stroke={colors.gridColor} />
         <XAxis dataKey="metode" stroke={colors.axisColor} fontSize={11} />
         <YAxis stroke={colors.axisColor} fontSize={11} tickFormatter={(v: number) => `${Math.round(v / 1000)}k`} />
         <Tooltip
-          contentStyle={{ backgroundColor: colors.tooltipBg, border: `1px solid ${colors.tooltipBorder}`, fontSize: 12 }}
+          contentStyle={{ backgroundColor: colors.tooltipBg, border: `1px solid ${colors.tooltipBorder}`, borderRadius: '12px', fontSize: 12, fontWeight: 'bold' }}
           formatter={(v) => formatMoney(Number(v))}
         />
-        <Bar dataKey="total" fill={colors.palette[0]} radius={[4, 4, 0, 0]} />
+        <Bar dataKey="total" fill={colors.palette[0]} radius={[6, 6, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   )
@@ -197,17 +198,17 @@ function HourChart({ data }: { data: Charts['byHour'] }) {
   if (data.length === 0) return <EmptyState title="Belum ada penjualan hari ini" />
 
   return (
-    <ResponsiveContainer width="100%" height={220}>
+    <ResponsiveContainer width="100%" height={230}>
       <BarChart data={data}>
         <CartesianGrid strokeDasharray="3 3" stroke={colors.gridColor} />
         <XAxis dataKey="jam" tickFormatter={(v: number) => `${v}:00`} stroke={colors.axisColor} fontSize={11} />
         <YAxis stroke={colors.axisColor} fontSize={11} allowDecimals={false} />
         <Tooltip
-          contentStyle={{ backgroundColor: colors.tooltipBg, border: `1px solid ${colors.tooltipBorder}`, fontSize: 12 }}
+          contentStyle={{ backgroundColor: colors.tooltipBg, border: `1px solid ${colors.tooltipBorder}`, borderRadius: '12px', fontSize: 12, fontWeight: 'bold' }}
           labelFormatter={(v) => `Jam ${v}:00`}
           formatter={(v) => [Number(v), 'Transaksi']}
         />
-        <Bar dataKey="transaksi" fill={colors.palette[2]} radius={[4, 4, 0, 0]} />
+        <Bar dataKey="transaksi" fill={colors.palette[2]} radius={[6, 6, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   )
@@ -217,117 +218,184 @@ function ManagerDashboard({ statCards, charts, recentSales, topProducts, cashier
   const hasPanels = Object.keys(panels).length > 0
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
+      {/* 1. TOP ROW: Modern Executive KPI Cards */}
       {statCards && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <StatCard
             label="Penjualan Hari Ini"
             value={formatMoney(statCards.omzetHariIni)}
             icon={Wallet}
             trend={statCards.omzetTrend}
             trendLabel="vs kemarin"
+            color="emerald"
           />
           <StatCard
             label="Laba Kotor Hari Ini"
             value={statCards.labaKotorHariIni !== null ? formatMoney(statCards.labaKotorHariIni) : '-'}
             icon={HandCoins}
+            color="amber"
           />
           <StatCard
             label="Jumlah Transaksi"
             value={String(statCards.transaksiHariIni)}
             icon={ShoppingCart}
+            color="blue"
           />
           <StatCard
             label="Rata-rata per Transaksi"
             value={formatMoney(statCards.rataRataNota)}
             icon={Receipt}
+            color="indigo"
           />
           <StatCard
             label="Saldo Deposit Beredar"
             value={formatMoney(statCards.saldoDeposit ?? 0)}
             icon={CreditCard}
+            color="purple"
           />
         </div>
       )}
 
+      {/* 2. MIDDLE ROW: Styled Operational Warning & Metric Cards */}
       {hasPanels && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {panels.stockAlerts && (
-            <Card>
-              <CardContent className="flex items-center gap-3 p-4">
-                <div className="rounded-lg bg-secondary p-2 text-secondary-foreground"><PackageX className="size-5" /></div>
-                <div>
-                  <p className="text-sm text-content-muted">Stok</p>
-                  <p className="font-medium text-content">
+            <div className="group flex flex-col justify-between rounded-2xl border border-rose-200/90 dark:border-rose-800/80 bg-rose-50/70 dark:bg-rose-950/20 p-4 shadow-2xs hover:shadow-md transition-all duration-200">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-rose-500 text-white shadow-md shadow-rose-500/20 shrink-0">
+                  <PackageX className="size-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-rose-700 dark:text-rose-400">Stok Barang</p>
+                  <p className="text-xs font-bold text-navy-950 dark:text-white mt-0.5 truncate">
                     {panels.stockAlerts.critical} kritis · {panels.stockAlerts.expiringSoon} kadaluwarsa
                   </p>
-                  <Link href={route('admin.stock.index')} className="text-xs text-primary hover:underline">Buka Stok</Link>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+              <div className="mt-3 flex items-center justify-between border-t border-rose-200/60 dark:border-rose-800/60 pt-2.5">
+                <span className="text-[10px] font-bold text-slate-500">Peringatan FEFO</span>
+                <Link href={route('admin.stock.index')} className="text-xs font-extrabold text-rose-600 dark:text-rose-400 hover:text-rose-800 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                  <span>Buka Stok</span>
+                  <ArrowUpRight className="size-3" />
+                </Link>
+              </div>
+            </div>
           )}
+
           {panels.debtsDue !== undefined && (
-            <Card>
-              <CardContent className="flex items-center gap-3 p-4">
-                <div className="rounded-lg bg-secondary p-2 text-secondary-foreground"><AlertTriangle className="size-5" /></div>
-                <div>
-                  <p className="text-sm text-content-muted">Hutang</p>
-                  <p className="font-medium text-content">{panels.debtsDue} jatuh tempo</p>
-                  <Link href={route('admin.debts.index')} className="text-xs text-primary hover:underline">Buka Hutang</Link>
+            <div className="group flex flex-col justify-between rounded-2xl border border-amber-200/90 dark:border-amber-800/80 bg-amber-50/70 dark:bg-amber-950/20 p-4 shadow-2xs hover:shadow-md transition-all duration-200">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-amber-500 text-white shadow-md shadow-amber-500/20 shrink-0">
+                  <AlertTriangle className="size-5" />
                 </div>
-              </CardContent>
-            </Card>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-400">Hutang Supplier</p>
+                  <p className="text-xs font-bold text-navy-950 dark:text-white mt-0.5 truncate">
+                    {panels.debtsDue} jatuh tempo
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center justify-between border-t border-amber-200/60 dark:border-amber-800/60 pt-2.5">
+                <span className="text-[10px] font-bold text-slate-500">Aging Utang</span>
+                <Link href={route('admin.debts.index')} className="text-xs font-extrabold text-amber-700 dark:text-amber-400 hover:text-amber-900 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                  <span>Buka Hutang</span>
+                  <ArrowUpRight className="size-3" />
+                </Link>
+              </div>
+            </div>
           )}
+
           {panels.receivablesOverdue !== undefined && (
-            <Card>
-              <CardContent className="flex items-center gap-3 p-4">
-                <div className="rounded-lg bg-secondary p-2 text-secondary-foreground"><AlertTriangle className="size-5" /></div>
-                <div>
-                  <p className="text-sm text-content-muted">Piutang</p>
-                  <p className="font-medium text-content">{panels.receivablesOverdue} menunggak</p>
-                  <Link href={route('admin.receivables.index')} className="text-xs text-primary hover:underline">Buka Piutang</Link>
+            <div className="group flex flex-col justify-between rounded-2xl border border-orange-200/90 dark:border-orange-800/80 bg-orange-50/70 dark:bg-orange-950/20 p-4 shadow-2xs hover:shadow-md transition-all duration-200">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-orange-500 text-white shadow-md shadow-orange-500/20 shrink-0">
+                  <Scale className="size-5" />
                 </div>
-              </CardContent>
-            </Card>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-orange-700 dark:text-orange-400">Piutang Anggota</p>
+                  <p className="text-xs font-bold text-navy-950 dark:text-white mt-0.5 truncate">
+                    {panels.receivablesOverdue} menunggak
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center justify-between border-t border-orange-200/60 dark:border-orange-800/60 pt-2.5">
+                <span className="text-[10px] font-bold text-slate-500">Tagihan Bon</span>
+                <Link href={route('admin.receivables.index')} className="text-xs font-extrabold text-orange-700 dark:text-orange-400 hover:text-orange-900 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                  <span>Buka Piutang</span>
+                  <ArrowUpRight className="size-3" />
+                </Link>
+              </div>
+            </div>
           )}
+
           {panels.totalMembers !== undefined && (
-            <Card>
-              <CardContent className="flex items-center gap-3 p-4">
-                <div className="rounded-lg bg-secondary p-2 text-secondary-foreground"><Users className="size-5" /></div>
-                <div>
-                  <p className="text-sm text-content-muted">Total Santri Aktif</p>
-                  <p className="font-medium text-content">{panels.totalMembers} Santri</p>
-                  <Link href={route('admin.members.index')} className="text-xs text-primary hover:underline">Buka Santri</Link>
+            <div className="group flex flex-col justify-between rounded-2xl border border-teal-200/90 dark:border-teal-800/80 bg-teal-50/70 dark:bg-teal-950/20 p-4 shadow-2xs hover:shadow-md transition-all duration-200">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-teal-600 text-white shadow-md shadow-teal-600/20 shrink-0">
+                  <Users className="size-5" />
                 </div>
-              </CardContent>
-            </Card>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-teal-700 dark:text-teal-400">Santri Aktif</p>
+                  <p className="text-xs font-bold text-navy-950 dark:text-white mt-0.5 truncate">
+                    {panels.totalMembers} Santri
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center justify-between border-t border-teal-200/60 dark:border-teal-800/60 pt-2.5">
+                <span className="text-[10px] font-bold text-slate-500">Anggota</span>
+                <Link href={route('admin.members.index')} className="text-xs font-extrabold text-teal-700 dark:text-teal-400 hover:text-teal-900 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                  <span>Buka Santri</span>
+                  <ArrowUpRight className="size-3" />
+                </Link>
+              </div>
+            </div>
           )}
+
           {panels.reconciliationIssues !== undefined && (
-            <Card>
-              <CardContent className="flex items-center gap-3 p-4">
-                <div className="rounded-lg bg-secondary p-2 text-secondary-foreground"><AlertTriangle className="size-5" /></div>
-                <div>
-                  <p className="text-sm text-content-muted">Rekonsiliasi Deposit</p>
-                  <p className="font-medium text-content">{panels.reconciliationIssues} selisih</p>
+            <div className="group flex flex-col justify-between rounded-2xl border border-emerald-200/90 dark:border-emerald-800/80 bg-emerald-50/70 dark:bg-emerald-950/20 p-4 shadow-2xs hover:shadow-md transition-all duration-200">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-md shadow-emerald-600/20 shrink-0">
+                  <CreditCard className="size-5" />
                 </div>
-              </CardContent>
-            </Card>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Rekonsiliasi Deposit</p>
+                  <p className="text-xs font-bold text-navy-950 dark:text-white mt-0.5 truncate">
+                    {panels.reconciliationIssues} selisih
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center justify-between border-t border-emerald-200/60 dark:border-emerald-800/60 pt-2.5">
+                <span className="text-[10px] font-bold text-slate-500">Saldo Deposit</span>
+                <Badge variant="outline" className="font-mono text-[10px] font-bold bg-white text-emerald-700 border-emerald-300">
+                  {panels.reconciliationIssues === 0 ? '✓ Balanced' : 'Perlu Cek'}
+                </Badge>
+              </div>
+            </div>
           )}
         </div>
       )}
 
+      {/* 3. BOTTOM ROW: Modern Content Cards with Icons */}
       {(recentSales || topProducts || cashierRanking) && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {recentSales && (
-            <Card>
-              <CardHeader><CardTitle>Transaksi Terakhir</CardTitle></CardHeader>
-              <CardContent className="flex flex-col gap-2">
-                {recentSales.length === 0 && <p className="text-sm text-content-muted">Belum ada transaksi.</p>}
+            <Card className="rounded-2xl border-slate-200/80 dark:border-slate-800 shadow-2xs">
+              <CardHeader className="p-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <CardTitle className="text-xs font-extrabold uppercase tracking-wider text-navy-950 dark:text-white flex items-center gap-2">
+                  <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+                    <Receipt className="size-4" />
+                  </div>
+                  <span>Transaksi Terakhir</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 flex flex-col gap-3">
+                {recentSales.length === 0 && <EmptyState title="Belum ada transaksi" />}
                 {recentSales.map((s) => (
-                  <div key={s.reference} className="flex items-center justify-between text-sm">
+                  <div key={s.reference} className="flex items-center justify-between text-xs py-2 px-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-navy-900 transition-colors">
                     <div>
-                      <p className="text-content">{s.reference}</p>
-                      <p className="text-xs text-content-muted">{s.kasir} · {formatTime(s.sale_date)}</p>
+                      <p className="font-mono font-bold text-navy-950 dark:text-white">{s.reference}</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">{s.kasir ?? 'Kasir POS'} · {formatTime(s.sale_date)}</p>
                     </div>
                     <Money amount={s.grand_total} size="sm" />
                   </div>
@@ -335,28 +403,54 @@ function ManagerDashboard({ statCards, charts, recentSales, topProducts, cashier
               </CardContent>
             </Card>
           )}
+
           {topProducts && (
-            <Card>
-              <CardHeader><CardTitle>Produk Terlaris Minggu Ini</CardTitle></CardHeader>
-              <CardContent className="flex flex-col gap-2">
-                {topProducts.length === 0 && <p className="text-sm text-content-muted">Belum ada data.</p>}
-                {topProducts.map((p) => (
-                  <div key={p.produk} className="flex items-center justify-between text-sm">
-                    <p className="text-content">{p.produk}</p>
-                    <Badge variant="secondary">{p.qty}</Badge>
+            <Card className="rounded-2xl border-slate-200/80 dark:border-slate-800 shadow-2xs">
+              <CardHeader className="p-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <CardTitle className="text-xs font-extrabold uppercase tracking-wider text-navy-950 dark:text-white flex items-center gap-2">
+                  <div className="flex size-7 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
+                    <Package className="size-4" />
+                  </div>
+                  <span>Produk Terlaris Minggu Ini</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 flex flex-col gap-3">
+                {topProducts.length === 0 && <EmptyState title="Belum ada data penjualan" />}
+                {topProducts.map((p, idx) => (
+                  <div key={p.produk} className="flex items-center justify-between text-xs py-2 px-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-navy-900 transition-colors">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex size-6 items-center justify-center rounded-full bg-slate-100 text-[10px] font-mono font-extrabold text-slate-700">
+                        #{idx + 1}
+                      </span>
+                      <p className="font-bold text-navy-950 dark:text-white truncate max-w-[150px]">{p.produk}</p>
+                    </div>
+                    <Badge className="bg-blue-600 text-white font-mono font-bold text-[10px]">{p.qty} Terjual</Badge>
                   </div>
                 ))}
               </CardContent>
             </Card>
           )}
+
           {cashierRanking && (
-            <Card>
-              <CardHeader><CardTitle>Peringkat Kasir (Hari Ini)</CardTitle></CardHeader>
-              <CardContent className="flex flex-col gap-2">
-                {cashierRanking.length === 0 && <p className="text-sm text-content-muted">Belum ada data.</p>}
-                {cashierRanking.map((c) => (
-                  <div key={c.kasir} className="flex items-center justify-between text-sm">
-                    <p className="text-content">{c.kasir}</p>
+            <Card className="rounded-2xl border-slate-200/80 dark:border-slate-800 shadow-2xs">
+              <CardHeader className="p-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <CardTitle className="text-xs font-extrabold uppercase tracking-wider text-navy-950 dark:text-white flex items-center gap-2">
+                  <div className="flex size-7 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+                    <Trophy className="size-4" />
+                  </div>
+                  <span>Peringkat Kasir (Hari Ini)</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 flex flex-col gap-3">
+                {cashierRanking.length === 0 && <EmptyState title="Belum ada transaksi kasir" />}
+                {cashierRanking.map((c, idx) => (
+                  <div key={c.kasir} className="flex items-center justify-between text-xs py-2 px-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-navy-900 transition-colors">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex size-6 items-center justify-center rounded-full bg-amber-100 text-[10px] font-mono font-black text-amber-800">
+                        🏆 #{idx + 1}
+                      </span>
+                      <p className="font-bold text-navy-950 dark:text-white">{c.kasir}</p>
+                    </div>
                     <Money amount={c.omzet} size="sm" />
                   </div>
                 ))}
@@ -366,22 +460,23 @@ function ManagerDashboard({ statCards, charts, recentSales, topProducts, cashier
         </div>
       )}
 
+      {/* 4. CHARTS ROW */}
       {charts && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <Card>
-            <CardHeader><CardTitle>Tren Penjualan 30 Hari</CardTitle></CardHeader>
+          <Card className="rounded-2xl border-slate-200/80 dark:border-slate-800 shadow-2xs">
+            <CardHeader><CardTitle className="text-xs font-extrabold uppercase tracking-wider">Tren Penjualan 30 Hari</CardTitle></CardHeader>
             <CardContent><TrendChart data={charts.trend30d} /></CardContent>
           </Card>
-          <Card>
-            <CardHeader><CardTitle>Penjualan per Kategori (Hari Ini)</CardTitle></CardHeader>
+          <Card className="rounded-2xl border-slate-200/80 dark:border-slate-800 shadow-2xs">
+            <CardHeader><CardTitle className="text-xs font-extrabold uppercase tracking-wider">Penjualan per Kategori (Hari Ini)</CardTitle></CardHeader>
             <CardContent><CategoryChart data={charts.byCategory} /></CardContent>
           </Card>
-          <Card>
-            <CardHeader><CardTitle>Penjualan per Metode Bayar (Hari Ini)</CardTitle></CardHeader>
+          <Card className="rounded-2xl border-slate-200/80 dark:border-slate-800 shadow-2xs">
+            <CardHeader><CardTitle className="text-xs font-extrabold uppercase tracking-wider">Penjualan per Metode Bayar (Hari Ini)</CardTitle></CardHeader>
             <CardContent><PaymentMethodChart data={charts.byPaymentMethod} /></CardContent>
           </Card>
-          <Card>
-            <CardHeader><CardTitle>Jam Ramai (Hari Ini)</CardTitle></CardHeader>
+          <Card className="rounded-2xl border-slate-200/80 dark:border-slate-800 shadow-2xs">
+            <CardHeader><CardTitle className="text-xs font-extrabold uppercase tracking-wider">Jam Ramai (Hari Ini)</CardTitle></CardHeader>
             <CardContent><HourChart data={charts.byHour} /></CardContent>
           </Card>
         </div>
