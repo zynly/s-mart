@@ -87,7 +87,8 @@ class NavigationService
         'admin.purchases.index'       => ['admin.purchase-orders.*', 'admin.purchase-orders.index', 'admin.consignment.*', 'admin.consignment.index', 'admin.purchase-returns.*'],
         'admin.debts.index'           => ['admin.receivables.*', 'admin.receivables.index'],
         'admin.accounts.index'        => ['admin.journals.*', 'admin.journals.index', 'admin.ledger.*', 'admin.ledger.index', 'admin.trial-balance.*', 'admin.trial-balance.index', 'admin.profit-loss.*', 'admin.profit-loss.index', 'admin.balance-sheet.*', 'admin.balance-sheet.index', 'admin.accounting-periods.*', 'admin.accounting-periods.index'],
-        'admin.promos.index'          => ['admin.coupons.*', 'admin.coupons.index', 'admin.points.*', 'admin.points.index'],
+        'admin.members.index'         => ['admin.points.*', 'admin.points.index'],
+        'admin.promos.index'          => ['admin.coupons.*', 'admin.coupons.index'],
         'admin.users.index'           => ['admin.roles.*', 'admin.roles.index', 'admin.activity-logs.*', 'admin.activity-logs.index'],
         'admin.suppliers.index'       => ['admin.outlets.*', 'admin.outlets.index', 'admin.payment-methods.*', 'admin.payment-methods.index'],
     ];
@@ -101,7 +102,8 @@ class NavigationService
         'admin.purchases.index'       => ['admin/purchases*', 'admin/purchase-orders*', 'admin/consignment*', 'admin/purchase-returns*'],
         'admin.debts.index'           => ['admin/debts*', 'admin/receivables*'],
         'admin.accounts.index'        => ['admin/accounts*', 'admin/journals*', 'admin/ledger*', 'admin/trial-balance*', 'admin/profit-loss*', 'admin/balance-sheet*', 'admin/accounting-periods*'],
-        'admin.promos.index'          => ['admin/promos*', 'admin/coupons*', 'admin/points*'],
+        'admin.members.index'         => ['admin/members*', 'admin/points*'],
+        'admin.promos.index'          => ['admin/promos*', 'admin/coupons*'],
         'admin.users.index'           => ['admin/users*', 'admin/roles*', 'admin/activity-logs*'],
         'admin.suppliers.index'       => ['admin/suppliers*', 'admin/outlets*', 'admin/payment-methods*'],
     ];
