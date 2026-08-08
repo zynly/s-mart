@@ -553,60 +553,87 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           <MasqueradeBanner label={masquerade.label} />
         )}
 
-        <header className="flex h-16 shrink-0 items-center justify-between gap-3 bg-surface border-b border-border/90 px-5 shadow-sm">
+        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-navy-950/80 backdrop-blur-md px-5 shadow-xs transition-all">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
               size="icon-sm"
-              className="text-content hover:bg-navy-100 dark:hover:bg-navy-700/80 rounded-lg lg:hidden"
+              className="text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 rounded-xl transition-all lg:hidden"
               onClick={() => setMobileOpen(true)}
               aria-label="Buka menu"
             >
               <Menu className="size-5" />
             </Button>
+
             <Button
               variant="ghost"
               size="icon-sm"
-              className="hidden text-content hover:bg-navy-100 dark:hover:bg-navy-700/80 rounded-lg lg:inline-flex"
+              className="hidden text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 rounded-xl transition-all lg:inline-flex"
               onClick={toggle}
               aria-label={collapsed ? 'Bentangkan sidebar' : 'Lipat sidebar'}
             >
-              {collapsed ? <PanelLeftOpen className="size-5" /> : <PanelLeftClose className="size-5" />}
+              {collapsed ? <PanelLeftOpen className="size-5 text-navy-700" /> : <PanelLeftClose className="size-5 text-navy-700" />}
             </Button>
-            <Button
-              variant="outline"
-              className="hidden items-center gap-2.5 border-border bg-bg text-content-muted hover:bg-navy-50 hover:border-amber-400/70 hover:text-content sm:inline-flex rounded-xl px-3.5 py-1.5 transition-all duration-200"
+
+            {/* Redesigned Search Command Trigger Pill */}
+            <button
+              type="button"
+              className="group hidden sm:flex items-center justify-between gap-4 rounded-full border border-slate-200/90 dark:border-slate-700/90 bg-slate-100/80 dark:bg-slate-800/80 px-4 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:border-amber-400 hover:bg-white dark:hover:bg-slate-800 hover:shadow-xs transition-all duration-200 min-w-[240px] md:min-w-[280px]"
               onClick={() => setSearchOpen(true)}
             >
-              <Search className="size-4 text-amber-500" />
-              <span className="text-xs font-medium">Cari sesuatu…</span>
-              <kbd className="rounded bg-amber-400 text-navy-950 font-mono font-bold text-[10px] px-1.5 py-0.5 shadow-2xs">Ctrl K</kbd>
-            </Button>
+              <div className="flex items-center gap-2.5">
+                <Search className="size-4 text-amber-500 group-hover:scale-110 transition-transform duration-200" />
+                <span className="font-semibold text-slate-600 dark:text-slate-300">Cari sesuatu…</span>
+              </div>
+              <kbd className="rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-navy-950 font-mono font-extrabold text-[10px] px-2 py-0.5 shadow-2xs">
+                Ctrl K
+              </kbd>
+            </button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon-sm" className="text-content hover:bg-navy-100 dark:hover:bg-navy-700/80 sm:hidden" onClick={() => setSearchOpen(true)} aria-label="Cari">
+          <div className="flex items-center gap-3">
+            {/* Live System Active Badge Indicator */}
+            <div className="hidden xl:flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-800/80 text-[11px] font-extrabold tracking-wide">
+              <span className="relative flex size-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full size-2 bg-emerald-500"></span>
+              </span>
+              <span>Sistem Kasir Aktif</span>
+            </div>
+
+            <Button variant="ghost" size="icon-sm" className="text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 sm:hidden rounded-xl" onClick={() => setSearchOpen(true)} aria-label="Cari">
               <Search className="size-4" />
             </Button>
-            <NotificationBell className="text-content hover:bg-navy-100 dark:hover:bg-navy-700/80" />
-            <ThemeToggle className="text-content hover:bg-navy-100 dark:hover:bg-navy-700/80" />
 
+            <NotificationBell className="text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 rounded-xl" />
+            <ThemeToggle className="text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 rounded-xl" />
+
+            {/* Redesigned User Profile Dropdown Pill */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="ml-1 flex items-center gap-2.5 rounded-xl px-2.5 py-1 hover:bg-navy-100 dark:hover:bg-navy-700/60 transition-colors">
-                  <Avatar className="size-8 ring-2 ring-amber-400/80 shadow-md shadow-amber-400/20">
-                    <AvatarFallback className="bg-gradient-to-tr from-amber-500 to-amber-300 font-extrabold text-xs text-navy-950">{initials}</AvatarFallback>
-                  </Avatar>
-                  <span className="hidden text-xs font-semibold text-content md:inline-block truncate max-w-[120px]">{auth.user?.name}</span>
-                  <ChevronDown className="size-3.5 text-content-muted" />
+                <button className="flex items-center gap-2.5 rounded-full p-1 pr-3 bg-slate-100/80 hover:bg-slate-200/80 dark:bg-slate-800/80 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 transition-all duration-200 shadow-2xs group">
+                  <div className="relative">
+                    <Avatar className="size-8 ring-2 ring-amber-400 shadow-xs group-hover:scale-105 transition-transform">
+                      <AvatarFallback className="bg-gradient-to-tr from-amber-500 via-amber-400 to-amber-300 font-black text-xs text-navy-950">{initials}</AvatarFallback>
+                    </Avatar>
+                    <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-navy-950" />
+                  </div>
+                  <span className="hidden text-xs font-bold text-navy-950 dark:text-white md:inline-block truncate max-w-[120px]">
+                    {auth.user?.name}
+                  </span>
+                  <ChevronDown className="size-3.5 text-slate-400 group-hover:text-navy-900 transition-colors" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem asChild>
-                  <Link href={route('profile.edit')}>Profil Saya</Link>
+              <DropdownMenuContent align="end" className="w-56 p-2 rounded-2xl shadow-xl border-slate-200 dark:border-slate-800">
+                <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-1">
+                  <p className="font-bold text-xs text-navy-950 dark:text-white truncate">{auth.user?.name}</p>
+                  <p className="text-[10px] text-slate-500 truncate font-mono mt-0.5">{auth.user?.email}</p>
+                </div>
+                <DropdownMenuItem asChild className="rounded-xl font-bold text-xs py-2 text-navy-900 cursor-pointer">
+                  <Link href={route('profile.edit')}>⚙️ Pengaturan Profil</Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.post(route('logout'))} className="text-red-500 focus:text-red-600">
-                  Keluar dari Sistem
+                <DropdownMenuItem onClick={() => router.post(route('logout'))} className="rounded-xl font-bold text-xs py-2 text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer mt-1">
+                  🚪 Keluar dari Sistem
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
