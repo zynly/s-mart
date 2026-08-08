@@ -13,6 +13,7 @@ import { Badge } from '@/Components/ui/badge'
 import { Card, CardContent } from '@/Components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
+import { Checkbox } from '@/Components/ui/checkbox'
 import { formatDate } from '@/Lib/date'
 import type { Paginated } from '@/Types'
 
@@ -79,6 +80,15 @@ export default function Index({ tab, journals, accounts, outlets, filters, valid
   const [typeFilter, setTypeFilter] = useState(filters.type ?? '')
   const [statusFilter, setStatusFilter] = useState(filters.status ?? '')
   const [manualOpen, setManualOpen] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
+
+  const isAllSelected = journals.data.length > 0 && selectedIds.length === journals.data.length
+  function toggleSelectAll() {
+    setSelectedIds(isAllSelected ? [] : journals.data.map((j) => j.id))
+  }
+  function toggleSelectOne(id: number) {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+  }
 
   const form = useForm<{
     journal_date: string

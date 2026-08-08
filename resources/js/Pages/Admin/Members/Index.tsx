@@ -382,8 +382,9 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
             <Button
               variant="outline"
               onClick={() => {
-                if (members.data.length > 0) {
-                  openCardPreview(members.data[0].id, members.data[0].name)
+                const firstMember = members.data[0]
+                if (firstMember) {
+                  openCardPreview(firstMember.id, firstMember.name)
                 } else {
                   setSampleCardOpen(true)
                 }
