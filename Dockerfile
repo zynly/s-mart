@@ -11,7 +11,7 @@ COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 COPY . .
-RUN pnpm build
+RUN pnpm run build
 
 # ==============================================================================
 # STAGE 2: Build PHP Dependencies (Composer)
