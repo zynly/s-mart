@@ -25,7 +25,7 @@ class ActivityLogController extends Controller
     public function index(Request $request): Response
     {
         $logs = Activity::query()
-            ->with('causer:id,name,username')
+            ->with('causer')
             ->when($request->string('log_name')->toString(), fn ($query, $logName) => $query->where('log_name', $logName))
             ->when($request->string('causer_id')->toString(), fn ($query, $causerId) => $query->where('causer_id', $causerId))
             ->when($request->date('date_from'), fn ($query, $date) => $query->where('created_at', '>=', $date->copy()->startOfDay()))

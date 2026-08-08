@@ -17,7 +17,7 @@ type LogRow = {
   id: number
   log_name: string
   description: string
-  causer: { id: number; name: string; username: string } | null
+  causer: { id: number; name: string; username?: string } | null
   properties: Record<string, unknown>
   created_at: string
 }
