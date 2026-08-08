@@ -177,7 +177,7 @@ export default function Index({ tab, settlements, suppliers, outlets }: Consignm
               />
             </div>
             <p className="text-xs text-content-muted">
-              Dihitung dari barang konsinyasi supplier ini yang terjual (keluar dari stok) dalam periode, pada harga jual aktif produk saat ini.
+              Dihitung dari barang konsinyasi supplier ini yang terjual dalam periode berdasarkan harga transaksi aktual pada nota penjualan.
             </p>
           </form>
       </AppSheet>

@@ -38,6 +38,9 @@ type ProductRow = {
   is_active: boolean
   is_favorite: boolean
   is_visible_public: boolean
+  is_expirable?: boolean
+  is_consignment?: boolean
+  consignment_percent?: number | null
   barcodes: { id: number; barcode: string; is_primary: boolean }[]
   prices: { id: number; price: number; member_price: number | null; outlet_id: number; unit_id: number }[]
   image_url: string | null
@@ -167,9 +170,9 @@ export default function Index({ tab, products, categories, brands, units, outlet
       brand_id: row.brand ? String(row.brand.id) : '',
       base_unit_id: baseUnitId,
       description: '',
-      is_expirable: false,
-      is_consignment: false,
-      consignment_percent: '',
+      is_expirable: row.is_expirable ?? false,
+      is_consignment: row.is_consignment ?? false,
+      consignment_percent: row.consignment_percent !== null && row.consignment_percent !== undefined ? String(row.consignment_percent) : '',
       min_stock: 0,
       max_stock: '',
       is_active: row.is_active,
@@ -444,13 +447,16 @@ export default function Index({ tab, products, categories, brands, units, outlet
       header: 'Nama Produk',
       meta: { align: 'center' },
       cell: ({ row }) => (
-        <div className="max-w-[220px] mx-auto text-center">
+        <div className="max-w-[220px] mx-auto text-center flex flex-col items-center gap-0.5">
           <Link
             href={route('admin.products.show', row.original.id)}
             className="font-semibold text-content text-xs sm:text-sm hover:text-primary transition-colors hover:underline line-clamp-2"
           >
             {row.original.name}
           </Link>
+          {row.original.is_consignment && (
+            <Badge className="bg-purple-600 text-white text-[9px] px-1.5 py-0 font-normal">Titipan ({row.original.consignment_percent ?? 0}%)</Badge>
+          )}
         </div>
       ),
     },
@@ -788,6 +794,25 @@ export default function Index({ tab, products, categories, brands, units, outlet
                     </label>
 
                     <label
+                      htmlFor="p-consignment"
+                      className={`flex items-center gap-2.5 p-2.5 rounded-lg border transition-all cursor-pointer select-none ${
+                        form.data.is_consignment
+                          ? 'bg-purple-50/60 border-purple-300 text-purple-950 dark:bg-purple-950/30 dark:border-purple-700 dark:text-purple-200 font-medium'
+                          : 'bg-surface border-border text-content-muted hover:border-gray-300'
+                      }`}
+                    >
+                      <Checkbox
+                        id="p-consignment"
+                        checked={form.data.is_consignment}
+                        onCheckedChange={(c) => form.setData('is_consignment', c === true)}
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-xs font-semibold">Barang Titipan (Konsinyasi)</span>
+                        <span className="text-[10px] text-content-muted">Bukan aset mart, komisi diakui saat jual</span>
+                      </div>
+                    </label>
+
+                    <label
                       htmlFor="p-active"
                       className={`flex items-center gap-2.5 p-2.5 rounded-lg border transition-all cursor-pointer select-none ${
                         form.data.is_active
@@ -806,6 +831,24 @@ export default function Index({ tab, products, categories, brands, units, outlet
                       </div>
                     </label>
                   </div>
+
+                  {form.data.is_consignment && (
+                    <div className="space-y-1.5 pt-2">
+                      <Label htmlFor="p-consignment-percent">Komisi Mart (%)</Label>
+                      <Input
+                        id="p-consignment-percent"
+                        type="number"
+                        min={0}
+                        max={100}
+                        step="1"
+                        placeholder="mis. 20"
+                        value={form.data.consignment_percent}
+                        onChange={(e) => form.setData('consignment_percent', e.target.value)}
+                      />
+                      <p className="text-[11px] text-content-muted">Persentase komisi yang dipotong mart saat barang titipan ini terjual di kasir.</p>
+                      {form.errors.consignment_percent && <p className="text-sm text-danger">{form.errors.consignment_percent}</p>}
+                    </div>
+                  )}
                 </div>
               </TabsContent>
 

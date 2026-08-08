@@ -76,7 +76,10 @@ class ConsignmentService
             // bisa berbeda antar transaksi dalam periode yang sama kalau
             // harga produk sempat berubah, bukan satu harga "sekarang".
             $totalPrice = (int) round($group->sum(fn ($row) => (float) $row->qty * $row->unit_price));
-            $commission = (int) round($totalPrice * $commissionPercent / 100);
+            $effectivePercent = ($product->consignment_percent !== null && (int) $product->consignment_percent > 0)
+                ? (float) $product->consignment_percent
+                : $commissionPercent;
+            $commission = (int) round($totalPrice * $effectivePercent / 100);
 
             $items[] = [
                 'product_id' => (int) $productId,
