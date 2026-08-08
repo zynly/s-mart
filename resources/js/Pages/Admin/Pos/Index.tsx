@@ -1197,16 +1197,31 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                     onChange={(e) => void searchMember(e.target.value)}
                     className={`h-8 rounded-lg text-xs ${posFieldClass}`}
                   />
-                  {memberResults.length > 0 && (
-                    <div className="flex flex-col divide-y divide-gray-100 rounded-lg border border-gray-300">
+                  {memberResults.length > 0 ? (
+                    <div className="flex flex-col divide-y divide-gray-100 rounded-xl border border-navy-200 bg-white shadow-lg overflow-hidden max-h-48 overflow-y-auto">
                       {memberResults.map((m) => (
-                        <button key={m.id} type="button" onClick={() => pickMember(m)} className="p-1.5 text-left text-xs hover:bg-gray-50">
-                          <p className="font-medium text-gray-900">{m.name}</p>
-                          <p className="text-[11px] text-gray-500">{m.member_number} · <Money amount={m.balance_cache} size="sm" /></p>
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => pickMember(m)}
+                          className="p-2 text-left text-xs hover:bg-navy-50 transition-colors flex items-center justify-between"
+                        >
+                          <div>
+                            <p className="font-bold text-gray-900">{m.name}</p>
+                            <p className="text-[11px] text-gray-500 font-mono">{m.member_number} {m.class_name ? `· ${m.class_name}` : ''}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[10px] text-emerald-600 font-bold block">Saldo:</span>
+                            <Money amount={m.balance_cache} size="sm" className="font-bold text-emerald-700" />
+                          </div>
                         </button>
                       ))}
                     </div>
-                  )}
+                  ) : memberQuery.trim() !== '' ? (
+                    <div className="rounded-xl border border-dashed border-gray-300 p-2.5 text-center text-xs text-gray-400 bg-gray-50/50">
+                      Anggota tidak ditemukan
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 p-2">

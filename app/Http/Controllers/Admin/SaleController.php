@@ -254,7 +254,13 @@ class SaleController extends Controller
         }
 
         $matches = Member::where('status', 'active')
-            ->where('name', 'like', "%{$query}%")
+            ->where(function ($q) use ($query) {
+                $q->where('name', 'like', "%{$query}%")
+                  ->orWhere('member_number', 'like', "%{$query}%")
+                  ->orWhere('phone', 'like', "%{$query}%")
+                  ->orWhere('class_name', 'like', "%{$query}%")
+                  ->orWhereHas('cards', fn ($c) => $c->where('card_number', 'like', "%{$query}%"));
+            })
             ->with('level:id,name,color')
             ->limit(10)
             ->get();
