@@ -747,6 +747,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
           setPakasirModalOrderId(res.order_id || null)
           setPakasirModalAmount(subtotal)
           setSubmitting(false)
+          toast.info('Memuat QRIS Pakasir Payment Gateway...')
         } else if (res.token) {
           snap.pay(res.token, {
             onSuccess: completeSaleWithSnap,
