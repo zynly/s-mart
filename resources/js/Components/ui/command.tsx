@@ -54,12 +54,14 @@ function CommandDialog({
       </DialogHeader>
       <DialogContent
         className={cn(
-          "top-1/3 translate-y-0 overflow-hidden rounded-xl! p-0",
+          "top-1/3 translate-y-0 overflow-hidden rounded-2xl p-0 max-w-xl border-slate-200 dark:border-slate-800 shadow-2xl",
           className
         )}
         showCloseButton={showCloseButton}
       >
-        {children}
+        <Command className="[&_[data-slot=command-input-wrapper]]:h-12 [&_[data-slot=command-input-wrapper]_svg]:size-5 [&_[data-slot=command-input]]:h-12 [&_[data-slot=command-item]]:px-3 [&_[data-slot=command-item]]:py-2.5 [&_[data-slot=command-item]_svg]:size-4">
+          {children}
+        </Command>
       </DialogContent>
     </Dialog>
   )

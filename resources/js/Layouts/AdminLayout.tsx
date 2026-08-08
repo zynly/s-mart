@@ -13,7 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from '@/Components/ui/button'
 import { Badge } from '@/Components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/Components/ui/tooltip'
-import { CommandDialog, CommandInput, CommandList, CommandEmpty } from '@/Components/ui/command'
+import { CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/Components/ui/command'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
 import { ThemeToggle } from '@/Components/common/ThemeToggle'
 import { NotificationBell } from '@/Components/common/NotificationBell'
@@ -643,10 +643,46 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <main className="flex-1 overflow-y-auto bg-bg p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
 
-      <CommandDialog open={searchOpen} onOpenChange={setSearchOpen} title="Pencarian" description="Pencarian global">
-        <CommandInput placeholder="Cari produk, anggota, nota…" />
-        <CommandList>
-          <CommandEmpty>Pencarian global tersedia di Fase 15.</CommandEmpty>
+      <CommandDialog open={searchOpen} onOpenChange={setSearchOpen} title="Pencarian Navigasi" description="Pencarian cepat modul">
+        <CommandInput placeholder="Ketik nama modul (misal: Kasir, Produk, Stok, Laporan, Akuntansi)..." />
+        <CommandList className="max-h-[350px] p-2">
+          <CommandEmpty className="py-8 text-center text-xs text-slate-500">
+            Tidak ada modul yang cocok dengan kata kunci.
+          </CommandEmpty>
+          <CommandGroup heading="Akses Cepat Modul &amp; Navigasi">
+            <CommandItem onSelect={() => { setSearchOpen(false); router.get(route('admin.dashboard')) }} className="cursor-pointer rounded-xl font-bold text-xs py-2.5">
+              <LayoutDashboard className="size-4 mr-2 text-amber-500" />
+              <span>Dashboard Admin</span>
+            </CommandItem>
+            <CommandItem onSelect={() => { setSearchOpen(false); router.get(route('pos.index')) }} className="cursor-pointer rounded-xl font-bold text-xs py-2.5">
+              <ShoppingCart className="size-4 mr-2 text-emerald-500" />
+              <span>Kasir POS (Point of Sale)</span>
+            </CommandItem>
+            <CommandItem onSelect={() => { setSearchOpen(false); router.get(route('admin.products.index')) }} className="cursor-pointer rounded-xl font-bold text-xs py-2.5">
+              <Package className="size-4 mr-2 text-blue-500" />
+              <span>Katalog Produk &amp; Barang</span>
+            </CommandItem>
+            <CommandItem onSelect={() => { setSearchOpen(false); router.get(route('admin.stock.index')) }} className="cursor-pointer rounded-xl font-bold text-xs py-2.5">
+              <Boxes className="size-4 mr-2 text-indigo-500" />
+              <span>Manajemen Stok &amp; Opname</span>
+            </CommandItem>
+            <CommandItem onSelect={() => { setSearchOpen(false); router.get(route('admin.reports.index')) }} className="cursor-pointer rounded-xl font-bold text-xs py-2.5">
+              <FileBarChart className="size-4 mr-2 text-rose-500" />
+              <span>Laporan &amp; Analitik</span>
+            </CommandItem>
+            <CommandItem onSelect={() => { setSearchOpen(false); router.get(route('admin.accounts.index')) }} className="cursor-pointer rounded-xl font-bold text-xs py-2.5">
+              <BookOpen className="size-4 mr-2 text-amber-600" />
+              <span>Akuntansi (COA &amp; Finansial)</span>
+            </CommandItem>
+            <CommandItem onSelect={() => { setSearchOpen(false); router.get(route('admin.members.index')) }} className="cursor-pointer rounded-xl font-bold text-xs py-2.5">
+              <Users className="size-4 mr-2 text-teal-500" />
+              <span>Keanggotaan &amp; Santri</span>
+            </CommandItem>
+            <CommandItem onSelect={() => { setSearchOpen(false); router.get(route('admin.promos.index')) }} className="cursor-pointer rounded-xl font-bold text-xs py-2.5">
+              <Tag className="size-4 mr-2 text-purple-500" />
+              <span>Promo &amp; Kupon Diskon</span>
+            </CommandItem>
+          </CommandGroup>
         </CommandList>
       </CommandDialog>
     </div>
