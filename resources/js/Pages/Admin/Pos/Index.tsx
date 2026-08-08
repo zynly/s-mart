@@ -517,14 +517,20 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
         })),
       },
       {
-        headers: { 'X-Idempotency-Key': idempotencyKeyRef.current },
         onSuccess: () => {
+          toast.success('Pembayaran Berhasil! Transaksi kasir telah dicatat.', {
+            description: 'Keranjang belanja telah dikosongkan.',
+          })
           setCart([])
           setMember(null)
           setPaymentOpen(false)
           idempotencyKeyRef.current = newIdempotencyKey()
         },
-        onError: (errors) => setPaymentError(Object.values(errors)[0] ?? 'Gagal menyelesaikan transaksi.'),
+        onError: (errors) => {
+          const msg = Object.values(errors)[0] ?? 'Gagal menyelesaikan transaksi.'
+          setPaymentError(msg)
+          toast.error(`Transaksi Gagal: ${msg}`)
+        },
         onFinish: () => setSubmitting(false),
       },
     )
@@ -582,6 +588,11 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
       {
         headers: { 'X-Idempotency-Key': idempotencyKeyRef.current },
         onSuccess: () => {
+          const change = isCash && cashInput > subtotal ? cashInput - subtotal : 0
+          const changeInfo = change > 0 ? `Kembalian: Rp ${change.toLocaleString('id-ID')}. ` : ''
+          toast.success('Pembayaran Berhasil! Transaksi telah disimpan.', {
+            description: `${changeInfo}Keranjang kasir telah dikosongkan.`,
+          })
           setCart([])
           setMember(null)
           setCashInput(0)
@@ -593,6 +604,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
           const msg = Object.values(errors)[0] ?? 'Gagal menyelesaikan transaksi.'
           setPaymentError(msg)
           setMethodDialogError(msg)
+          toast.error(`Transaksi Gagal: ${msg}`)
         },
         onFinish: () => setSubmitting(false),
       },
@@ -730,13 +742,20 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
             {
               headers: { 'X-Idempotency-Key': idempotencyKeyRef.current },
               onSuccess: () => {
+                toast.success('Pembayaran Online Berhasil!', {
+                  description: 'Transaksi telah berhasil dicatat ke sistem.',
+                })
                 setCart([])
                 setMember(null)
                 setCashInput(0)
                 setPaymentError(null)
                 idempotencyKeyRef.current = newIdempotencyKey()
               },
-              onError: (errors) => setPaymentError(Object.values(errors)[0] ?? 'Gagal menyelesaikan transaksi.'),
+              onError: (errors) => {
+                const msg = Object.values(errors)[0] ?? 'Gagal menyelesaikan transaksi.'
+                setPaymentError(msg)
+                toast.error(`Transaksi Online Gagal: ${msg}`)
+              },
               onFinish: () => setSubmitting(false),
             },
           )
@@ -1798,11 +1817,19 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                     {
                       headers: { 'X-Idempotency-Key': idempotencyKeyRef.current },
                       onSuccess: () => {
+                        toast.success('Pembayaran Pakasir PG Berhasil!', {
+                          description: 'Transaksi kasir telah sukses dicatat ke sistem.',
+                        })
                         setCart([])
                         setMember(null)
                         setCashInput(0)
                         setPaymentError(null)
                         idempotencyKeyRef.current = newIdempotencyKey()
+                      },
+                      onError: (errors) => {
+                        const msg = Object.values(errors)[0] ?? 'Gagal menyelesaikan transaksi.'
+                        setPaymentError(msg)
+                        toast.error(`Transaksi Pakasir Gagal: ${msg}`)
                       },
                     }
                   )
