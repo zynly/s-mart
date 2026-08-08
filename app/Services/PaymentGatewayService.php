@@ -50,7 +50,9 @@ class PaymentGatewayService
             $slug    = (string) (config('services.pakasir.slug') ?: env('PAKASIR_SLUG', 'pos-mentai'));
             $apiKey  = (string) (config('services.pakasir.api_key') ?: env('PAKASIR_API_KEY', ''));
 
-            $paymentUrl = "{$baseUrl}/pay/{$slug}?amount={$amount}&order_id={$orderId}";
+            // Pakasir PG URL Format: https://app.pakasir.com/pay/{slug}/{amount}?order_id={orderId}
+            // Using path parameter for amount prevents "Nominal transaksi tidak valid" JS alert from Pakasir frontend
+            $paymentUrl = "{$baseUrl}/pay/{$slug}/{$amount}?order_id={$orderId}";
 
             Log::info('Pakasir transaction created', [
                 'order_id' => $orderId,
