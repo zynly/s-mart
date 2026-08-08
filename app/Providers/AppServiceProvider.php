@@ -37,6 +37,8 @@ use App\Services\WhatsApp\NullGateway;
 use App\Services\WhatsApp\WhatsAppGatewayInterface;
 use Illuminate\Support\ServiceProvider;
 
+use Illuminate\Support\Facades\URL;
+
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -63,6 +65,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (config('app.env') === 'production' || str_starts_with((string) config('app.url'), 'https://')) {
+            URL::forceScheme('https');
+        }
         // T-103 (Fase 17): timpakan override tersimpan di tabel `settings`
         // ke config('pos.*') sebelum request ditangani — lihat komentar
         // di SettingsOverrideService untuk alasan pola ini dipilih.
