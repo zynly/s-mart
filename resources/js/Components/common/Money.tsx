@@ -5,13 +5,15 @@ type MoneyProps = {
   amount: number
   className?: string
   showSign?: boolean
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
+  inline?: boolean
 }
 
 const sizeClass: Record<NonNullable<MoneyProps['size']>, string> = {
   sm: 'text-sm',
   md: 'text-base',
   lg: 'text-lg font-semibold',
+  xl: 'text-2xl font-bold',
 }
 
 export function Money({ amount, className, showSign = false, size = 'md' }: MoneyProps) {

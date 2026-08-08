@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
+import { Link } from '@inertiajs/react'
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
@@ -31,9 +31,9 @@ export function PageHeader({ title, subtitle, breadcrumbs, actions }: PageHeader
                 <span key={crumb.label} className="flex items-center gap-1.5">
                   <BreadcrumbItem className="rounded-lg bg-bg border border-border px-2.5 py-0.5 text-[11px] font-semibold text-content shadow-2xs">
                     {crumb.href ? (
-                      <BreadcrumbLink href={crumb.href} className="hover:text-amber-600 transition-colors">
+                      <Link href={crumb.href} prefetch className="hover:text-amber-600 transition-colors">
                         {crumb.label}
-                      </BreadcrumbLink>
+                      </Link>
                     ) : (
                       <BreadcrumbPage className="font-bold text-content">{crumb.label}</BreadcrumbPage>
                     )}

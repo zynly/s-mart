@@ -313,6 +313,7 @@ function NavLink({ item, collapsed }: { item: NavigationItem; collapsed: boolean
   const link = (
     <Link
       href={item.href}
+      prefetch
       className={cn(
         'group relative flex items-center gap-3 py-2.5 text-xs transition-all duration-200 ease-in-out select-none',
         collapsed ? 'justify-center px-2 rounded-xl' : 'px-3 rounded-r-xl rounded-l-sm',
@@ -488,7 +489,7 @@ export function SidebarContent({ collapsed }: { collapsed: boolean }) {
         )}
 
         {!collapsed && DEV_LINKS.map((link) => (
-          <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-1.5 text-xs text-navy-700 hover:bg-navy-100/80 hover:text-navy-950 font-medium transition-colors">
+          <Link key={link.href} href={link.href} prefetch className="block rounded-lg px-3 py-1.5 text-xs text-navy-700 hover:bg-navy-100/80 hover:text-navy-950 font-medium transition-colors">
             {link.label}
           </Link>
         ))}
@@ -630,7 +631,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   <p className="text-[11px] text-slate-500 truncate font-mono mt-0.5">{auth.user?.email}</p>
                   <Badge variant="outline" className="mt-2 font-mono text-[10px] font-extrabold bg-amber-50 text-amber-900 border-amber-300">
                     <ShieldCheck className="size-3 mr-1 text-amber-600" />
-                    {auth.user?.roles?.[0]?.name ?? 'Admin'}
+                    {typeof auth.user?.roles?.[0] === 'object' ? (auth.user?.roles?.[0] as any)?.name : (auth.user?.roles?.[0] ?? 'Admin')}
                   </Badge>
                 </div>
                 <DropdownMenuItem asChild className="rounded-xl font-bold text-xs py-2.5 text-slate-700 dark:text-slate-200 cursor-pointer flex items-center">
