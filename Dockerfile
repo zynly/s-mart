@@ -1,7 +1,7 @@
 # ==============================================================================
 # STAGE 1: Build Frontend Assets (Vite + React + TypeScript)
 # ==============================================================================
-FROM node:20-alpine AS frontend-builder
+FROM node:22-alpine AS frontend-builder
 WORKDIR /app
 
 # Enable pnpm via corepack
