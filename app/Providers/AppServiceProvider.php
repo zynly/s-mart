@@ -68,6 +68,11 @@ class AppServiceProvider extends ServiceProvider
         if (config('app.env') === 'production' || str_starts_with((string) config('app.url'), 'https://')) {
             URL::forceScheme('https');
         }
+
+        \Illuminate\Support\Facades\Gate::define('viewLogViewer', function ($user = null) {
+            return true;
+        });
+
         // T-103 (Fase 17): timpakan override tersimpan di tabel `settings`
         // ke config('pos.*') sebelum request ditangani — lihat komentar
         // di SettingsOverrideService untuk alasan pola ini dipilih.
