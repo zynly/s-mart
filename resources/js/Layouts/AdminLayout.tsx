@@ -4,7 +4,7 @@ import {
   Menu, ChevronDown, ChevronRight, Search, PanelLeftClose, PanelLeftOpen, Circle,
   LayoutDashboard, ShoppingCart, Wallet, CreditCard, Undo2, Package, Boxes, Truck,
   Users, Tag, HandCoins, BookOpen, FileBarChart, Building2, UserCog, Settings, Cpu,
-  ShieldCheck, Eye, Repeat2, AlertTriangle, X, ArrowLeftRight, Eye as EyeIcon, EyeOff,
+  ShieldCheck, Eye, Repeat2, AlertTriangle, X, ArrowLeftRight, Eye as EyeIcon, EyeOff, User, LogOut,
   type LucideIcon,
 } from 'lucide-react'
 import { Sheet, SheetContent } from '@/Components/ui/sheet'
@@ -624,16 +624,24 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   <ChevronDown className="size-3.5 text-slate-400 group-hover:text-navy-900 transition-colors" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 p-2 rounded-2xl shadow-xl border-slate-200 dark:border-slate-800">
-                <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-1">
-                  <p className="font-bold text-xs text-navy-950 dark:text-white truncate">{auth.user?.name}</p>
-                  <p className="text-[10px] text-slate-500 truncate font-mono mt-0.5">{auth.user?.email}</p>
+              <DropdownMenuContent align="end" className="w-60 p-2 rounded-2xl shadow-xl border-slate-200 dark:border-slate-800">
+                <div className="px-3 py-2.5 border-b border-slate-100 dark:border-slate-800 mb-1">
+                  <p className="font-extrabold text-xs text-navy-950 dark:text-white truncate">{auth.user?.name}</p>
+                  <p className="text-[11px] text-slate-500 truncate font-mono mt-0.5">{auth.user?.email}</p>
+                  <Badge variant="outline" className="mt-2 font-mono text-[10px] font-extrabold bg-amber-50 text-amber-900 border-amber-300">
+                    <ShieldCheck className="size-3 mr-1 text-amber-600" />
+                    {auth.user?.roles?.[0]?.name ?? 'Admin'}
+                  </Badge>
                 </div>
-                <DropdownMenuItem asChild className="rounded-xl font-bold text-xs py-2 text-navy-900 cursor-pointer">
-                  <Link href={route('profile.edit')}>⚙️ Pengaturan Profil</Link>
+                <DropdownMenuItem asChild className="rounded-xl font-bold text-xs py-2.5 text-slate-700 dark:text-slate-200 cursor-pointer flex items-center">
+                  <Link href={route('profile.edit')} className="flex items-center w-full">
+                    <User className="size-4 mr-2.5 text-amber-500" />
+                    <span>Pengaturan Profil</span>
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.post(route('logout'))} className="rounded-xl font-bold text-xs py-2 text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer mt-1">
-                  🚪 Keluar dari Sistem
+                <DropdownMenuItem onClick={() => router.post(route('logout'))} className="rounded-xl font-bold text-xs py-2.5 text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950/40 cursor-pointer flex items-center mt-1">
+                  <LogOut className="size-4 mr-2.5 text-red-500" />
+                  <span>Keluar dari Sistem</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

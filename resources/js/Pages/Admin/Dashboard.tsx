@@ -446,8 +446,8 @@ function ManagerDashboard({ statCards, charts, recentSales, topProducts, cashier
                 {cashierRanking.map((c, idx) => (
                   <div key={c.kasir} className="flex items-center justify-between text-xs py-2 px-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-navy-900 transition-colors">
                     <div className="flex items-center gap-2.5">
-                      <span className="flex size-6 items-center justify-center rounded-full bg-amber-100 text-[10px] font-mono font-black text-amber-800">
-                        🏆 #{idx + 1}
+                      <span className="flex size-6 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-950/60 text-[10px] font-mono font-black text-amber-800 dark:text-amber-300">
+                        #{idx + 1}
                       </span>
                       <p className="font-bold text-navy-950 dark:text-white">{c.kasir}</p>
                     </div>
