@@ -27,6 +27,7 @@ RUN apk add --no-cache \
     libjpeg-turbo-dev \
     freetype-dev \
     libzip-dev \
+    zlib-dev \
     icu-dev \
     postgresql-dev \
     oniguruma-dev
@@ -57,7 +58,7 @@ RUN composer dump-autoload --optimize --no-dev
 FROM php:8.3-fpm-alpine AS production
 WORKDIR /var/www
 
-# Install runtime packages (Nginx, Supervisor, Cron, PHP extensions)
+# Install runtime packages & temporary build dependencies for PHP extensions
 RUN apk add --no-cache \
     nginx \
     supervisor \
@@ -68,9 +69,20 @@ RUN apk add --no-cache \
     libzip \
     icu \
     libpq \
-    oniguruma
-
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    oniguruma \
+    zlib \
+ && apk add --no-cache --virtual .build-deps \
+    $PHPIZE_DEPS \
+    freetype-dev \
+    libjpeg-turbo-dev \
+    libpng-dev \
+    libzip-dev \
+    zlib-dev \
+    icu-dev \
+    postgresql-dev \
+    oniguruma-dev \
+    linux-headers \
+ && docker-php-ext-configure gd --with-freetype --with-jpeg \
  && docker-php-ext-install -j$(nproc) \
     pdo \
     pdo_pgsql \
@@ -81,7 +93,8 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     intl \
     mbstring \
     exif \
-    opcache
+    opcache \
+ && apk del .build-deps
 
 # Copy OPcache configuration
 COPY docker/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
