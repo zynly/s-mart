@@ -1,7 +1,7 @@
 # ==============================================================================
 # STAGE 1: Build PHP Dependencies (Composer)
 # ==============================================================================
-FROM php:8.3-fpm-alpine AS php-builder
+FROM php:8.4-fpm-alpine AS php-builder
 WORKDIR /app
 
 # Install system dependencies & PHP extensions required for Composer
@@ -35,7 +35,7 @@ COPY composer.json composer.lock ./
 RUN composer install --no-dev --prefer-dist --no-scripts --no-autoloader --ignore-platform-reqs
 
 COPY . .
-RUN composer dump-autoload --optimize --no-dev
+RUN composer dump-autoload --optimize --no-dev --ignore-platform-reqs
 
 # ==============================================================================
 # STAGE 2: Build Frontend Assets (Vite + React + TypeScript)
@@ -58,7 +58,7 @@ RUN pnpm run build
 # ==============================================================================
 # STAGE 3: Final Production Image (Nginx + PHP-FPM + Supervisor)
 # ==============================================================================
-FROM php:8.3-fpm-alpine AS production
+FROM php:8.4-fpm-alpine AS production
 WORKDIR /var/www
 
 # Install runtime packages & temporary build dependencies for PHP extensions
