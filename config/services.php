@@ -52,9 +52,16 @@ return [
     // MidtransGateway::class untuk mengaktifkan panggilan API nyata.
     'midtrans' => [
         'gateway' => env('MIDTRANS_GATEWAY', NullMidtransGateway::class),
-        'server_key' => env('MIDTRANS_SERVER_KEY'),
-        'client_key' => env('MIDTRANS_CLIENT_KEY'),
-        'is_production' => env('MIDTRANS_IS_PRODUCTION', false),
+        'is_production' => filter_var(env('MIDTRANS_IS_PRODUCTION', false), FILTER_VALIDATE_BOOLEAN),
+        'server_key' => filter_var(env('MIDTRANS_IS_PRODUCTION', false), FILTER_VALIDATE_BOOLEAN)
+            ? (env('MIDTRANS_PRODUCTION_SERVER_KEY') ?: env('MIDTRANS_SERVER_KEY'))
+            : (env('MIDTRANS_SANDBOX_SERVER_KEY') ?: env('MIDTRANS_SERVER_KEY')),
+        'client_key' => filter_var(env('MIDTRANS_IS_PRODUCTION', false), FILTER_VALIDATE_BOOLEAN)
+            ? (env('MIDTRANS_PRODUCTION_CLIENT_KEY') ?: env('MIDTRANS_CLIENT_KEY'))
+            : (env('MIDTRANS_SANDBOX_CLIENT_KEY') ?: env('MIDTRANS_CLIENT_KEY')),
+        'merchant_id' => filter_var(env('MIDTRANS_IS_PRODUCTION', false), FILTER_VALIDATE_BOOLEAN)
+            ? (env('MIDTRANS_PRODUCTION_MERCHANT_ID') ?: env('MIDTRANS_MERCHANT_ID'))
+            : (env('MIDTRANS_SANDBOX_MERCHANT_ID') ?: env('MIDTRANS_MERCHANT_ID')),
     ],
 
 ];
