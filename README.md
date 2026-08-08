@@ -1,59 +1,153 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
-
 <p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+  <img src="public/logo/logo2.png" width="160" alt="Skillage Mart Logo" />
 </p>
 
-## About Laravel
+<h1 align="center">🛒 Skillage Mart (S-Mart)</h1>
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+<p align="center">
+  <strong>Enterprise Retail Point of Sale (POS), Inventory & Double-Entry Accounting ERP System</strong>
+</p>
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+<p align="center">
+  <a href="#"><img src="https://img.shields.io/badge/Laravel-11.x-FF2D20?style=flat-square&logo=laravel" alt="Laravel 11"></a>
+  <a href="#"><img src="https://img.shields.io/badge/React-18.x-61DAFB?style=flat-square&logo=react" alt="React 18"></a>
+  <a href="#"><img src="https://img.shields.io/badge/Inertia.js-2.x-9553E9?style=flat-square&logo=inertia" alt="Inertia.js"></a>
+  <a href="#"><img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript" alt="TypeScript"></a>
+  <a href="#"><img src="https://img.shields.io/badge/TailwindCSS-3.x-38B2AC?style=flat-square&logo=tailwind-css" alt="Tailwind CSS"></a>
+  <a href="#"><img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql" alt="PostgreSQL"></a>
+  <a href="#"><img src="https://img.shields.io/badge/License-MIT-green.style=flat-square" alt="License MIT"></a>
+</p>
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## 📌 Tentang Skillage Mart
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+**Skillage Mart (S-Mart)** adalah aplikasi ERP & Point of Sale (POS) ritel modern berstandar enterprise yang dirancang untuk mengelola operasional toko, minimarket, serta unit usaha koperasi secara terintegrasi. 
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+S-Mart menggabungkan **Kasir Kas POS**, **Manajemen Stok Berbasis FEFO**, **Keanggotaan & Portal Wali**, hingga **Sistem Akuntansi Berpasangan (Double-Entry Accounting)** secara otomatis *real-time*.
 
-## Laravel Sponsors
+---
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## 🔥 Fitur Utama Modul
 
-### Premium Partners
+### 💻 1. Kasir / Point of Sale (POS)
+- **Pencarian Instant & Scanner**: Pencarian cepat nama barang, SKU, maupun pemindaian Barcode.
+- **Multi-Metode Pembayaran**: Tunai, QRIS, Transfer Bank, Kartu Debit, Saldo Deposit Anggota, hingga Kredit Tempo (Bon Kasbon).
+- **Manajemen Sesi Kasir**: Buka/Tutup sesi kasir dengan verifikasi modal awal dan rekonsiliasi uang fisik laci.
+- **Struk & Nota Cetak**: Cetak struk belanja thermal/nota cetak otomatis.
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+### 👥 2. Keanggotaan & Portal Wali
+- **Manajemen Anggota**: Cetak Kartu Anggota dengan Barcode/QR Code bawaan.
+- **Sistem Saldo Deposit**: Fitur Top-Up saldo, Penarikan, dan Riwayat Mutasi Deposit.
+- **Portal Wali (Wali Santri/Pelanggan)**: Akun portal khusus wali untuk melakukan pengajuan top-up saldo dan memantau transaksi.
+- **Poin Reward & Promo**: Pengumpulan poin reward belanja, promo diskon, dan kupon voucher.
 
-## Contributing
+### 📦 3. Persediaan & Stok (FEFO Batch Inventory)
+- **Pelacakan Layer FEFO**: *First-Expired, First-Out* otomatis pada barang ber-kedaluwarsa.
+- **Barang Titipan (Konsinyasi)**: Manajemen stok konsinyasi dari supplier dengan pembagian komisi mart dan perhitungan otomatis.
+- **Stok Opname & Adjustment**: Rekonsiliasi fisik stok dengan penyesuaian otomatis ke jurnal akuntansi.
+- **Transfer Stok**: Pengiriman dan penerimaan mutasi stok antar outlet/gudang.
+- **Peringatan Stok Kritis**: Notifikasi otomatis untuk stok minimal dan barang mendekati kedaluwarsa.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 🚚 4. Pembelian & Supplier
+- **Purchase Order (PO) & Penerimaan Barang**: Pembelian kredit/tunai dengan pembaruan otomatis ke persediaan.
+- **Hutang Usaha (Supplier)**: Pencatatan utang otomatis dengan *Aging Analysis* (Umur Hutang 0–30, 31–60, 61–90, >90 hari).
 
-## Code of Conduct
+### 📊 5. Akuntansi Berpasangan (Double-Entry ERP)
+- **Bagan Akun (COA)**: Struktur akun hirarki bertingkat (*Tree View*) dengan pencarian dan filter tipe akun.
+- **Jurnal Umum Otomatis**: Otomatisasi jurnal berpasangan dari setiap transaksi POS, Pembelian, Deposit, Retur, dan Kas.
+- **Buku Besar (General Ledger)**: Pemilih akun modern (*Searchable Combobox*) dengan kontrol tinggi dan mutasi saldo berjalan.
+- **Laporan Finansial Executive**:
+  - 📈 **Laba Rugi (Profit & Loss)**: Dilengkapi KPI Cards di bagian atas (*Pendapatan, HPP, Laba Kotor, Laba Bersih*).
+  - ⚖️ **Neraca (Balance Sheet)**: Perbandingan Aktiva vs Pasiva dengan indikator *Keseimbangan Jurnal (Balanced)*.
+  - 🧾 **Neraca Saldo (Trial Balance)** & **Periode Akuntansi (Tutup Buku)**.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### 📈 6. Laporan & Analitik (15 Modul Laporan)
+- **15 Modul Laporan Komprehensif**: Penjualan per Produk, Penjualan per Kasir, Metode Bayar, Arus Kas, Kartu Stok, Aging Piutang & Hutang.
+- **Ekspor Excel (.xlsx) Native**: Dilengkapi *Auto-Width Column*, Header Navy, dan Format Angka Native (`#,##0`) yang bisa langsung di-rumus `=SUM()`.
+- **Pratinjau & Cetak PDF Dokumen Resmi**: Kop Surat Resmi Mart, Pilihan Kertas (A4 / F4 Folio), dan Blok Tanda Tangan Audit Resmi (*Dibuat, Diperiksa, Disetujui*).
 
-## Security Vulnerabilities
+### 🔒 7. Keamanan & Akses
+- **Role-Based Access Control (RBAC)**: Otorisasi multi-peran (*Owner, Admin, Kasir, Wali*) menggunakan Spatie Permission.
+- **Audit Trail Activity Log**: Catatan riwayat aktivitas pengguna lengkap dengan perlindungan sensor data sensitif.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+---
 
-## License
+## 🛠️ Teknologi & Stack Digunakan
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+| Kategori | Teknologi |
+| :--- | :--- |
+| **Backend Framework** | [Laravel 11.x](https://laravel.com/) (PHP 8.2+) |
+| **Frontend Engine** | [React 18](https://react.dev/) via [Inertia.js v2](https://inertiajs.com/) |
+| **Language & Typing** | [TypeScript](https://www.typescriptlang.org/) |
+| **Styling & UI** | [Tailwind CSS v3](https://tailwindcss.com/) & [Shadcn UI](https://ui.shadcn.com/) |
+| **Database** | [PostgreSQL 16](https://www.postgresql.org/) / MySQL 8 |
+| **Excel Export** | [Maatwebsite Excel](https://laravel-excel.com/) |
+| **Icon Set** | [Lucide React](https://lucide.dev/) |
+| **Build Tool** | [Vite](https://vitejs.dev/) & `pnpm` |
+
+---
+
+## 🚀 Panduan Instalasi Lokal
+
+### 1. Prasyarat Sistem
+- PHP >= 8.2 (dengan ekstensi `pdo_pgsql`/`pdo_mysql`, `gd`, `bcmath`, `mbstring`, `zip`)
+- Node.js >= 18.x & `pnpm`
+- Composer >= 2.x
+- Database PostgreSQL 16 / MySQL 8
+
+### 2. Langkah Instalasi
+
+```bash
+# 1. Clone repositori
+git clone https://github.com/zynly/s-mart.git
+cd s-mart
+
+# 2. Install dependensi PHP & Node.js
+composer install
+pnpm install
+
+# 3. Salin file lingkungan (.env)
+cp .env.example .env
+
+# 4. Generate Application Key
+php artisan key:generate
+
+# 5. Konfigurasi Database di .env
+# DB_CONNECTION=pgsql
+# DB_HOST=127.0.0.1
+# DB_PORT=5432
+# DB_DATABASE=s_mart
+# DB_USERNAME=postgres
+# DB_PASSWORD=secret
+
+# 6. Jalankan Migrasi Database & Seeder Master Data
+php artisan migrate --seed
+
+# 7. Jalankan server pengembang (Development Mode)
+# Terminal 1: Laravel Backend
+php artisan serve
+
+# Terminal 2: Vite Frontend
+pnpm dev
+```
+
+---
+
+## 📦 Build untuk Produksi
+
+```bash
+# Kompilasi aset frontend untuk produksi
+pnpm build
+
+# Optimize Laravel cache
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+```
+
+---
+
+## 📄 Lisensi
+
+Proyek ini dilindungi di bawah lisensi [MIT License](LICENSE).
