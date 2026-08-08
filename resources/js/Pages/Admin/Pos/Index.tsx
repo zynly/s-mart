@@ -619,14 +619,29 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
       return
     }
 
+    // Helper to request member selection with toast & auto-focus
+    const requireMember = (methodName: string) => {
+      const msg = `Metode ${methodName} membutuhkan anggota/santri terpilih.`
+      setPaymentError(msg)
+      toast.warning(msg, {
+        description: 'Silakan cari & pilih anggota terlebih dahulu di kolom pelanggan.',
+      })
+      setTimeout(() => {
+        memberInputRef.current?.focus()
+        memberInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 100)
+    }
+
     // 1. Saldo Deposit
     if (activeMethod.type === 'deposit') {
       if (!member) {
-        setPaymentError('Metode Saldo Deposit membutuhkan anggota yang terpilih.')
+        requireMember('Saldo Deposit')
         return
       }
       if (member.balance_cache < subtotal) {
-        setPaymentError(`Saldo deposit anggota (Rp ${member.balance_cache.toLocaleString('id-ID')}) tidak mencukupi untuk pembayaran Rp ${subtotal.toLocaleString('id-ID')}.`)
+        const msg = `Saldo deposit anggota (Rp ${member.balance_cache.toLocaleString('id-ID')}) tidak mencukupi untuk pembayaran Rp ${subtotal.toLocaleString('id-ID')}.`
+        setPaymentError(msg)
+        toast.error(msg)
         return
       }
       if (subtotal >= noPinThreshold && member.has_pin) {
@@ -657,12 +672,14 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
     // 4. Poin Loyalty
     if (activeMethod.type === 'point') {
       if (!member) {
-        setPaymentError('Metode Poin membutuhkan anggota yang terpilih.')
+        requireMember('Poin Loyalty')
         return
       }
       const pointsNeeded = Math.ceil(subtotal / pointValue)
       if (member.point_balance < pointsNeeded) {
-        setPaymentError(`Poin anggota (${member.point_balance} poin) tidak mencukupi untuk penukaran ${pointsNeeded} poin.`)
+        const msg = `Poin anggota (${member.point_balance} poin) tidak mencukupi untuk penukaran ${pointsNeeded} poin.`
+        setPaymentError(msg)
+        toast.error(msg)
         return
       }
       setMethodDialogError(null)
@@ -673,14 +690,16 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
     // 5. Kredit / Tempo
     if (activeMethod.type === 'credit') {
       if (!member) {
-        setPaymentError('Metode Kredit/Tempo membutuhkan anggota yang terpilih.')
+        requireMember('Kredit / Tempo')
         return
       }
       try {
         const res = await fetch(`${route('pos.credit-check')}?member_id=${member.id}&amount=${subtotal}`)
         const data = await res.json()
         if (!data.allowed) {
-          setPaymentError(`Limit piutang terlampaui: aktif Rp ${(data.active ?? 0).toLocaleString('id-ID')} dari limit Rp ${(data.limit ?? 0).toLocaleString('id-ID')}.`)
+          const msg = `Limit piutang terlampaui: aktif Rp ${(data.active ?? 0).toLocaleString('id-ID')} dari limit Rp ${(data.limit ?? 0).toLocaleString('id-ID')}.`
+          setPaymentError(msg)
+          toast.error(msg)
           return
         }
         setMethodDialogError(null)
@@ -695,11 +714,13 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
     // 6. Potong Gaji
     if (activeMethod.type === 'payroll') {
       if (!member) {
-        setPaymentError('Metode Potong Gaji membutuhkan anggota yang terpilih.')
+        requireMember('Potong Gaji')
         return
       }
       if (!['fasilitator', 'staff'].includes(member.type)) {
-        setPaymentError('Metode Potong Gaji hanya berlaku untuk anggota tipe fasilitator/staf.')
+        const msg = 'Metode Potong Gaji hanya berlaku untuk anggota tipe fasilitator/staf.'
+        setPaymentError(msg)
+        toast.error(msg)
         return
       }
       setMethodDialogError(null)
