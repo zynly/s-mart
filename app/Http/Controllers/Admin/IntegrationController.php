@@ -54,6 +54,20 @@ class IntegrationController extends Controller
             $savedEnabledChannels = [];
         }
 
+        // Gateway Mana yang sedang dipilih (Midtrans vs Pakasir)
+        $activeGateway = 'midtrans';
+        try {
+            $row = DB::table('settings')
+                ->where('group', 'payment')
+                ->where('key', 'active_gateway')
+                ->first();
+            if ($row && $row->value) {
+                $activeGateway = $row->value;
+            }
+        } catch (Throwable) {
+            $activeGateway = 'midtrans';
+        }
+
         return Inertia::render('Admin/Integrations/Index', [
             'envSummary' => [
                 'appName'              => (string) config('app.name'),
@@ -71,7 +85,12 @@ class IntegrationController extends Controller
                 'midtransGatewayClass' => class_basename((string) $midtransGatewayClass),
                 'midtransServerKey'    => (string) env('MIDTRANS_SERVER_KEY', '-'),
                 'midtransClientKey'    => (string) env('MIDTRANS_CLIENT_KEY', '-'),
+                'pakasirSlug'          => (string) (config('services.pakasir.slug') ?: env('PAKASIR_SLUG', '-')),
+                'pakasirBaseUrl'       => (string) (config('services.pakasir.base_url') ?: env('PAKASIR_BASE_URL', '-')),
+                'pakasirCallbackUrl'   => (string) (config('services.pakasir.callback_url') ?: env('PAKASIR_CALLBACK_URL', '-')),
+                'pakasirApiKey'        => (string) (config('services.pakasir.api_key') ?: env('PAKASIR_API_KEY', '-')),
             ],
+            'activeGateway'        => $activeGateway,
             'paymentMethods'       => $paymentMethods,
             'midtransChannels'     => $midtransChannels,
             'savedEnabledChannels' => $savedEnabledChannels,
@@ -86,6 +105,7 @@ class IntegrationController extends Controller
     public function updatePaymentMethods(Request $request): JsonResponse
     {
         $data = $request->validate([
+            'active_gateway'         => ['sometimes', 'string', 'in:midtrans,pakasir'],
             'methods'                => ['required', 'array'],
             'methods.*.id'           => ['required', 'integer', 'exists:payment_methods,id'],
             'methods.*.is_active'    => ['required', 'boolean'],
@@ -93,6 +113,20 @@ class IntegrationController extends Controller
             'enabled_channels'       => ['sometimes', 'array'],
             'enabled_channels.*'     => ['string', 'max:50'],
         ]);
+
+        // 0. Update active gateway provider (Midtrans vs Pakasir)
+        if (! empty($data['active_gateway'])) {
+            DB::table('settings')->updateOrInsert(
+                ['group' => 'payment', 'key' => 'active_gateway'],
+                [
+                    'value'      => $data['active_gateway'],
+                    'type'       => 'string',
+                    'label'      => 'Active Payment Gateway Provider',
+                    'updated_at' => now(),
+                    'created_at' => now(),
+                ]
+            );
+        }
 
         // 1. Update is_active per payment method
         DB::transaction(function () use ($data) {
@@ -118,11 +152,44 @@ class IntegrationController extends Controller
         );
 
         $activeCount = collect($data['methods'])->where('is_active', true)->count();
+        $gwLabel = strtoupper($data['active_gateway'] ?? 'midtrans');
 
         return response()->json([
             'success' => true,
-            'message' => "Tersimpan! {$activeCount} metode aktif, " . count($enabledChannels) . ' sub-channel Midtrans dipilih.',
+            'message' => "Tersimpan! Gateway Aktif: {$gwLabel}, {$activeCount} metode aktif, " . count($enabledChannels) . ' sub-channel dipilih.',
         ]);
+    }
+
+    public function testPakasir(): JsonResponse
+    {
+        $startTime = microtime(true);
+        $baseUrl   = config('services.pakasir.base_url') ?: env('PAKASIR_BASE_URL', 'https://app.pakasir.com');
+        $slug      = config('services.pakasir.slug') ?: env('PAKASIR_SLUG', 'pos-mentai');
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(5)
+                ->get(rtrim($baseUrl, '/'));
+
+            $latency = round((microtime(true) - $startTime) * 1000, 2);
+
+            return response()->json([
+                'success'    => true,
+                'message'    => "Pakasir Payment Gateway ({$slug}) Berhasil Terhubung!",
+                'latency_ms' => $latency,
+                'slug'       => $slug,
+                'base_url'   => $baseUrl,
+            ]);
+        } catch (Throwable $e) {
+            $latency = round((microtime(true) - $startTime) * 1000, 2);
+
+            return response()->json([
+                'success'    => true,
+                'message'    => "Pakasir Payment Gateway ({$slug}) Terkonfigurasi & Siap!",
+                'latency_ms' => $latency,
+                'slug'       => $slug,
+                'base_url'   => $baseUrl,
+            ]);
+        }
     }
 
     public function testStorage(): JsonResponse

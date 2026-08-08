@@ -1686,12 +1686,26 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
             <Button
               onClick={() => {
                 if (completedSale) {
-                  window.open(route('pos.sales.receipt-pdf', completedSale.id), '_blank', 'width=400,height=600')
+                  // Direct in-page print trigger using hidden iframe, avoiding new tab popup
+                  const printFrame = document.createElement('iframe')
+                  printFrame.style.position = 'fixed'
+                  printFrame.style.right = '0'
+                  printFrame.style.bottom = '0'
+                  printFrame.style.width = '0'
+                  printFrame.style.height = '0'
+                  printFrame.style.border = '0'
+                  printFrame.src = route('pos.sales.receipt-pdf', completedSale.id)
+                  document.body.appendChild(printFrame)
+                  printFrame.onload = () => {
+                    printFrame.contentWindow?.focus()
+                    printFrame.contentWindow?.print()
+                    setTimeout(() => document.body.removeChild(printFrame), 3000)
+                  }
                 }
               }}
               className="bg-emerald-600 hover:bg-emerald-700 font-bold text-white w-full rounded-xl py-2.5 shadow-sm"
             >
-              <Printer className="mr-2 size-4" /> Cetak Struk (PDF)
+              <Printer className="mr-2 size-4" /> Cetak Struk (In-Page Print)
             </Button>
             <Button
               variant="outline"

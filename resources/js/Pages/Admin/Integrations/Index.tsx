@@ -22,6 +22,7 @@ type EnvSummary = {
   smtpHost: string; smtpPort: number; smtpEnable: boolean
   midtransIsProduction: boolean; midtransGatewayClass: string
   midtransServerKey: string; midtransClientKey: string
+  pakasirSlug: string; pakasirBaseUrl: string; pakasirCallbackUrl: string; pakasirApiKey: string
 }
 
 type PaymentMethod = {
@@ -40,10 +41,12 @@ type TestResult = {
 
 type IndexProps = {
   envSummary: EnvSummary
+  activeGateway?: string
   paymentMethods: PaymentMethod[]
   midtransChannels: MidtransChannel[]
   savedEnabledChannels: string[]
 }
+
 
 // ─── Color + Icon per type ────────────────────────────────────────────────────
 
@@ -243,6 +246,7 @@ function MethodCard({
 // ─── Main ────────────────────────────────────────────────────────────────────
 export default function Index({
   envSummary,
+  activeGateway: initActiveGw = 'midtrans',
   paymentMethods: initMethods = [],
   midtransChannels: initChannels = [],
   savedEnabledChannels = [],
@@ -252,10 +256,15 @@ export default function Index({
   const [loadingStorage, setLoadingStorage] = useState(false)
   const [midtransR, setMidtransR] = useState<TestResult | null>(null)
   const [loadingMidtrans, setLoadingMidtrans] = useState(false)
+  const [pakasirR, setPakasirR] = useState<TestResult | null>(null)
+  const [loadingPakasir, setLoadingPakasir] = useState(false)
   const [smtpR, setSmtpR] = useState<TestResult | null>(null)
   const [loadingSmtp, setLoadingSmtp] = useState(false)
   const [dbR, setDbR] = useState<TestResult | null>(null)
   const [loadingDb, setLoadingDb] = useState(false)
+
+  // Active Payment Gateway state
+  const [activeGw, setActiveGw] = useState<string>(initActiveGw)
 
   // Payment methods state
   const [methods, setMethods] = useState<PaymentMethod[]>(initMethods ?? [])
@@ -307,6 +316,7 @@ export default function Index({
       const res = await apiPost<TestResult>(
         route('admin.integrations.update-midtrans-channels'),
         {
+          active_gateway: activeGw,
           methods: methods.map(m => ({
             id: m.id, is_active: m.is_active, midtrans_code: m.midtrans_code,
           })),
@@ -326,7 +336,7 @@ export default function Index({
     <div className="flex flex-col gap-5 pb-10">
       <PageHeader
         title="Pusat Integrasi & Uji Koneksi"
-        subtitle="Kelola channel kasir, diagnosa S3 RustFS, Midtrans, SMTP, dan Database"
+        subtitle="Kelola channel kasir, diagnosa S3 RustFS, Midtrans, Pakasir, SMTP, dan Database"
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Integrasi' }]}
         actions={
           <Badge className="bg-gradient-to-r from-amber-500 to-amber-300 px-3 py-1 font-bold text-navy-950 shadow-sm">
@@ -335,7 +345,77 @@ export default function Index({
         }
       />
 
-      {/* ── 4 Test Cards ── */}
+      {/* ── Active Gateway Provider Switcher Card ── */}
+      <Card className="rounded-2xl border border-navy-700/30 bg-gradient-to-r from-navy-950 to-navy-900 text-white shadow-md">
+        <CardHeader className="pb-3 border-b border-navy-800">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-mustard-500/20 text-mustard-400 border border-mustard-400/30">
+                <CreditCard className="size-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-extrabold text-white">Payment Gateway Utama (Active PG)</CardTitle>
+                <CardDescription className="text-xs text-navy-200">
+                  Pilih penyedia layanan Payment Gateway yang aktif untuk kasir &amp; top-up wali
+                </CardDescription>
+              </div>
+            </div>
+            <Badge className="bg-mustard-500 text-navy-950 font-black uppercase text-[10px] px-2.5 py-1">
+              Aktif: {activeGw.toUpperCase()}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="grid grid-cols-2 gap-3 w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={() => setActiveGw('midtrans')}
+              className={`flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all ${
+                activeGw === 'midtrans'
+                  ? 'bg-emerald-900/60 border-emerald-500 ring-2 ring-emerald-500/50 shadow-md'
+                  : 'bg-navy-900/40 border-navy-700 opacity-70 hover:opacity-100'
+              }`}
+            >
+              <div className={`size-4 rounded-full border-2 flex items-center justify-center ${activeGw === 'midtrans' ? 'border-emerald-400 bg-emerald-500' : 'border-gray-500'}`}>
+                {activeGw === 'midtrans' && <div className="size-1.5 rounded-full bg-white" />}
+              </div>
+              <div>
+                <p className="font-extrabold text-sm text-white">Midtrans Snap</p>
+                <p className="text-[10px] text-navy-200">Snap Modal &amp; Dynamic QRIS/VA</p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveGw('pakasir')}
+              className={`flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all ${
+                activeGw === 'pakasir'
+                  ? 'bg-emerald-900/60 border-emerald-500 ring-2 ring-emerald-500/50 shadow-md'
+                  : 'bg-navy-900/40 border-navy-700 opacity-70 hover:opacity-100'
+              }`}
+            >
+              <div className={`size-4 rounded-full border-2 flex items-center justify-center ${activeGw === 'pakasir' ? 'border-emerald-400 bg-emerald-500' : 'border-gray-500'}`}>
+                {activeGw === 'pakasir' && <div className="size-1.5 rounded-full bg-white" />}
+              </div>
+              <div>
+                <p className="font-extrabold text-sm text-white">Pakasir PG</p>
+                <p className="text-[10px] text-navy-200">Instant QRIS &amp; Mentai Gateway</p>
+              </div>
+            </button>
+          </div>
+
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="w-full sm:w-auto rounded-xl bg-mustard-500 hover:bg-mustard-400 font-extrabold text-navy-950 px-6"
+          >
+            <Save className={`mr-2 size-4 ${saving ? 'animate-pulse' : ''}`} />
+            {saving ? 'Menyimpan...' : 'Simpan Pilihan PG'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* ── Test Cards Grid ── */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <TestCard
           icon={<HardDrive className="size-5 text-amber-600" />}
@@ -370,6 +450,19 @@ export default function Index({
             setLoadingMidtrans, setMidtransR,
             (r) => { if (r.channels) setMtChannels(r.channels) },
           )}
+        />
+        <TestCard
+          icon={<QrCode className="size-5 text-mustard-600" />}
+          title="Pakasir Payment Gateway"
+          desc={`Slug: ${envSummary.pakasirSlug || 'pos-mentai'}`}
+          badge={<Badge className="bg-mustard-500 text-navy-950 font-bold">Pakasir Active</Badge>}
+          meta={[
+            ['Slug', envSummary.pakasirSlug || 'pos-mentai'],
+            ['Base URL', envSummary.pakasirBaseUrl || 'https://app.pakasir.com'],
+            ['Callback URL', envSummary.pakasirCallbackUrl || '/api/v1/callback/pakasir'],
+          ]}
+          result={pakasirR} loading={loadingPakasir}
+          onTest={() => runTest(route('admin.integrations.test-pakasir'), setLoadingPakasir, setPakasirR)}
         />
         <TestCard
           icon={<Mail className="size-5 text-sky-700" />}

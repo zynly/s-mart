@@ -211,13 +211,37 @@ class StorefrontService
                 promoPrice: $promoPrice,
                 promoLabel: $promoLabel,
                 stockBadge: $this->stockBadge($qty, (float) $product->min_stock),
-                images: $product->images->map(function ($img) {
-                    if (str_starts_with($img->path, 'http://') || str_starts_with($img->path, 'https://')) {
-                        return $img->path;
+                images: (function() use ($product) {
+                    if ($product->images->isNotEmpty()) {
+                        return $product->images->map(function ($img) {
+                            if (str_starts_with($img->path, 'http://') || str_starts_with($img->path, 'https://')) {
+                                return $img->path;
+                            }
+                            $disk = config('filesystems.default', 'public');
+                            return Storage::disk($disk)->url($img->path);
+                        })->all();
                     }
-                    $disk = config('filesystems.default', 'public');
-                    return Storage::disk($disk)->url($img->path);
-                })->all(),
+
+                    // Fallback gambar berkualitas sesuai kategori & nama produk
+                    $name = strtolower($product->name . ' ' . ($product->category?->name ?? ''));
+                    if (str_contains($name, 'minuman') || str_contains($name, 'kopi') || str_contains($name, 'teh') || str_contains($name, 'susu') || str_contains($name, 'jus') || str_contains($name, 'air')) {
+                        return ['https://images.unsplash.com/photo-1527661591475-527312dd65f5?w=500&auto=format&fit=crop'];
+                    }
+                    if (str_contains($name, 'snack') || str_contains($name, 'makanan') || str_contains($name, 'biskuit') || str_contains($name, 'keripik') || str_contains($name, 'roti') || str_contains($name, 'wafer')) {
+                        return ['https://images.unsplash.com/photo-1621939514649-280e2ee25f60?w=500&auto=format&fit=crop'];
+                    }
+                    if (str_contains($name, 'sembako') || str_contains($name, 'beras') || str_contains($name, 'minyak') || str_contains($name, 'gula') || str_contains($name, 'mie') || str_contains($name, 'indomie')) {
+                        return ['https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&auto=format&fit=crop'];
+                    }
+                    if (str_contains($name, 'atk') || str_contains($name, 'tulis') || str_contains($name, 'buku') || str_contains($name, 'pensil') || str_contains($name, 'pena')) {
+                        return ['https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?w=500&auto=format&fit=crop'];
+                    }
+                    if (str_contains($name, 'sabun') || str_contains($name, 'sampo') || str_contains($name, 'shampoo') || str_contains($name, 'pasta') || str_contains($name, 'mandi')) {
+                        return ['https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=500&auto=format&fit=crop'];
+                    }
+
+                    return ['https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=500&auto=format&fit=crop'];
+                })(),
             );
         })->values();
     }
