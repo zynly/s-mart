@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  # 🌐 Skillage Mart (S-Mart) Web Application Container
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smart_app
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      APP_NAME: "Skillage Mart"
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: "http://localhost:8080"
+      LOG_CHANNEL: stack
+      LOG_LEVEL: error
+
+      # Database Configuration (Connects to postgres container)
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: smart_db
+      DB_USERNAME: smart_user
+      DB_PASSWORD: smart_password
+
+      # Cache & Session Configuration (Connects to redis container)
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      # Run automatic migrations on container startup
+      RUN_MIGRATIONS: "true"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - app_storage:/var/www/storage
+
+  # 🗄️ PostgreSQL 16 Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: smart_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: smart_db
+      POSTGRES_USER: smart_user
+      POSTGRES_PASSWORD: smart_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smart_user -d smart_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ⚡ Redis Cache & Queue Manager
+  redis:
+    image: redis:7-alpine
+    container_name: smart_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  app_storage:
+  postgres_data:
+  redis_data:
