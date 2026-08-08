@@ -16,7 +16,7 @@ class LedgerController extends Controller
 
     public function index(Request $request): Response
     {
-        $accounts = Account::where('is_active', true)->orderBy('code')->get(['id', 'code', 'name']);
+        $accounts = Account::where('is_active', true)->orderBy('code')->get(['id', 'code', 'name', 'type']);
         $accountId = $request->integer('account_id') ?: null;
         $from = $request->string('from')->toString() ?: now()->startOfMonth()->toDateString();
         $to = $request->string('to')->toString() ?: now()->toDateString();

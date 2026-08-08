@@ -133,6 +133,34 @@ export default function Index({ tab, journals, accounts, outlets, filters, valid
   }
 
   const columns: ColumnDef<JournalRow, unknown>[] = [
+    {
+      id: 'select',
+      header: () => (
+        <Checkbox
+          checked={isAllSelected}
+          onCheckedChange={toggleSelectAll}
+          aria-label="Pilih semua"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={selectedIds.includes(row.original.id)}
+          onCheckedChange={() => toggleSelectOne(row.original.id)}
+          aria-label={`Pilih jurnal ${row.original.reference}`}
+        />
+      ),
+      meta: { align: 'center' },
+    },
+    {
+      id: 'number',
+      header: 'No',
+      cell: ({ row, table }) => {
+        const pageIndex = (journals.current_page - 1) * journals.per_page
+        const rowIndex = table.getSortedRowModel().rows.findIndex((r) => r.id === row.id)
+        return <span className="font-mono text-xs text-content-muted">{pageIndex + rowIndex + 1}</span>
+      },
+      meta: { align: 'center' },
+    },
     { id: 'reference', header: 'Referensi', cell: ({ row }) => <Link href={route('admin.journals.show', row.original.id)} className="font-medium text-navy-600 hover:underline">{row.original.reference}</Link> },
     { id: 'date', header: 'Tanggal', cell: ({ row }) => formatDate(row.original.journal_date) },
     { id: 'type', header: 'Tipe', cell: ({ row }) => TYPE_LABELS[row.original.type] ?? row.original.type },
