@@ -95,6 +95,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::post('/products/{product}/barcodes', [ProductController::class, 'addBarcode'])->name('products.add-barcode')->middleware('can:product.update');
     Route::delete('/products/{product}/barcodes/{barcode}', [ProductController::class, 'deleteBarcode'])->name('products.delete-barcode')->middleware('can:product.update');
     Route::post('/products/{product}/price', [ProductController::class, 'updatePrice'])->name('products.update-price')->middleware('can:product.update');
+    Route::post('/products/{product}/images', [ProductController::class, 'uploadImage'])->name('products.upload-image')->middleware('can:product.update');
+    Route::delete('/products/{product}/images/{image}', [ProductController::class, 'deleteImage'])->name('products.delete-image')->middleware('can:product.update');
+    Route::put('/products/{product}/images/{image}/primary', [ProductController::class, 'setPrimaryImage'])->name('products.primary-image')->middleware('can:product.update');
     Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy')->middleware('can:product.delete');
 
     Route::middleware('can:category.view')->group(function () {

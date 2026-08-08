@@ -55,9 +55,12 @@ class ProductController extends Controller
             $firstImage = $product->images->first();
             $url = null;
             if ($firstImage && $firstImage->path) {
-                $url = str_starts_with($firstImage->path, 'http')
-                    ? $firstImage->path
-                    : '/storage/' . ltrim($firstImage->path, '/');
+                if (str_starts_with($firstImage->path, 'http://') || str_starts_with($firstImage->path, 'https://')) {
+                    $url = $firstImage->path;
+                } else {
+                    $disk = config('filesystems.default', 'public');
+                    $url = Storage::disk($disk)->url($firstImage->path);
+                }
             }
             $product->setAttribute('image_url', $url);
 
@@ -94,10 +97,15 @@ class ProductController extends Controller
             'images',
         ]);
 
-        $formattedImages = $product->images->map(function ($img) {
+        $disk = config('filesystems.default', 'public');
+        $formattedImages = $product->images->map(function ($img) use ($disk) {
+            $url = (str_starts_with($img->path, 'http://') || str_starts_with($img->path, 'https://'))
+                ? $img->path
+                : Storage::disk($disk)->url($img->path);
+
             return [
                 'id' => $img->id,
-                'url' => str_starts_with($img->path, 'http') ? $img->path : '/storage/' . ltrim($img->path, '/'),
+                'url' => $url,
                 'alt' => $img->alt,
                 'is_primary' => $img->is_primary,
             ];
@@ -108,6 +116,61 @@ class ProductController extends Controller
                 'formatted_images' => $formattedImages,
             ]),
         ]);
+    }
+
+    public function uploadImage(Request $request, Product $product): RedirectResponse
+    {
+        $request->validate([
+            'image' => ['required', 'image', 'mimes:jpeg,png,jpg,webp,svg', 'max:5120'],
+            'alt' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $disk = config('filesystems.default', 'public');
+        $path = $request->file('image')->store('products', $disk);
+
+        $isPrimary = $product->images()->count() === 0;
+
+        $product->images()->create([
+            'path' => $path,
+            'alt' => $request->input('alt') ?: $product->name,
+            'sort_order' => $product->images()->count() + 1,
+            'is_primary' => $isPrimary,
+        ]);
+
+        return back()->with('success', 'Foto produk berhasil diunggah ke storage.');
+    }
+
+    public function deleteImage(Product $product, \App\Models\ProductImage $image): RedirectResponse
+    {
+        if ($image->product_id !== $product->id) {
+            abort(404);
+        }
+
+        $disk = config('filesystems.default', 'public');
+        if (! str_starts_with($image->path, 'http')) {
+            Storage::disk($disk)->delete($image->path);
+        }
+
+        $wasPrimary = $image->is_primary;
+        $image->delete();
+
+        if ($wasPrimary) {
+            $product->images()->first()?->update(['is_primary' => true]);
+        }
+
+        return back()->with('success', 'Foto produk berhasil dihapus.');
+    }
+
+    public function setPrimaryImage(Product $product, \App\Models\ProductImage $image): RedirectResponse
+    {
+        if ($image->product_id !== $product->id) {
+            abort(404);
+        }
+
+        $product->images()->update(['is_primary' => false]);
+        $image->update(['is_primary' => true]);
+
+        return back()->with('success', 'Foto utama produk berhasil diperbarui.');
     }
 
     public function toggleFavorite(Product $product): RedirectResponse

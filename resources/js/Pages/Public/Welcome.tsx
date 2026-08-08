@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react'
-import { Clock, MapPin, Phone, ShoppingBag } from 'lucide-react'
+import { Clock, MapPin, Phone, ShoppingBag, ArrowRight, Tag, Sparkles, UserCheck, Layers } from 'lucide-react'
 import type { ReactElement } from 'react'
 import PublicLayout from '@/Layouts/PublicLayout'
 import { PublicHero } from '@/Components/public/PublicHero'
@@ -19,11 +19,26 @@ type WelcomeProps = {
 export default function Welcome({ featuredProducts, activePromos, categories, contact }: WelcomeProps) {
   return (
     <div className="flex flex-col gap-16 py-4">
+      {/* Hero Section */}
       <PublicHero />
 
+      {/* Promo Berjalan */}
       {activePromos.length > 0 && (
-        <section className="flex flex-col gap-4">
-          <h2 className="text-xl font-semibold text-content">Promo Berjalan</h2>
+        <section className="flex flex-col gap-6">
+          <div className="flex items-center justify-between border-b border-border/60 pb-3">
+            <div className="flex items-center gap-2">
+              <div className="flex size-7 items-center justify-center rounded-lg bg-danger/10 text-danger">
+                <Tag className="size-4" />
+              </div>
+              <h2 className="text-xl font-extrabold tracking-tight text-content">Promo & Diskon Berjalan</h2>
+            </div>
+            <Link
+              href="/promo"
+              className="text-xs font-bold text-primary hover:text-navy-700 flex items-center gap-1 hover:underline"
+            >
+              Lihat Semua Promo <ArrowRight className="size-3.5" />
+            </Link>
+          </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {activePromos.map((promo) => (
               <PromoCard key={promo.code} promo={promo} />
@@ -32,50 +47,103 @@ export default function Welcome({ featuredProducts, activePromos, categories, co
         </section>
       )}
 
+      {/* Kategori Pilihan */}
       {categories.length > 0 && (
-        <section className="flex flex-col gap-4">
-          <h2 className="text-xl font-semibold text-content">Kategori Pilihan</h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {categories.map((category) => (
+        <section className="flex flex-col gap-6">
+          <div className="flex items-center justify-between border-b border-border/60 pb-3">
+            <div className="flex items-center gap-2">
+              <div className="flex size-7 items-center justify-center rounded-lg bg-mustard-500/10 text-mustard-600">
+                <Layers className="size-4" />
+              </div>
+              <h2 className="text-xl font-extrabold tracking-tight text-content">Kategori Pilihan</h2>
+            </div>
+            <span className="text-xs text-content-muted font-medium">Temukan kebutuhan harian santri</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+            {categories.map((category, idx) => (
               <Link
                 key={category.id}
                 href={`${route('produk.index')}?category_id=${category.id}`}
-                className="flex flex-col items-center gap-2 rounded-lg border border-border bg-surface p-4 text-center transition-colors hover:border-navy-300"
+                style={{ animationDelay: `${idx * 0.05}s` }}
+                className="group flex flex-col items-center gap-3 rounded-2xl border border-border/80 bg-surface p-4 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:border-navy-300 dark:hover:border-navy-600"
               >
-                <ShoppingBag className="size-6 text-navy-600 dark:text-navy-300" />
-                <span className="text-sm font-medium text-content">{category.name}</span>
+                <div className="flex size-12 items-center justify-center rounded-xl bg-surface-alt/80 text-navy-700 group-hover:bg-navy-900 group-hover:text-mustard-400 transition-colors shadow-2xs">
+                  <ShoppingBag className="size-6 stroke-[1.8]" />
+                </div>
+                <span className="text-xs font-bold text-content group-hover:text-primary transition-colors line-clamp-1">
+                  {category.name}
+                </span>
               </Link>
             ))}
           </div>
         </section>
       )}
 
+      {/* Produk Pilihan */}
       {featuredProducts.length > 0 && (
-        <section className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-content">Produk Pilihan</h2>
+        <section className="flex flex-col gap-6">
+          <div className="flex items-center justify-between border-b border-border/60 pb-3">
+            <div className="flex items-center gap-2">
+              <div className="flex size-7 items-center justify-center rounded-lg bg-navy-600/10 text-navy-600">
+                <Sparkles className="size-4" />
+              </div>
+              <h2 className="text-xl font-extrabold tracking-tight text-content">Produk Favorit & Terpopuler</h2>
+            </div>
+            <Link
+              href={route('produk.index')}
+              className="text-xs font-bold text-primary hover:text-navy-700 flex items-center gap-1 hover:underline"
+            >
+              Katalog Lengkap <ArrowRight className="size-3.5" />
+            </Link>
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {featuredProducts.map((product) => (
               <ProductCardPublic key={product.slug} product={product} />
             ))}
           </div>
-          <Button variant="outline" asChild className="mx-auto w-fit">
-            <Link href={route('produk.index')}>Lihat Semua Produk</Link>
-          </Button>
+          <div className="flex justify-center pt-2">
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="rounded-xl border-border px-8 font-bold text-content hover:bg-surface-alt hover:border-navy-300"
+            >
+              <Link href={route('produk.index')} className="flex items-center gap-2">
+                <span>Lihat Seluruh Produk ({featuredProducts.length}+ Item)</span>
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+          </div>
         </section>
       )}
 
+      {/* Info Lokasi & Kontak */}
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <InfoCard icon={Clock} title="Jam Buka" content={contact.hours} />
-        <InfoCard icon={MapPin} title="Lokasi" content={contact.address} />
-        <InfoCard icon={Phone} title="Kontak" content={contact.phone || 'Hubungi sekolah'} />
+        <InfoCard icon={Clock} title="Jam Operasional Toko" content={contact.hours} />
+        <InfoCard icon={MapPin} title="Lokasi Minimarket" content={contact.address} />
+        <InfoCard icon={Phone} title="Layanan & Informasi" content={contact.phone || 'Informasi Sekolah / Minimarket'} />
       </section>
 
-      <section className="flex flex-col items-center gap-3 rounded-lg bg-navy-700 px-6 py-10 text-center dark:bg-navy-800">
-        <p className="text-lg font-semibold text-navy-50">Wali santri? Pantau saldo & belanja anak Anda</p>
-        <Button asChild size="lg" className="mt-2">
-          <Link href="/wali/login">Masuk Portal Wali</Link>
+      {/* Banner Wali Santri */}
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-navy-900 via-navy-800 to-navy-950 p-8 sm:p-10 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 border border-navy-700">
+        <div className="absolute top-0 right-0 size-64 bg-mustard-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="flex items-center gap-4 text-center md:text-left">
+          <div className="hidden sm:flex size-14 shrink-0 items-center justify-center rounded-2xl bg-mustard-500/20 text-mustard-300 border border-mustard-400/30">
+            <UserCheck className="size-7" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <h3 className="text-xl font-extrabold text-white">Wali Santri SMK Skill Village?</h3>
+            <p className="text-xs sm:text-sm text-navy-100/90 max-w-md">
+              Pantau saldo deposit, riwayat belanja harian anak Anda, serta ajukan top-up online dengan aman melalui Portal Wali.
+            </p>
+          </div>
+        </div>
+        <Button
+          asChild
+          size="lg"
+          className="rounded-xl bg-mustard-500 hover:bg-mustard-400 text-navy-950 font-extrabold px-6 shadow-md shrink-0"
+        >
+          <Link href="/wali/login">Masuk Portal Wali Santri →</Link>
         </Button>
       </section>
     </div>
@@ -83,3 +151,4 @@ export default function Welcome({ featuredProducts, activePromos, categories, co
 }
 
 Welcome.layout = (page: ReactElement) => <PublicLayout>{page}</PublicLayout>
+

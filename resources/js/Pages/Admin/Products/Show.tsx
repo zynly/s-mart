@@ -1,6 +1,6 @@
-import { useState, type FormEventHandler, type ReactElement } from 'react'
+import { useState, useRef, type FormEventHandler, type ReactElement } from 'react'
 import { Link, router, useForm } from '@inertiajs/react'
-import { ArrowLeft, Star, Edit, DollarSign, Package, Tag, Barcode, Eye, Plus, Trash2, Printer, Sparkles } from 'lucide-react'
+import { ArrowLeft, Star, Edit, DollarSign, Package, Tag, Barcode, Eye, Plus, Trash2, Printer, Sparkles, Upload, CheckCircle2, XCircle } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
 import { Money } from '@/Components/common/Money'
@@ -66,12 +66,45 @@ export default function Show({ product }: ShowProps) {
   const [activeImage, setActiveImage] = useState<string | null>(primaryImage?.url ?? null)
   const [addBarcodeOpen, setAddBarcodeOpen] = useState(false)
   const [selectedBarcodeForPrint, setSelectedBarcodeForPrint] = useState<BarcodeItem | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const barcodeForm = useForm({
     barcode: '',
     unit_id: product.base_unit ? String(product.base_unit.id) : '1',
     is_primary: product.barcodes.length === 0,
   })
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const formData = new FormData()
+    formData.append('image', file)
+    formData.append('alt', product.name)
+
+    setIsUploading(true)
+    router.post(route('admin.products.upload-image', product.id), formData, {
+      preserveScroll: true,
+      onSuccess: () => {
+        setIsUploading(false)
+        if (fileInputRef.current) fileInputRef.current.value = ''
+      },
+      onError: () => {
+        setIsUploading(false)
+      },
+    })
+  }
+
+  function handleSetPrimaryImage(imgId: number) {
+    router.put(route('admin.products.primary-image', [product.id, imgId]), {}, { preserveScroll: true })
+  }
+
+  function handleDeleteImage(imgId: number) {
+    if (confirm('Hapus foto produk ini?')) {
+      router.delete(route('admin.products.delete-image', [product.id, imgId]), { preserveScroll: true })
+    }
+  }
 
   function toggleFavorite() {
     router.put(route('admin.products.toggle-favorite', product.id), {}, { preserveScroll: true })
@@ -128,36 +161,89 @@ export default function Show({ product }: ShowProps) {
         <div className="flex flex-col gap-6 lg:col-span-5">
           {/* Main Photo Gallery Card */}
           <Card className="overflow-hidden border border-border shadow-xs">
-            <CardHeader className="bg-surface-muted border-b border-border py-3">
+            <CardHeader className="bg-surface-muted border-b border-border py-3 flex flex-row items-center justify-between">
               <CardTitle className="text-xs uppercase tracking-wider text-content-muted font-bold flex items-center gap-2">
                 <Eye className="size-4 text-primary" />
-                Pratinjau Foto Produk
+                Foto Produk (RustFS S3)
               </CardTitle>
+              <Button
+                size="xs"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="gap-1 text-xs"
+              >
+                <Upload className="size-3.5 text-primary" /> {isUploading ? 'Mengunggah...' : 'Upload Foto'}
+              </Button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                accept="image/jpeg,image/png,image/jpg,image/webp,image/svg+xml"
+                className="hidden"
+              />
             </CardHeader>
             <CardContent className="p-4 flex flex-col gap-3">
-              <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-surface border border-border flex items-center justify-center shadow-xs">
+              <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-surface border border-border flex items-center justify-center shadow-xs group">
                 {activeImage ? (
                   <img src={activeImage} alt={product.name} className="size-full object-contain p-2" />
                 ) : (
                   <div className="flex flex-col items-center gap-2 text-content-muted">
                     <Package className="size-12 opacity-30" />
                     <span className="text-xs">Belum ada foto produk</span>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="mt-1"
+                    >
+                      <Upload className="size-3 mr-1" /> Unggah Sekarang
+                    </Button>
                   </div>
                 )}
               </div>
 
-              {product.formatted_images.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto pb-1">
-                  {product.formatted_images.map((img) => (
-                    <button
-                      key={img.id}
-                      type="button"
-                      onClick={() => setActiveImage(img.url)}
-                      className={`size-14 shrink-0 overflow-hidden rounded-lg border-2 p-0.5 transition ${activeImage === img.url ? 'border-primary shadow-xs' : 'border-border opacity-70 hover:opacity-100'}`}
-                    >
-                      <img src={img.url} alt={img.alt ?? product.name} className="size-full object-cover rounded-md" />
-                    </button>
-                  ))}
+              {product.formatted_images.length > 0 && (
+                <div className="flex flex-col gap-2 pt-1">
+                  <span className="text-[11px] font-semibold text-content-muted">Galeri Foto ({product.formatted_images.length})</span>
+                  <div className="grid grid-cols-4 gap-2">
+                    {product.formatted_images.map((img) => (
+                      <div key={img.id} className="relative group/thumb rounded-lg overflow-hidden border border-border bg-surface">
+                        <button
+                          type="button"
+                          onClick={() => setActiveImage(img.url)}
+                          className={`w-full aspect-square overflow-hidden p-0.5 block ${activeImage === img.url ? 'ring-2 ring-primary' : 'opacity-80 hover:opacity-100'}`}
+                        >
+                          <img src={img.url} alt={img.alt ?? product.name} className="size-full object-cover rounded-md" />
+                        </button>
+                        {img.is_primary && (
+                          <span className="absolute top-1 left-1 bg-primary text-white text-[8px] px-1 rounded font-bold shadow-xs">
+                            Utama
+                          </span>
+                        )}
+                        <div className="absolute inset-x-0 bottom-0 bg-black/70 p-1 flex items-center justify-between opacity-0 group-hover/thumb:opacity-100 transition-opacity">
+                          {!img.is_primary && (
+                            <button
+                              type="button"
+                              onClick={() => handleSetPrimaryImage(img.id)}
+                              title="Set sebagai Foto Utama"
+                              className="text-[9px] text-amber-300 font-medium hover:underline"
+                            >
+                              Utama
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteImage(img.id)}
+                            title="Hapus foto"
+                            className="text-white hover:text-danger ml-auto"
+                          >
+                            <Trash2 className="size-3" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </CardContent>

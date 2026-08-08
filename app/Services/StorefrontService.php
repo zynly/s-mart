@@ -211,7 +211,13 @@ class StorefrontService
                 promoPrice: $promoPrice,
                 promoLabel: $promoLabel,
                 stockBadge: $this->stockBadge($qty, (float) $product->min_stock),
-                images: $product->images->map(fn ($img) => Storage::disk('public')->url($img->path))->all(),
+                images: $product->images->map(function ($img) {
+                    if (str_starts_with($img->path, 'http://') || str_starts_with($img->path, 'https://')) {
+                        return $img->path;
+                    }
+                    $disk = config('filesystems.default', 'public');
+                    return Storage::disk($disk)->url($img->path);
+                })->all(),
             );
         })->values();
     }
