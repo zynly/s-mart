@@ -15,4 +15,3 @@ storage/framework/views/*
 .env.*
 !.env.example
 tests
-pnpm-lock.yaml
