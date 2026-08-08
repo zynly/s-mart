@@ -4,11 +4,11 @@
 FROM node:22-alpine AS frontend-builder
 WORKDIR /app
 
-# Enable pnpm via corepack
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Install pnpm 9 matching lockfileVersion 9.0
+RUN npm install -g pnpm@9
 
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm config set ignore-scripts false && pnpm install --config.ignore-scripts=false
+RUN pnpm install --frozen-lockfile
 
 COPY . .
 RUN pnpm build
