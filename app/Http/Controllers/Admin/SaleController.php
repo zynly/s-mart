@@ -28,6 +28,7 @@ use App\Services\BarcodeResolverService;
 use App\Services\CardService;
 use App\Services\CashierSessionService;
 use App\Services\Midtrans\MidtransGatewayInterface;
+use App\Services\PaymentGatewayService;
 use App\Services\PaymentService;
 use App\Services\PriceService;
 use App\Services\SaleService;
