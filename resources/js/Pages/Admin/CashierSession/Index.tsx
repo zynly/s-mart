@@ -424,8 +424,8 @@ export default function Index({
       ) : (
         /* Dashboard Sesi Kasir Aktif */
         <div className="flex flex-col gap-5 sm:gap-6">
-          {/* Hero Active Session Banner (Solid Dark Navy - High Contrast) */}
-          <div className="relative overflow-hidden rounded-3xl border border-navy-800 bg-navy-950 p-6 text-white shadow-xl">
+          {/* Hero Active Session Banner (Explicit Dark Navy HEX Background) */}
+          <div className="relative overflow-hidden rounded-3xl border border-[#1e293b] bg-[#0f1b33] p-6 text-white shadow-xl">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-4">
                 <div className="flex size-14 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-md shrink-0">
@@ -436,22 +436,22 @@ export default function Index({
                     <span className="text-xs font-black tracking-wider uppercase text-amber-400">
                       Sesi Aktif
                     </span>
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-950/80 border border-emerald-500/40 px-2.5 py-0.5 text-[11px] font-bold text-emerald-300">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#052e16] border border-emerald-500/40 px-2.5 py-0.5 text-[11px] font-bold text-emerald-300">
                       <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
                       Terbuka
                     </span>
                   </div>
-                  <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white mt-0.5">
+                  <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white mt-1">
                     {active.reference}
                   </h2>
                   <p className="text-xs text-slate-300 mt-1">
-                    Laci: <strong className="text-white font-semibold">{active.cash_account.name}</strong> · Dibuka sejak {new Date(active.opened_at).toLocaleString('id-ID')}
+                    Laci: <strong className="text-white font-bold">{active.cash_account.name}</strong> · Dibuka sejak {new Date(active.opened_at).toLocaleString('id-ID')}
                   </p>
                 </div>
               </div>
 
-              {/* Expected Cash Highlight Badge (Solid Box - High Contrast) */}
-              <div className="flex flex-col items-start sm:items-end rounded-2xl border border-amber-400/40 bg-navy-900 px-5 py-3.5 shadow-md">
+              {/* Expected Cash Highlight Badge (Dark Solid Box) */}
+              <div className="flex flex-col items-start sm:items-end rounded-2xl border border-amber-400/50 bg-[#070d1a] px-5 py-3.5 shadow-md">
                 <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-300">
                   Expected Cash (Uang Diharapkan)
                 </span>
