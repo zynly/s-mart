@@ -55,6 +55,7 @@ class SaleController extends Controller
         private readonly PaymentService $paymentService,
         private readonly AuthorizationService $authorizationService,
         private readonly MidtransGatewayInterface $midtransGateway,
+        private readonly PaymentGatewayService $paymentGatewayService,
     ) {}
 
     public function index(Request $request): Response
@@ -122,7 +123,7 @@ class SaleController extends Controller
             'transfer' => ['bca_va', 'bni_va', 'bri_va', 'permata_va', 'other_va', 'echannel'],
         };
 
-        $result = $this->midtransGateway->createTransaction(
+        $result = $this->paymentGatewayService->createTransaction(
             $orderId,
             $data['amount'],
             [],
@@ -130,7 +131,7 @@ class SaleController extends Controller
             $enabledPayments,
         );
 
-        return response()->json(['token' => $result['token']]);
+        return response()->json($result);
     }
 
     /**

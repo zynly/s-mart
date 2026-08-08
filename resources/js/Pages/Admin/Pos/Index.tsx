@@ -165,6 +165,11 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
   const memberInputRef = useRef<HTMLInputElement>(null)
   const carouselRef = useRef<HTMLDivElement>(null)
 
+  const [pakasirModalUrl, setPakasirModalUrl] = useState<string | null>(null)
+  const [pakasirModalOrderId, setPakasirModalOrderId] = useState<string | null>(null)
+  const [pakasirModalAmount, setPakasirModalAmount] = useState<number | null>(null)
+
+
   function scrollCarousel(direction: -1 | 1) {
     carouselRef.current?.scrollBy({ left: direction * 320, behavior: 'smooth' })
   }
@@ -440,24 +445,29 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
     }
 
     try {
-      const { token } = await apiPost<{ token: string }>(route('pos.midtrans.create-transaction'), { amount: line.amount, type: line.type })
+      const res = await apiPost<{ provider?: string; token?: string; payment_url?: string; order_id?: string }>(
+        route('pos.midtrans.create-transaction'),
+        { amount: line.amount, type: line.type }
+      )
 
-      // snap.pay() cuma MEMBUKA popup lalu langsung kembali (bukan
-      // Promise) — status "menunggu" HANYA boleh dilepas dari dalam
-      // callback (onSuccess/onPending/onError/onClose) saat popup
-      // benar-benar selesai, BUKAN di finally di bawah (yang jalan
-      // sesaat setelah popup terbuka, jauh sebelum pelanggan bayar).
-      snap.pay(token, {
-        onSuccess: applyResult,
-        onPending: applyResult,
-        onError: () => {
-          setPaymentError('Pembayaran Midtrans gagal diproses. Coba lagi.')
-          setMidtransPayingKey(null)
-        },
-        onClose: () => setMidtransPayingKey(null),
-      })
+      if (res.provider === 'pakasir' || res.payment_url) {
+        setPakasirModalUrl(res.payment_url || null)
+        setPakasirModalOrderId(res.order_id || null)
+        setPakasirModalAmount(line.amount)
+        setMidtransPayingKey(null)
+      } else if (res.token) {
+        snap.pay(res.token, {
+          onSuccess: applyResult,
+          onPending: applyResult,
+          onError: () => {
+            setPaymentError('Pembayaran gagal diproses. Coba lagi.')
+            setMidtransPayingKey(null)
+          },
+          onClose: () => setMidtransPayingKey(null),
+        })
+      }
     } catch (err) {
-      setPaymentError(err instanceof ApiError ? err.firstError() : 'Gagal memulai pembayaran Midtrans.')
+      setPaymentError(err instanceof ApiError ? err.firstError() : 'Gagal memulai pembayaran.')
       setMidtransPayingKey(null)
     }
   }
@@ -684,10 +694,10 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
       return
     }
 
-    // 7. JIKA METODE MIDTRANS (qris, ewallet, transfer): Panggil Snap Inline Modal Overlay
+    // 7. JIKA METODE NON-TUNAI (qris, ewallet, transfer): Panggil Gateway Inline Modal Overlay
     if (activeMethod.type === 'qris' || activeMethod.type === 'ewallet' || activeMethod.type === 'transfer') {
       try {
-        const { token } = await apiPost<{ token: string }>(route('pos.midtrans.create-transaction'), {
+        const res = await apiPost<{ provider?: string; token?: string; payment_url?: string; order_id?: string }>(route('pos.midtrans.create-transaction'), {
           amount: subtotal,
           type: activeMethod.type,
         })
@@ -696,7 +706,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
 
         const completeSaleWithSnap = (result: unknown) => {
           const r = result as SnapResult
-          const refNo = r?.transaction_id ?? `SNAP-${Date.now()}`
+          const refNo = r?.transaction_id ?? `PG-${Date.now()}`
           const status = r?.transaction_status ?? 'settlement'
 
           router.post(
@@ -731,19 +741,26 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
           )
         }
 
-        snap.pay(token, {
-          onSuccess: completeSaleWithSnap,
-          onPending: completeSaleWithSnap,
-          onError: () => {
-            setPaymentError('Pembayaran Midtrans gagal diproses. Silakan coba lagi.')
-            setSubmitting(false)
-          },
-          onClose: () => {
-            setSubmitting(false)
-          },
-        })
+        if (res.provider === 'pakasir' || res.payment_url) {
+          setPakasirModalUrl(res.payment_url || null)
+          setPakasirModalOrderId(res.order_id || null)
+          setPakasirModalAmount(subtotal)
+          setSubmitting(false)
+        } else if (res.token) {
+          snap.pay(res.token, {
+            onSuccess: completeSaleWithSnap,
+            onPending: completeSaleWithSnap,
+            onError: () => {
+              setPaymentError('Pembayaran gagal diproses. Silakan coba lagi.')
+              setSubmitting(false)
+            },
+            onClose: () => {
+              setSubmitting(false)
+            },
+          })
+        }
       } catch (err) {
-        setPaymentError(err instanceof ApiError ? err.firstError() : 'Gagal memulai transaksi Midtrans.')
+        setPaymentError(err instanceof ApiError ? err.firstError() : 'Gagal memulai transaksi pembayaran.')
         setSubmitting(false)
       }
       return
@@ -1717,6 +1734,87 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
             >
               Transaksi Baru (Esc)
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Pakasir In-Page Payment Gateway Modal ── */}
+      <Dialog open={pakasirModalUrl !== null} onOpenChange={(open) => !open && setPakasirModalUrl(null)}>
+        <DialogContent className="bg-white text-gray-900 max-w-md rounded-2xl p-6 shadow-2xl border border-mustard-200">
+          <div className="flex items-center justify-between border-b pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-9 items-center justify-center rounded-xl bg-mustard-100 text-mustard-700 font-bold">
+                <QrCode className="size-5" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-base text-navy-950">Pembayaran Pakasir PG</h3>
+                <p className="text-xs text-gray-500">Scan QRIS / Selesaikan Pembayaran</p>
+              </div>
+            </div>
+            <Badge className="bg-emerald-600 text-white font-bold text-[10px]">Realtime Callback</Badge>
+          </div>
+
+          <div className="mt-4 flex flex-col items-center gap-4">
+            <div className="w-full h-[420px] rounded-xl overflow-hidden border border-gray-200 bg-gray-50 shadow-inner">
+              <iframe
+                src={pakasirModalUrl || ''}
+                className="w-full h-full border-0"
+                title="Pakasir Payment Gateway"
+              />
+            </div>
+
+            <div className="flex items-center justify-between w-full text-xs font-mono bg-navy-50 p-2.5 rounded-xl border border-navy-100">
+              <span className="text-navy-700">Order ID: <strong>{pakasirModalOrderId}</strong></span>
+              <span className="text-emerald-700 font-bold">Total: Rp {(pakasirModalAmount || 0).toLocaleString('id-ID')}</span>
+            </div>
+
+            <div className="flex gap-2 w-full">
+              <Button
+                onClick={() => {
+                  setPakasirModalUrl(null)
+                  toast.success('Melanjutkan transaksi kasir...')
+                  // Selesaikan transaksi kasir secara otomatis
+                  router.post(
+                    route('pos.sales.store'),
+                    {
+                      outlet_id: outlet.id,
+                      cashier_session_id: session.id,
+                      member_id: member?.id ?? null,
+                      items: cart.map((l) => ({ product_id: l.product_id, unit_id: l.unit_id, qty: l.qty, unit_price: l.unit_price, product_name: l.product_name, unit_code: l.unit_code })),
+                      payments: [
+                        {
+                          payment_method_id: activeMethod?.id || 1,
+                          amount: subtotal,
+                          received_amount: subtotal,
+                          reference_no: pakasirModalOrderId || `PAKASIR-${Date.now()}`,
+                          gateway_status: 'settlement',
+                        },
+                      ],
+                    },
+                    {
+                      headers: { 'X-Idempotency-Key': idempotencyKeyRef.current },
+                      onSuccess: () => {
+                        setCart([])
+                        setMember(null)
+                        setCashInput(0)
+                        setPaymentError(null)
+                        idempotencyKeyRef.current = newIdempotencyKey()
+                      },
+                    }
+                  )
+                }}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 font-bold text-white rounded-xl py-2.5"
+              >
+                <CheckCircle2 className="mr-2 size-4" /> Selesaikan Transaksi
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setPakasirModalUrl(null)}
+                className="rounded-xl border-gray-300 text-gray-700"
+              >
+                Tutup
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

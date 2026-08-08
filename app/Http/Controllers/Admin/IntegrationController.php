@@ -27,7 +27,35 @@ class IntegrationController extends Controller
         $smtpEnable = filter_var(env('SMTP_ENABLE', false), FILTER_VALIDATE_BOOLEAN);
 
         $midtransGatewayClass = config('services.midtrans.gateway');
-        $isProduction         = filter_var(config('services.midtrans.is_production', false), FILTER_VALIDATE_BOOLEAN);
+
+        $isProduction = false;
+        try {
+            $row = DB::table('settings')
+                ->where('group', 'midtrans')
+                ->where('key', 'is_production')
+                ->first();
+            if ($row !== null) {
+                $isProduction = filter_var($row->value, FILTER_VALIDATE_BOOLEAN);
+            } else {
+                $isProduction = filter_var(env('MIDTRANS_IS_PRODUCTION', false), FILTER_VALIDATE_BOOLEAN);
+            }
+        } catch (Throwable) {
+            $isProduction = filter_var(env('MIDTRANS_IS_PRODUCTION', false), FILTER_VALIDATE_BOOLEAN);
+        }
+
+        $serverKey = $isProduction
+            ? (env('MIDTRANS_PRODUCTION_SERVER_KEY') ?: env('MIDTRANS_SERVER_KEY', '-'))
+            : (env('MIDTRANS_SANDBOX_SERVER_KEY') ?: env('MIDTRANS_SERVER_KEY', '-'));
+        $clientKey = $isProduction
+            ? (env('MIDTRANS_PRODUCTION_CLIENT_KEY') ?: env('MIDTRANS_CLIENT_KEY', '-'))
+            : (env('MIDTRANS_SANDBOX_CLIENT_KEY') ?: env('MIDTRANS_CLIENT_KEY', '-'));
+
+        // Sync runtime config for active session
+        config([
+            'services.midtrans.is_production' => $isProduction,
+            'services.midtrans.server_key'    => $serverKey,
+            'services.midtrans.client_key'    => $clientKey,
+        ]);
 
         // Channel Midtrans dari API (via env credentials)
         $midtransChannels = [];
@@ -83,8 +111,8 @@ class IntegrationController extends Controller
                 'smtpEnable'           => $smtpEnable,
                 'midtransIsProduction' => $isProduction,
                 'midtransGatewayClass' => class_basename((string) $midtransGatewayClass),
-                'midtransServerKey'    => (string) env('MIDTRANS_SERVER_KEY', '-'),
-                'midtransClientKey'    => (string) env('MIDTRANS_CLIENT_KEY', '-'),
+                'midtransServerKey'    => (string) $serverKey,
+                'midtransClientKey'    => (string) $clientKey,
                 'pakasirSlug'          => (string) (config('services.pakasir.slug') ?: env('PAKASIR_SLUG', '-')),
                 'pakasirBaseUrl'       => (string) (config('services.pakasir.base_url') ?: env('PAKASIR_BASE_URL', '-')),
                 'pakasirCallbackUrl'   => (string) (config('services.pakasir.callback_url') ?: env('PAKASIR_CALLBACK_URL', '-')),
@@ -106,6 +134,7 @@ class IntegrationController extends Controller
     {
         $data = $request->validate([
             'active_gateway'         => ['sometimes', 'string', 'in:midtrans,pakasir'],
+            'midtrans_is_production' => ['sometimes', 'boolean'],
             'methods'                => ['required', 'array'],
             'methods.*.id'           => ['required', 'integer', 'exists:payment_methods,id'],
             'methods.*.is_active'    => ['required', 'boolean'],
@@ -122,6 +151,20 @@ class IntegrationController extends Controller
                     'value'      => $data['active_gateway'],
                     'type'       => 'string',
                     'label'      => 'Active Payment Gateway Provider',
+                    'updated_at' => now(),
+                    'created_at' => now(),
+                ]
+            );
+        }
+
+        // 0b. Update Midtrans mode (Production vs Sandbox)
+        if (isset($data['midtrans_is_production'])) {
+            DB::table('settings')->updateOrInsert(
+                ['group' => 'midtrans', 'key' => 'is_production'],
+                [
+                    'value'      => $data['midtrans_is_production'] ? '1' : '0',
+                    'type'       => 'boolean',
+                    'label'      => 'Midtrans Production Mode',
                     'updated_at' => now(),
                     'created_at' => now(),
                 ]

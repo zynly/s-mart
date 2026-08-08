@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Wali;
 
 use App\Http\Controllers\Controller;
-use App\Services\Midtrans\MidtransGatewayInterface;
+use App\Services\PaymentGatewayService;
 use App\Services\TopupRequestService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -16,7 +16,7 @@ class TopupController extends Controller
 {
     public function __construct(
         private readonly TopupRequestService $topupRequestService,
-        private readonly MidtransGatewayInterface $midtransGateway,
+        private readonly PaymentGatewayService $paymentGatewayService,
     ) {}
 
     public function create(Request $request): Response
@@ -27,6 +27,7 @@ class TopupController extends Controller
             'members' => $guardian->members()->where('status', 'active')->get(['members.id', 'members.name', 'members.member_number']),
             'midtransClientKey' => config('services.midtrans.client_key'),
             'midtransIsProduction' => (bool) config('services.midtrans.is_production'),
+            'activeGateway' => $this->paymentGatewayService->getActiveProvider(),
             'minTopup' => (int) config('pos.deposit_min_topup'),
         ]);
     }
@@ -86,7 +87,7 @@ class TopupController extends Controller
 
         $topupRequest = $this->topupRequestService->createForGateway($guardian, $member, $data['amount']);
 
-        $result = $this->midtransGateway->createTransaction(
+        $result = $this->paymentGatewayService->createTransaction(
             $topupRequest->reference,
             $topupRequest->amount,
             array_filter([
@@ -99,8 +100,15 @@ class TopupController extends Controller
             ],
         );
 
-        $topupRequest->update(['snap_token' => $result['token']]);
+        if (! empty($result['token'])) {
+            $topupRequest->update(['snap_token' => $result['token']]);
+        }
 
-        return response()->json(['token' => $result['token'], 'reference' => $topupRequest->reference]);
+        return response()->json([
+            'provider'    => $result['provider'],
+            'token'       => $result['token'] ?? null,
+            'payment_url' => $result['payment_url'] ?? null,
+            'reference'   => $topupRequest->reference,
+        ]);
     }
 }

@@ -265,6 +265,7 @@ export default function Index({
 
   // Active Payment Gateway state
   const [activeGw, setActiveGw] = useState<string>(initActiveGw)
+  const [midtransIsProd, setMidtransIsProd] = useState<boolean>(envSummary.midtransIsProduction)
 
   // Payment methods state
   const [methods, setMethods] = useState<PaymentMethod[]>(initMethods ?? [])
@@ -317,6 +318,7 @@ export default function Index({
         route('admin.integrations.update-midtrans-channels'),
         {
           active_gateway: activeGw,
+          midtrans_is_production: midtransIsProd,
           methods: methods.map(m => ({
             id: m.id, is_active: m.is_active, midtrans_code: m.midtrans_code,
           })),
@@ -346,11 +348,11 @@ export default function Index({
       />
 
       {/* ── Active Gateway Provider Switcher Card ── */}
-      <Card className="rounded-2xl border border-navy-700/30 bg-gradient-to-r from-navy-950 to-navy-900 text-white shadow-md">
+      <Card className="rounded-2xl border border-navy-800 bg-navy-950 text-white shadow-md">
         <CardHeader className="pb-3 border-b border-navy-800">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-mustard-500/20 text-mustard-400 border border-mustard-400/30">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-navy-800 text-mustard-400 border border-navy-700">
                 <CreditCard className="size-5" />
               </div>
               <div>
@@ -372,8 +374,8 @@ export default function Index({
               onClick={() => setActiveGw('midtrans')}
               className={`flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all ${
                 activeGw === 'midtrans'
-                  ? 'bg-emerald-900/60 border-emerald-500 ring-2 ring-emerald-500/50 shadow-md'
-                  : 'bg-navy-900/40 border-navy-700 opacity-70 hover:opacity-100'
+                  ? 'bg-emerald-950 border-emerald-500 ring-2 ring-emerald-500/50 shadow-md'
+                  : 'bg-navy-900 border-navy-800 opacity-80 hover:opacity-100'
               }`}
             >
               <div className={`size-4 rounded-full border-2 flex items-center justify-center ${activeGw === 'midtrans' ? 'border-emerald-400 bg-emerald-500' : 'border-gray-500'}`}>
@@ -390,8 +392,8 @@ export default function Index({
               onClick={() => setActiveGw('pakasir')}
               className={`flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all ${
                 activeGw === 'pakasir'
-                  ? 'bg-emerald-900/60 border-emerald-500 ring-2 ring-emerald-500/50 shadow-md'
-                  : 'bg-navy-900/40 border-navy-700 opacity-70 hover:opacity-100'
+                  ? 'bg-emerald-950 border-emerald-500 ring-2 ring-emerald-500/50 shadow-md'
+                  : 'bg-navy-900 border-navy-800 opacity-80 hover:opacity-100'
               }`}
             >
               <div className={`size-4 rounded-full border-2 flex items-center justify-center ${activeGw === 'pakasir' ? 'border-emerald-400 bg-emerald-500' : 'border-gray-500'}`}>
@@ -430,27 +432,48 @@ export default function Index({
           result={storageR} loading={loadingStorage}
           onTest={() => runTest(route('admin.integrations.test-storage'), setLoadingStorage, setStorageR)}
         />
-        <TestCard
-          icon={<CreditCard className="size-5 text-emerald-700" />}
-          title="Midtrans Payment Gateway"
-          desc="Sandbox / Production via env credentials"
-          badge={
-            <Badge className={envSummary.midtransIsProduction ? 'bg-emerald-600 text-white' : 'bg-amber-400 text-navy-950'}>
-              {envSummary.midtransIsProduction ? 'Production' : 'Sandbox'}
-            </Badge>
-          }
-          meta={[
-            ['Server Key', maskKey(envSummary.midtransServerKey)],
-            ['Client Key', maskKey(envSummary.midtransClientKey)],
-            ['Channels', `${mtChannels.length} terdeteksi`],
-          ]}
-          result={midtransR} loading={loadingMidtrans}
-          onTest={() => runTest(
-            route('admin.integrations.test-midtrans'),
-            setLoadingMidtrans, setMidtransR,
-            (r) => { if (r.channels) setMtChannels(r.channels) },
-          )}
-        />
+        <div className="space-y-3">
+          <TestCard
+            icon={<CreditCard className="size-5 text-emerald-700" />}
+            title="Midtrans Payment Gateway"
+            desc="Kredensial otomatis menyesuaikan mode Sandbox/Production"
+            badge={
+              <Badge className={midtransIsProd ? 'bg-emerald-600 text-white' : 'bg-amber-400 text-navy-950 font-bold'}>
+                {midtransIsProd ? 'Production Mode' : 'Sandbox Mode'}
+              </Badge>
+            }
+            meta={[
+              ['Mode Environment', midtransIsProd ? 'Production (Live API)' : 'Sandbox (Testing API)'],
+              ['Server Key', maskKey(envSummary.midtransServerKey)],
+              ['Client Key', maskKey(envSummary.midtransClientKey)],
+              ['Channels', `${mtChannels.length} terdeteksi`],
+            ]}
+            result={midtransR} loading={loadingMidtrans}
+            onTest={() => runTest(
+              route('admin.integrations.test-midtrans'),
+              setLoadingMidtrans, setMidtransR,
+              (r) => { if (r.channels) setMtChannels(r.channels) },
+            )}
+          />
+          <div className="flex items-center justify-between rounded-xl border border-border bg-surface p-3 text-xs">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="midtrans-mode-toggle"
+                checked={midtransIsProd}
+                onCheckedChange={(v) => {
+                  setMidtransIsProd(Boolean(v))
+                  toast.info(Boolean(v) ? 'Mode Production dipilih (Kredensial Production dari .env digunakan)' : 'Mode Sandbox dipilih (Kredensial Sandbox dari .env digunakan)')
+                }}
+              />
+              <label htmlFor="midtrans-mode-toggle" className="cursor-pointer font-bold text-navy-950 dark:text-white">
+                Gunakan Mode Production (Uncheck untuk Sandbox)
+              </label>
+            </div>
+            <span className="text-[10px] font-mono text-content-muted">
+              Auto-Kredensial: {midtransIsProd ? 'MIDTRANS_PRODUCTION_*' : 'MIDTRANS_SANDBOX_*'}
+            </span>
+          </div>
+        </div>
         <TestCard
           icon={<QrCode className="size-5 text-mustard-600" />}
           title="Pakasir Payment Gateway"

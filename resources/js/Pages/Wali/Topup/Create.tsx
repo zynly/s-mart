@@ -64,17 +64,21 @@ export default function Create({ members, midtransClientKey, midtransIsProductio
     setGatewayError(null)
 
     try {
-      const { token } = await apiPost<{ token: string; reference: string }>(route('wali.topup.midtrans'), {
+      const res = await apiPost<{ provider?: string; token?: string; payment_url?: string; reference: string }>(route('wali.topup.midtrans'), {
         member_id: Number(gatewayMemberId),
         amount: gatewayAmount,
       })
 
-      snap.pay(token, {
-        onSuccess: () => router.visit(route('wali.members.show', gatewayMemberId)),
-        onPending: () => router.visit(route('wali.members.show', gatewayMemberId)),
-        onError: () => setGatewayError('Pembayaran gagal diproses. Silakan coba lagi.'),
-        onClose: () => setGatewaySubmitting(false),
-      })
+      if (res.provider === 'pakasir' || res.payment_url) {
+        window.location.href = res.payment_url || ''
+      } else if (res.token) {
+        snap.pay(res.token, {
+          onSuccess: () => router.visit(route('wali.members.show', gatewayMemberId)),
+          onPending: () => router.visit(route('wali.members.show', gatewayMemberId)),
+          onError: () => setGatewayError('Pembayaran gagal diproses. Silakan coba lagi.'),
+          onClose: () => setGatewaySubmitting(false),
+        })
+      }
     } catch (err) {
       setGatewayError(err instanceof ApiError ? err.firstError() : 'Gagal memulai pembayaran.')
     } finally {
