@@ -66,7 +66,7 @@ class SecurityHeaders
             "default-src 'self'",
             "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://app.midtrans.com https://app.sandbox.midtrans.com",
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-            "img-src 'self' data: blob: https://images.unsplash.com https://*.unsplash.com",
+            "img-src * 'self' data: blob: https: http:",
             "font-src 'self' data: https://fonts.gstatic.com",
             "connect-src 'self' https://app.pakasir.com https://app.midtrans.com https://app.sandbox.midtrans.com",
             "frame-src 'self' https://app.pakasir.com https://app.midtrans.com https://app.sandbox.midtrans.com",
