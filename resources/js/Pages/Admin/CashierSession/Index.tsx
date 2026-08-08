@@ -310,7 +310,7 @@ export default function Index({
                     Buka Sesi Kasir Baru
                   </CardTitle>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Pilih laci kasir aktif &amp; masukkan modal uang fisik awal untuk memulai transaksi.
+                    Pilih laci kasir aktif & masukkan modal uang fisik awal untuk memulai transaksi.
                   </p>
                 </div>
               </div>
@@ -334,7 +334,7 @@ export default function Index({
                 <Label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Laci Kasir ({safeAccounts.length} Laci Tersedia)
                 </Label>
-                <span className="text-[11px] text-slate-400">Setiap laci memiliki input modal fisik &amp; tombol buka sesi tersendiri</span>
+                <span className="text-[11px] text-slate-400">Setiap laci memiliki input modal fisik & tombol buka sesi tersendiri</span>
               </div>
 
               {/* Grid Layout — Each drawer card has its OWN MoneyInput and Buka Sesi button */}
@@ -550,7 +550,7 @@ export default function Index({
                     <Money amount={difference} size="xl" showSign className="font-black mt-1" />
                     <p className="text-[11px] font-semibold mt-1">
                       {difference === 0
-                        ? 'Uang fisik pas &amp; sesuai dengan catatan sistem.'
+                        ? 'Uang fisik pas & sesuai dengan catatan sistem.'
                         : difference < 0
                           ? 'Uang fisik kurang dari catatan sistem.'
                           : 'Uang fisik lebih dari catatan sistem.'}
