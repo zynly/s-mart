@@ -92,7 +92,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
               <ShieldCheck className="size-3.5" />
               Sistem Terintegrasi POS & Deposit Santri
             </div>
-            <Link href="/login" className="text-xs text-content-muted hover:text-primary transition-colors hover:underline">
+            <Link href="/admin/login" className="text-xs text-content-muted hover:text-primary transition-colors hover:underline">
               Login Akses Staff / Admin POS →
             </Link>
           </div>
