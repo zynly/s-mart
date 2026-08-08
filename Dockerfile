@@ -1,20 +1,5 @@
 # ==============================================================================
-# STAGE 1: Build Frontend Assets (Vite + React + TypeScript)
-# ==============================================================================
-FROM node:22-alpine AS frontend-builder
-WORKDIR /app
-
-# Install pnpm 9 matching lockfileVersion 9.0
-RUN npm install -g pnpm@9
-
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
-
-COPY . .
-RUN pnpm run build
-
-# ==============================================================================
-# STAGE 2: Build PHP Dependencies (Composer)
+# STAGE 1: Build PHP Dependencies (Composer)
 # ==============================================================================
 FROM php:8.3-fpm-alpine AS php-builder
 WORKDIR /app
@@ -51,6 +36,24 @@ RUN composer install --no-dev --prefer-dist --no-scripts --no-autoloader --ignor
 
 COPY . .
 RUN composer dump-autoload --optimize --no-dev
+
+# ==============================================================================
+# STAGE 2: Build Frontend Assets (Vite + React + TypeScript)
+# ==============================================================================
+FROM node:22-alpine AS frontend-builder
+WORKDIR /app
+
+# Install pnpm 9 matching lockfileVersion 9.0
+RUN npm install -g pnpm@9
+
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+COPY . .
+# Copy vendor directory from php-builder so Vite can import vendor/tightenco/ziggy
+COPY --from=php-builder /app/vendor /app/vendor
+
+RUN pnpm run build
 
 # ==============================================================================
 # STAGE 3: Final Production Image (Nginx + PHP-FPM + Supervisor)
