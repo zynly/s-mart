@@ -64,4 +64,13 @@ return [
             : (env('MIDTRANS_SANDBOX_MERCHANT_ID') ?: env('MIDTRANS_MERCHANT_ID')),
     ],
 
+    // Integrasi Pakasir Payment Gateway
+    'pakasir' => [
+        'api_key' => env('PAKASIR_API_KEY'),
+        'base_url' => env('PAKASIR_BASE_URL', 'https://app.pakasir.com'),
+        'slug' => env('PAKASIR_SLUG'),
+        'callback_url' => env('PAKASIR_CALLBACK_URL'),
+    ],
+
 ];
+

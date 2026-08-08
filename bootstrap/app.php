@@ -24,6 +24,12 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->validateCsrfTokens(except: [
+            'midtrans/notification',
+            'api/v1/callback/pakasir',
+            'pakasir/notification',
+        ]);
+
         $middleware->web(append: [
             AdjustSessionLifetime::class,
             HandleInertiaRequests::class,

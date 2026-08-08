@@ -28,6 +28,8 @@ Route::post('/cek-saldo', [CheckBalanceController::class, 'check'])
     ->middleware('throttle:5,1')
     ->name('cek-saldo.check');
 
+use App\Http\Controllers\PakasirWebhookController;
+
 // Integrasi Midtrans (top-up wali) — Notification URL, DI LUAR
 // middleware `auth` SENGAJA: Midtrans tidak punya sesi Laravel,
 // proteksinya verifikasi signature_key di dalam controller (lihat
@@ -36,6 +38,16 @@ Route::post('/cek-saldo', [CheckBalanceController::class, 'check'])
 Route::post('/midtrans/notification', [MidtransWebhookController::class, 'handle'])
     ->middleware('throttle:60,1')
     ->name('midtrans.notification');
+
+// Integrasi Pakasir Payment Gateway — Webhook Callback URL
+Route::post('/api/v1/callback/pakasir', [PakasirWebhookController::class, 'handle'])
+    ->middleware('throttle:60,1')
+    ->name('pakasir.callback');
+
+Route::post('/pakasir/notification', [PakasirWebhookController::class, 'handle'])
+    ->middleware('throttle:60,1')
+    ->name('pakasir.notification');
+
 
 // Temuan audit keamanan: halaman showcase komponen internal ini
 // sebelumnya terdaftar TANPA guard apa pun — publik di produksi,
