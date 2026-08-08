@@ -155,7 +155,7 @@ export default function PosLayout({
           </div>
         </header>
 
-        <main className="flex-1 overflow-hidden">{children}</main>
+        <main className="flex-1 min-h-0 h-full overflow-hidden flex flex-col">{children}</main>
       </div>
     </div>
   )

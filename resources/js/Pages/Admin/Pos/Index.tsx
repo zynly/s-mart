@@ -891,9 +891,9 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
         </div>
       }
     >
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0 h-full w-full overflow-hidden">
         {/* GRID 1: KATALOG PRODUK & SEARCH (Kolom Kiri Terbesar - Flex Expand) */}
-        <section className="flex flex-1 min-w-0 flex-col gap-3 overflow-hidden border-r border-gray-200 bg-gray-50/60 p-3 min-h-0">
+        <section className="flex flex-1 min-w-0 flex-col gap-3 overflow-hidden border-r border-gray-200 bg-gray-50/60 p-3 min-h-0 h-full">
           {/* Search bar Barcode */}
           <div className="relative shrink-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
@@ -956,7 +956,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
           </div>
 
           {/* Product Cards Grid (Vertikal Scrollable) */}
-          <div className="flex-1 overflow-y-auto pr-1 min-h-0">
+          <div className="flex-1 overflow-y-auto pr-2 min-h-0 custom-scrollbar">
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4">
               {catalog.data.map((p) => (
                 <button
