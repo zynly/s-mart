@@ -315,7 +315,7 @@ export default function Index({
           return (
             <Card
               key={a.id}
-              className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-slate-900 hover:shadow-md transition-all"
+              className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs dark:border-slate-800 dark:bg-surface hover:shadow-md transition-all"
             >
               <div className="flex items-start justify-between">
                 <div className="flex flex-col min-w-0">
@@ -382,7 +382,7 @@ export default function Index({
 
         {/* Sub-Tab 1: Buku Kas */}
         <TabsContent value="buku" className="mt-4 flex flex-col gap-4">
-          <Card className="border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <Card className="border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-surface">
             <CardHeader className="border-b border-slate-100 p-4 dark:border-slate-800">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
@@ -433,7 +433,7 @@ export default function Index({
         <TabsContent value="transaksi" className="mt-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6">
             {/* Left Column: Form Catat Kas Masuk */}
-            <Card className="w-full border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <Card className="w-full border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-surface">
               <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-800/50">
                 <div className="flex items-center gap-3">
                   <div className="flex size-10 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
@@ -467,7 +467,7 @@ export default function Index({
                               'flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-bold transition-all cursor-pointer',
                               isSelected
                                 ? 'border-emerald-500 bg-emerald-500/15 text-emerald-900 dark:text-emerald-200 ring-2 ring-emerald-500/30 shadow-xs'
-                                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
+                                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-surface dark:text-slate-300',
                             )}
                           >
                             <span className={cn('size-2 rounded-full', isSelected ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-700')} />
@@ -495,7 +495,7 @@ export default function Index({
                               'flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition-all cursor-pointer',
                               isSelected
                                 ? 'border-emerald-500 bg-emerald-500/15 text-emerald-900 dark:text-emerald-200 ring-2 ring-emerald-500/30'
-                                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
+                                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-surface dark:text-slate-300',
                             )}
                           >
                             <span>{c.name}</span>
@@ -544,7 +544,7 @@ export default function Index({
             </Card>
 
             {/* Right Column: Form Catat Kas Keluar */}
-            <Card className="w-full border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <Card className="w-full border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-surface">
               <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-800/50">
                 <div className="flex items-center gap-3">
                   <div className="flex size-10 items-center justify-center rounded-2xl bg-red-500/15 text-red-600 dark:text-red-400">
@@ -578,7 +578,7 @@ export default function Index({
                               'flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-bold transition-all cursor-pointer',
                               isSelected
                                 ? 'border-red-500 bg-red-500/15 text-red-900 dark:text-red-200 ring-2 ring-red-500/30 shadow-xs'
-                                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
+                                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-surface dark:text-slate-300',
                             )}
                           >
                             <span className={cn('size-2 rounded-full', isSelected ? 'bg-red-600' : 'bg-slate-300 dark:bg-slate-700')} />
@@ -606,7 +606,7 @@ export default function Index({
                               'flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition-all cursor-pointer',
                               isSelected
                                 ? 'border-red-500 bg-red-500/15 text-red-900 dark:text-red-200 ring-2 ring-red-500/30'
-                                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
+                                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-surface dark:text-slate-300',
                             )}
                           >
                             <span>{c.name}</span>
@@ -658,7 +658,7 @@ export default function Index({
 
         {/* Sub-Tab 4: Transfer / Drop */}
         <TabsContent value="transfer" className="mt-4">
-          <Card className="w-full border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <Card className="w-full border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-surface">
             <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-800/50">
               <div className="flex items-center gap-3">
                 <div className="flex size-10 items-center justify-center rounded-2xl bg-blue-500/15 text-blue-600 dark:text-blue-400">
@@ -700,7 +700,7 @@ export default function Index({
                               'group relative flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-bold transition-all cursor-pointer',
                               isSelected
                                 ? 'border-blue-500 bg-blue-500/15 text-blue-900 dark:text-blue-200 ring-2 ring-blue-500/30 shadow-xs'
-                                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
+                                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-surface dark:text-slate-300',
                             )}
                           >
                             <span className={cn('size-2 rounded-full', isSelected ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-700')} />
@@ -728,7 +728,7 @@ export default function Index({
                               'group relative flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-bold transition-all cursor-pointer',
                               isSelected
                                 ? 'border-blue-500 bg-blue-500/15 text-blue-900 dark:text-blue-200 ring-2 ring-blue-500/30 shadow-xs'
-                                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
+                                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-surface dark:text-slate-300',
                             )}
                           >
                             <span className={cn('size-2 rounded-full', isSelected ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-700')} />
@@ -769,7 +769,7 @@ export default function Index({
 
         {/* Sub-Tab 5: Akun Kas */}
         <TabsContent value="akun-kas" className="mt-4 flex flex-col gap-4">
-          <Card className="border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <Card className="border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-surface">
             <CardHeader className="border-b border-slate-100 p-4 sm:p-5 dark:border-slate-800">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">

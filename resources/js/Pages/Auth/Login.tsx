@@ -24,15 +24,15 @@ export default function Login({ status }: { status?: string }) {
   return (
     <div className="flex flex-col gap-6">
       <div className="text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-white">Selamat Datang</h1>
-        <p className="mt-1.5 text-sm text-slate-400">
-          Masuk ke Panel Admin &amp; Kasir <span className="font-semibold text-indigo-400">Skillage Mart</span>
+        <h1 className="text-2xl font-extrabold tracking-tight text-navy-900">Selamat Datang</h1>
+        <p className="mt-1.5 text-sm text-content-muted">
+          Masuk ke Panel Admin &amp; Kasir <span className="font-semibold text-navy-900">Skillage Mart</span>
         </p>
       </div>
 
       {status && (
-        <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400">
-          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+        <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          <span className="size-2 rounded-full bg-emerald-600 animate-pulse" />
           {status}
         </div>
       )}
@@ -40,12 +40,12 @@ export default function Login({ status }: { status?: string }) {
       <form onSubmit={submit} className="flex flex-col gap-5">
         {/* Username Field */}
         <div className="space-y-2">
-          <Label htmlFor="username" className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+          <Label htmlFor="username" className="text-xs font-bold uppercase tracking-wider text-navy-800">
             Username
           </Label>
           <div className="relative">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
-              <User className="h-4 w-4" />
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-navy-500">
+              <User className="size-4" />
             </div>
             <Input
               id="username"
@@ -55,12 +55,12 @@ export default function Login({ status }: { status?: string }) {
               placeholder="Masukkan username"
               value={data.username}
               onChange={(e) => setData('username', e.target.value)}
-              className="pl-10 h-11 bg-slate-950/60 border-slate-800 text-white placeholder:text-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl transition-all"
+              className="pl-10 h-11 bg-surface border-border text-navy-900 placeholder:text-content-subtle focus:border-navy-600 focus:ring-2 focus:ring-navy-600/20 rounded-xl transition-all"
             />
           </div>
           {errors.username && (
-            <div className="flex items-center gap-1.5 text-xs text-rose-400 mt-1">
-              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            <div className="flex items-center gap-1.5 text-xs text-danger mt-1">
+              <AlertCircle className="size-3.5 shrink-0" />
               <span>{errors.username}</span>
             </div>
           )}
@@ -68,12 +68,12 @@ export default function Login({ status }: { status?: string }) {
 
         {/* Password Field with Eye Toggle */}
         <div className="space-y-2">
-          <Label htmlFor="password" className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+          <Label htmlFor="password" className="text-xs font-bold uppercase tracking-wider text-navy-800">
             Password
           </Label>
           <div className="relative">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
-              <Lock className="h-4 w-4" />
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-navy-500">
+              <Lock className="size-4" />
             </div>
             <Input
               id="password"
@@ -82,25 +82,25 @@ export default function Login({ status }: { status?: string }) {
               placeholder="••••••••"
               value={data.password}
               onChange={(e) => setData('password', e.target.value)}
-              className="pl-10 pr-10 h-11 bg-slate-950/60 border-slate-800 text-white placeholder:text-slate-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl transition-all"
+              className="pl-10 pr-10 h-11 bg-surface border-border text-navy-900 placeholder:text-content-subtle focus:border-navy-600 focus:ring-2 focus:ring-navy-600/20 rounded-xl transition-all"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               tabIndex={-1}
-              className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-200 transition-colors focus:outline-none"
+              className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-navy-500 hover:text-navy-800 transition-colors focus:outline-none"
               title={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
             >
               {showPassword ? (
-                <EyeOff className="h-4 w-4 text-indigo-400" />
+                <EyeOff className="size-4 text-navy-700" />
               ) : (
-                <Eye className="h-4 w-4" />
+                <Eye className="size-4" />
               )}
             </button>
           </div>
           {errors.password && (
-            <div className="flex items-center gap-1.5 text-xs text-rose-400 mt-1">
-              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            <div className="flex items-center gap-1.5 text-xs text-danger mt-1">
+              <AlertCircle className="size-3.5 shrink-0" />
               <span>{errors.password}</span>
             </div>
           )}
@@ -113,15 +113,15 @@ export default function Login({ status }: { status?: string }) {
               id="remember"
               checked={data.remember}
               onCheckedChange={(checked) => setData('remember', checked === true)}
-              className="border-slate-700 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
+              className="border-border data-[state=checked]:bg-navy-900 data-[state=checked]:border-navy-900"
             />
-            <Label htmlFor="remember" className="text-xs font-medium text-slate-400 cursor-pointer select-none">
+            <Label htmlFor="remember" className="text-xs font-semibold text-content-muted cursor-pointer select-none">
               Ingat saya
             </Label>
           </div>
           <Link
             href={route('password.request')}
-            className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors hover:underline"
+            className="text-xs font-bold text-navy-600 hover:text-navy-900 transition-colors hover:underline"
           >
             Lupa password?
           </Link>
@@ -131,14 +131,14 @@ export default function Login({ status }: { status?: string }) {
         <Button
           type="submit"
           disabled={processing}
-          className="mt-2 h-11 w-full bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-semibold rounded-xl shadow-lg shadow-indigo-600/30 transition-all duration-200 hover:shadow-indigo-600/40 active:scale-[0.99] disabled:opacity-70 flex items-center justify-center gap-2"
+          className="mt-2 h-11 w-full bg-navy-900 hover:bg-navy-800 text-white font-bold rounded-xl shadow-md transition-all active:scale-[0.99] disabled:opacity-70 flex items-center justify-center gap-2"
         >
           {processing ? (
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            <div className="size-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
           ) : (
             <>
               <span>Masuk Ke Panel</span>
-              <LogIn className="h-4 w-4" />
+              <LogIn className="size-4" />
             </>
           )}
         </Button>

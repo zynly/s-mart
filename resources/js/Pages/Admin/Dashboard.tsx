@@ -80,7 +80,7 @@ function formatTime(iso: string) {
 function CashierDashboard({ session, todayStats }: CashierViewProps) {
   return (
     <div className="flex flex-col gap-4">
-      <Card className="border-amber-200/80 bg-gradient-to-r from-amber-500/10 via-white to-white dark:from-amber-950/20 dark:via-navy-950 dark:to-navy-950 shadow-xs rounded-2xl overflow-hidden">
+      <Card className="border-amber-200/80 bg-gradient-to-r from-amber-500/10 via-white to-white dark:from-amber-950/20 dark:via-surface dark:to-surface shadow-xs rounded-2xl overflow-hidden">
         <CardContent className="flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
             {session ? (
@@ -392,7 +392,7 @@ function ManagerDashboard({ statCards, charts, recentSales, topProducts, cashier
               <CardContent className="p-4 flex flex-col gap-3">
                 {recentSales.length === 0 && <EmptyState title="Belum ada transaksi" />}
                 {recentSales.map((s) => (
-                  <div key={s.reference} className="flex items-center justify-between text-xs py-2 px-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-navy-900 transition-colors">
+                  <div key={s.reference} className="flex items-center justify-between text-xs py-2 px-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-surface-alt transition-colors">
                     <div>
                       <p className="font-mono font-bold text-navy-950 dark:text-white">{s.reference}</p>
                       <p className="text-[11px] text-slate-500 mt-0.5">{s.kasir ?? 'Kasir POS'} · {formatTime(s.sale_date)}</p>
@@ -417,7 +417,7 @@ function ManagerDashboard({ statCards, charts, recentSales, topProducts, cashier
               <CardContent className="p-4 flex flex-col gap-3">
                 {topProducts.length === 0 && <EmptyState title="Belum ada data penjualan" />}
                 {topProducts.map((p, idx) => (
-                  <div key={p.produk} className="flex items-center justify-between text-xs py-2 px-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-navy-900 transition-colors">
+                  <div key={p.produk} className="flex items-center justify-between text-xs py-2 px-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-surface-alt transition-colors">
                     <div className="flex items-center gap-2.5">
                       <span className="flex size-6 items-center justify-center rounded-full bg-slate-100 text-[10px] font-mono font-extrabold text-slate-700">
                         #{idx + 1}
@@ -444,7 +444,7 @@ function ManagerDashboard({ statCards, charts, recentSales, topProducts, cashier
               <CardContent className="p-4 flex flex-col gap-3">
                 {cashierRanking.length === 0 && <EmptyState title="Belum ada transaksi kasir" />}
                 {cashierRanking.map((c, idx) => (
-                  <div key={c.kasir} className="flex items-center justify-between text-xs py-2 px-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-navy-900 transition-colors">
+                  <div key={c.kasir} className="flex items-center justify-between text-xs py-2 px-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-surface-alt transition-colors">
                     <div className="flex items-center gap-2.5">
                       <span className="flex size-6 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-950/60 text-[10px] font-mono font-black text-amber-800 dark:text-amber-300">
                         #{idx + 1}

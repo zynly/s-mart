@@ -298,7 +298,7 @@ export default function Index({
 
       {!active ? (
         /* Card Buka Sesi Kasir jika Tidak Ada Sesi Aktif (Full Width Container, Compact 3-Grid) */
-        <Card className="w-full border-slate-200/80 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <Card className="w-full border-slate-200/80 shadow-sm dark:border-slate-800 dark:bg-surface">
           <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-800/50">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
@@ -346,7 +346,7 @@ export default function Index({
                   return (
                     <div
                       key={a.id}
-                      className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200/90 bg-white p-4.5 shadow-xs dark:border-slate-800 dark:bg-slate-900/90 hover:border-amber-500/40 hover:shadow-md transition-all"
+                      className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200/90 bg-white p-4.5 shadow-xs dark:border-slate-800 dark:bg-surface/90 hover:border-amber-500/40 hover:shadow-md transition-all"
                     >
                       <div className="flex flex-col gap-3">
                         {/* Drawer Header */}
@@ -424,8 +424,8 @@ export default function Index({
       ) : (
         /* Dashboard Sesi Kasir Aktif */
         <div className="flex flex-col gap-5 sm:gap-6">
-          {/* Hero Active Session Banner (Explicit Dark Navy HEX Background) */}
-          <div className="relative overflow-hidden rounded-3xl border border-[#1e293b] bg-[#0f1b33] p-6 text-white shadow-xl">
+          {/* Hero Active Session Banner */}
+          <div className="relative overflow-hidden rounded-3xl border border-amber-400/30 bg-surface dark:bg-surface-alt p-6 text-content shadow-xl">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-4">
                 <div className="flex size-14 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-md shrink-0">
@@ -436,22 +436,22 @@ export default function Index({
                     <span className="text-xs font-black tracking-wider uppercase text-amber-400">
                       Sesi Aktif
                     </span>
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#052e16] border border-emerald-500/40 px-2.5 py-0.5 text-[11px] font-bold text-emerald-300">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-950/60 border border-emerald-500/40 px-2.5 py-0.5 text-[11px] font-bold text-emerald-300">
                       <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
                       Terbuka
                     </span>
                   </div>
-                  <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white mt-1">
+                  <h2 className="text-xl sm:text-2xl font-black tracking-tight text-content mt-1">
                     {active.reference}
                   </h2>
-                  <p className="text-xs text-slate-300 mt-1">
-                    Laci: <strong className="text-white font-bold">{active.cash_account.name}</strong> · Dibuka sejak {new Date(active.opened_at).toLocaleString('id-ID')}
+                  <p className="text-xs text-content-muted mt-1">
+                    Laci: <strong className="text-content font-bold">{active.cash_account.name}</strong> · Dibuka sejak {new Date(active.opened_at).toLocaleString('id-ID')}
                   </p>
                 </div>
               </div>
 
-              {/* Expected Cash Highlight Badge (Dark Solid Box) */}
-              <div className="flex flex-col items-start sm:items-end rounded-2xl border border-amber-400/50 bg-[#070d1a] px-5 py-3.5 shadow-md">
+              {/* Expected Cash Highlight Badge */}
+              <div className="flex flex-col items-start sm:items-end rounded-2xl border border-amber-400/50 bg-surface-alt dark:bg-surface px-5 py-3.5 shadow-md">
                 <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-300">
                   Expected Cash (Uang Diharapkan)
                 </span>
@@ -462,7 +462,7 @@ export default function Index({
 
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
             {/* Detailed Cash Breakdown Card */}
-            <Card className="border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <Card className="border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-surface">
               <CardHeader className="border-b border-slate-100 p-4 dark:border-slate-800">
                 <div className="flex items-center gap-2">
                   <div className="flex size-8 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-400">
@@ -508,7 +508,7 @@ export default function Index({
             </Card>
 
             {/* Closing Form Card */}
-            <Card className="border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <Card className="border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-surface">
               <CardHeader className="border-b border-slate-100 p-4 dark:border-slate-800">
                 <div className="flex items-center gap-2">
                   <div className="flex size-8 items-center justify-center rounded-xl bg-red-500/10 text-red-600 dark:bg-red-400/20 dark:text-red-400">
@@ -569,7 +569,7 @@ export default function Index({
                         value={closeForm.data.reason}
                         onChange={(e) => closeForm.setData('reason', e.target.value)}
                         placeholder="Jelaskan penyebab selisih kas fisik..."
-                        className="rounded-xl border-amber-500/30 bg-white/80 dark:bg-slate-900/80"
+                        className="rounded-xl border-amber-500/30 bg-white/80 dark:bg-surface/80"
                       />
                       {closeForm.data.approval_token ? (
                         <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold">
@@ -601,7 +601,7 @@ export default function Index({
 
       {/* Nota Sesi Ini Table */}
       {active && (
-        <Card className="border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <Card className="border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-surface">
           <CardHeader className="border-b border-slate-100 p-4 dark:border-slate-800">
             <div className="flex items-center gap-2">
               <Receipt className="size-4.5 text-slate-500" />
@@ -617,7 +617,7 @@ export default function Index({
       )}
 
       {/* Riwayat Sesi Table */}
-      <Card className="border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <Card className="border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-surface">
         <CardHeader className="border-b border-slate-100 p-4 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <History className="size-4.5 text-slate-500" />

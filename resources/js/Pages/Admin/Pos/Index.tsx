@@ -30,13 +30,13 @@ import type { PageProps } from '@/Types'
 // tema), itu bikin field aktif terlihat pudar/disabled. Override
 // eksplisit `dark:bg-white`/`dark:text-gray-900` (bukan cuma
 // `bg-white` polos) supaya menang melawan default dark-mode itu.
-const posFieldClass = 'border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 dark:bg-white dark:text-gray-900'
+const posFieldClass = 'border-gray-300 dark:border-border bg-white dark:bg-surface-alt text-gray-900 dark:text-content placeholder:text-gray-400 dark:placeholder:text-content-muted'
 // SelectContent/SelectItem (popover dropdown Radix, bukan trigger-nya)
 // pakai token `bg-popover`/`text-popover-foreground` yang sama-sama
 // ikut resolve gelap di bawah `dark` yang dipaksa PosLayout — tanpa
 // override ini dropdown-nya gelap padahal trigger di sekitarnya sudah
 // terang, kontrasnya pecah (item terlihat "disabled").
-const posDropdownClass = 'bg-white text-gray-900 [&_[data-slot=select-item]]:text-gray-900 [&_[data-slot=select-item]:focus]:bg-gray-100'
+const posDropdownClass = 'bg-white dark:bg-surface text-gray-900 dark:text-content [&_[data-slot=select-item]]:text-gray-900 dark:[&_[data-slot=select-item]]:text-content [&_[data-slot=select-item]:focus]:bg-gray-100 dark:[&_[data-slot=select-item]:focus]:bg-surface-alt'
 
 type PaymentMethodRow = {
   id: number
@@ -384,6 +384,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
     setSelectedMethodId('')
     setCreditWarning(null)
     setPaymentError(null)
+    setCashInput(subtotal)
     // Temuan audit keamanan: key HARUS dibuat sekali per keranjang, bukan
     // per klik submit — kalau tidak, retry (klik dobel/network lambat)
     // mengirim key baru tiap kali dan idempotency di backend jadi tidak
@@ -948,7 +949,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
     >
       <div className="flex flex-1 min-h-0 h-full w-full overflow-hidden">
         {/* GRID 1: KATALOG PRODUK & SEARCH (Kolom Kiri Terbesar - Flex Expand) */}
-        <section className="flex flex-1 min-w-0 flex-col gap-3 overflow-hidden border-r border-gray-200 bg-gray-50/60 p-3 min-h-0 h-full">
+        <section className="flex flex-1 min-w-0 flex-col gap-3 overflow-hidden border-r border-gray-200 dark:border-border bg-gray-50/60 dark:bg-bg p-3 min-h-0 h-full">
           {/* Search bar Barcode */}
           <div className="relative shrink-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
@@ -965,17 +966,17 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                   void submitScan(barcode)
                 }
               }}
-              className="h-10 w-full rounded-xl border border-gray-200 bg-white/90 pl-10 pr-10 text-sm text-gray-900 placeholder:text-gray-400 neu-pressed transition-all focus:border-navy-500 focus:outline-none focus:ring-2 focus:ring-navy-500/20"
+              className="h-10 w-full rounded-xl border border-gray-200 dark:border-border bg-white/90 dark:bg-surface-alt/90 pl-10 pr-10 text-sm text-gray-900 dark:text-content placeholder:text-gray-400 dark:placeholder:text-content-muted neu-pressed transition-all focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/20"
             />
-            <ScanLine className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+            <ScanLine className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-gray-400 dark:text-content-muted" />
           </div>
           {scanError && <p className="-mt-2 text-sm text-danger">{scanError}</p>}
 
           {/* Filter Bar & Header Katalog */}
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-gray-200 pb-2">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-gray-200 dark:border-border pb-2">
             <div className="flex items-center gap-2">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-navy-800">Katalog Produk</h2>
-              <Badge variant="secondary" className="text-[10px] bg-navy-100 text-navy-800 font-semibold">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-navy-800 dark:text-content-muted">Katalog Produk</h2>
+              <Badge variant="secondary" className="text-[10px] bg-navy-100 dark:bg-surface-alt text-navy-800 dark:text-content font-semibold">
                 {catalog.total} produk
               </Badge>
             </div>
@@ -1018,10 +1019,10 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                   key={p.id}
                   type="button"
                   onClick={() => p.unit && addLine({ id: p.id, name: p.name, sku: p.sku, image_url: p.image_url }, p.unit, p.price, 1)}
-                  className="group relative flex flex-col justify-between rounded-xl border border-gray-200/80 bg-white p-2 text-left transition-all duration-200 neu-flat hover:-translate-y-0.5 hover:border-navy-400 hover:shadow-lg active:scale-95"
+                  className="group relative flex flex-col justify-between rounded-xl border border-gray-200/80 dark:border-border bg-white dark:bg-surface p-2 text-left transition-all duration-200 neu-flat hover:-translate-y-0.5 hover:border-amber-400 dark:hover:border-amber-400 hover:shadow-lg active:scale-95"
                 >
                   <div>
-                    <div className="relative mb-1.5 aspect-square w-full overflow-hidden rounded-lg bg-gray-50 border border-gray-100">
+                    <div className="relative mb-1.5 aspect-square w-full overflow-hidden rounded-lg bg-gray-50 dark:bg-surface-alt border border-gray-100 dark:border-border">
                       <img
                         src={p.image_url ?? '/images/default-product.webp'}
                         alt={p.name}
@@ -1033,11 +1034,11 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                         <Badge className="absolute right-1 top-1 bg-amber-500 px-1.5 py-0 text-[9px] font-bold text-white shadow-sm">PROMO</Badge>
                       )}
                     </div>
-                    <p className="line-clamp-2 text-xs font-semibold leading-tight text-gray-900 group-hover:text-navy-700">{p.name}</p>
+                    <p className="line-clamp-2 text-xs font-semibold leading-tight text-gray-900 dark:text-content group-hover:text-amber-500">{p.name}</p>
                   </div>
-                  <div className="mt-2 flex items-center justify-between border-t border-gray-100 pt-1.5">
-                    <p className="text-xs font-bold text-navy-700"><Money amount={p.price} size="sm" /></p>
-                    <span className="text-[10px] font-bold text-navy-500 bg-navy-50 px-1.5 py-0.5 rounded border border-navy-200/60">+ Tambah</span>
+                  <div className="mt-2 flex items-center justify-between border-t border-gray-100 dark:border-border pt-1.5">
+                    <p className="text-xs font-bold text-amber-500"><Money amount={p.price} size="sm" /></p>
+                    <span className="text-[10px] font-extrabold text-navy-700 dark:text-khaki-200 bg-navy-50 dark:bg-surface-alt px-2 py-0.5 rounded-md border border-navy-200/60 dark:border-border group-hover:border-amber-400 group-hover:bg-amber-400 group-hover:text-black transition-all">+ Tambah</span>
                   </div>
                 </button>
               ))}
@@ -1053,20 +1054,20 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
 
           {/* Pagination */}
           {catalog.last_page > 1 && (
-            <div className="flex shrink-0 items-center justify-between border-t border-gray-200 pt-2 text-xs text-gray-600">
-              <Button type="button" size="sm" variant="outline" className="h-7 text-xs" disabled={catalog.current_page <= 1} onClick={() => reloadCatalog({ page: catalog.current_page - 1 })}>◀ Sebelum</Button>
-              <span className="font-medium">Hal. {catalog.current_page} dari {catalog.last_page}</span>
-              <Button type="button" size="sm" variant="outline" className="h-7 text-xs" disabled={catalog.current_page >= catalog.last_page} onClick={() => reloadCatalog({ page: catalog.current_page + 1 })}>Lanjut ▶</Button>
+            <div className="flex shrink-0 items-center justify-between border-t border-gray-200 dark:border-border pt-2 text-xs text-gray-600 dark:text-content-muted">
+              <Button type="button" size="sm" variant="outline" className="h-7 text-xs dark:border-border dark:bg-surface dark:text-content hover:dark:bg-surface-alt" disabled={catalog.current_page <= 1} onClick={() => reloadCatalog({ page: catalog.current_page - 1 })}>◀ Sebelum</Button>
+              <span className="font-bold dark:text-content">Hal. {catalog.current_page} dari {catalog.last_page}</span>
+              <Button type="button" size="sm" variant="outline" className="h-7 text-xs dark:border-border dark:bg-surface dark:text-content hover:dark:bg-surface-alt" disabled={catalog.current_page >= catalog.last_page} onClick={() => reloadCatalog({ page: catalog.current_page + 1 })}>Lanjut ▶</Button>
             </div>
           )}
         </section>
 
         {/* GRID 2: KERANJANG TRANSAKSI (Kolom Tengah ~420px - 480px) */}
-        <section className="flex w-[400px] lg:w-[450px] xl:w-[480px] shrink-0 flex-col overflow-hidden border-r border-gray-200 bg-white p-3">
-          <div className="mb-3 flex items-center justify-between border-b border-gray-200 pb-2">
+        <section className="flex w-[400px] lg:w-[450px] xl:w-[480px] shrink-0 flex-col overflow-hidden border-r border-gray-200 dark:border-border bg-white dark:bg-surface p-3">
+          <div className="mb-3 flex items-center justify-between border-b border-gray-200 dark:border-border pb-2">
             <div className="flex items-center gap-2">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-navy-800">Keranjang Transaksi</h2>
-              <Badge className="bg-navy-700 text-white font-bold text-xs">{cart.reduce((sum, item) => sum + item.qty, 0)} item</Badge>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-navy-800 dark:text-content-muted">Keranjang Transaksi</h2>
+              <Badge className="bg-amber-500 text-white font-bold text-xs">{cart.reduce((sum, item) => sum + item.qty, 0)} item</Badge>
             </div>
             {cart.length > 0 && (
               <button
@@ -1080,9 +1081,9 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
           </div>
 
           {/* Table Keranjang Transaksi */}
-          <div className="flex-1 flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white neu-flat">
+          <div className="flex-1 flex flex-col overflow-hidden rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-surface neu-flat">
             {/* Table Header */}
-            <div className="grid grid-cols-12 items-center gap-1.5 border-b border-gray-200 bg-navy-50/80 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-navy-800">
+            <div className="grid grid-cols-12 items-center gap-1.5 border-b border-gray-200 dark:border-border bg-navy-50/80 dark:bg-surface-alt px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-navy-800 dark:text-content-muted">
               <div className="col-span-3">Produk</div>
               <div className="col-span-3 text-right">Harga</div>
               <div className="col-span-2 text-center">Qty</div>
@@ -1091,44 +1092,44 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
             </div>
 
             {/* Table Body Scrollable */}
-            <div className="flex-1 overflow-y-auto divide-y divide-gray-100">
+            <div className="flex-1 overflow-y-auto divide-y divide-gray-100 dark:divide-border">
               {cart.map((line) => (
                 <div
                   key={line.key}
-                  className="grid grid-cols-12 items-center gap-1.5 px-3 py-2.5 text-xs transition-colors hover:bg-gray-50/80"
+                  className="grid grid-cols-12 items-center gap-1.5 px-3 py-2.5 text-xs transition-colors hover:bg-gray-50/80 dark:hover:bg-surface-alt/60"
                 >
                   {/* Produk & SKU */}
                   <div className="col-span-3 min-w-0 pr-1">
-                    <p className="truncate font-bold text-gray-900 text-xs" title={line.product_name}>
+                    <p className="truncate font-bold text-gray-900 dark:text-content text-xs" title={line.product_name}>
                       {line.product_name}
                     </p>
                     {line.product_sku && (
-                      <p className="text-[10px] font-mono text-gray-400 truncate">
+                      <p className="text-[10px] font-mono text-gray-400 dark:text-content-subtle truncate">
                         {line.product_sku}
                       </p>
                     )}
                   </div>
 
                   {/* Harga Satuan */}
-                  <div className="col-span-3 text-right font-medium text-navy-800 text-xs whitespace-nowrap">
+                  <div className="col-span-3 text-right font-medium text-navy-800 dark:text-content text-xs whitespace-nowrap">
                     <Money amount={line.unit_price} size="sm" />
                   </div>
 
                   {/* Qty Stepper */}
                   <div className="col-span-2 flex justify-center">
-                    <div className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white p-0.5 shadow-2xs">
+                    <div className="flex items-center gap-1 rounded-lg border border-gray-300 dark:border-border bg-white dark:bg-surface-alt p-0.5 shadow-2xs">
                       <button
                         type="button"
                         onClick={() => updateQty(line.key, -1)}
-                        className="flex size-5 items-center justify-center rounded text-xs font-bold text-gray-700 hover:bg-gray-100 active:scale-95"
+                        className="flex size-5 items-center justify-center rounded text-xs font-bold text-gray-700 dark:text-content hover:bg-gray-100 dark:hover:bg-surface active:scale-95"
                       >
                         −
                       </button>
-                      <span className="w-4 text-center font-mono text-xs font-bold text-navy-950">{line.qty}</span>
+                      <span className="w-4 text-center font-mono text-xs font-bold text-navy-950 dark:text-content">{line.qty}</span>
                       <button
                         type="button"
                         onClick={() => updateQty(line.key, 1)}
-                        className="flex size-5 items-center justify-center rounded text-xs font-bold text-gray-700 hover:bg-gray-100 active:scale-95"
+                        className="flex size-5 items-center justify-center rounded text-xs font-bold text-gray-700 dark:text-content hover:bg-gray-100 dark:hover:bg-surface active:scale-95"
                       >
                         +
                       </button>
@@ -1136,7 +1137,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                   </div>
 
                   {/* Subtotal Item */}
-                  <div className="col-span-3 text-right font-mono font-bold text-navy-950 text-xs whitespace-nowrap">
+                  <div className="col-span-3 text-right font-mono font-bold text-navy-950 dark:text-content text-xs whitespace-nowrap">
                     <Money amount={line.qty * line.unit_price} size="sm" />
                   </div>
 
@@ -1166,15 +1167,15 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
         </section>
 
         {/* GRID 3: RINGKASAN & PAYMENT (Kolom Kanan ~320px) */}
-        <aside className="flex w-[300px] lg:w-[320px] shrink-0 flex-col border-l border-gray-200 bg-white overflow-hidden">
+        <aside className="flex w-[300px] lg:w-[320px] shrink-0 flex-col border-l border-gray-200 dark:border-border bg-white dark:bg-surface overflow-hidden">
           {/* Top & Middle Scrollable Content Area */}
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
             {/* Pelanggan / Member */}
             <section>
               <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">Pelanggan / Member</h3>
+                <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-content-muted">Pelanggan / Member</h3>
                 {member && (
-                  <button type="button" onClick={() => setMember(null)} className="text-gray-500 hover:text-gray-700">
+                  <button type="button" onClick={() => setMember(null)} className="text-gray-500 dark:text-content-muted hover:text-gray-700 dark:hover:text-content">
                     <X className="size-3.5" />
                   </button>
                 )}
@@ -1185,7 +1186,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                   <button
                     type="button"
                     onClick={() => memberInputRef.current?.focus()}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-navy-300 py-2 text-xs font-medium text-navy-600 transition-colors hover:border-navy-500 hover:bg-navy-50"
+                    className="flex w-full items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-amber-300/80 dark:border-border py-2 text-xs font-medium text-amber-600 dark:text-amber-400 transition-colors hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-surface-alt"
                   >
                     <ScanLine className="size-4" />
                     Scan kartu member
@@ -1198,40 +1199,37 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                     className={`h-8 rounded-lg text-xs ${posFieldClass}`}
                   />
                   {memberResults.length > 0 ? (
-                    <div className="flex flex-col divide-y divide-gray-100 rounded-xl border border-navy-200 bg-white shadow-lg overflow-hidden max-h-48 overflow-y-auto">
+                    <div className="flex flex-col divide-y divide-gray-100 dark:divide-border rounded-xl border border-gray-200 dark:border-border bg-white dark:bg-surface-alt shadow-lg overflow-hidden max-h-48 overflow-y-auto">
                       {memberResults.map((m) => (
                         <button
                           key={m.id}
                           type="button"
                           onClick={() => pickMember(m)}
-                          className="p-2 text-left text-xs hover:bg-navy-50 transition-colors flex items-center justify-between"
+                          className="p-2 text-left text-xs hover:bg-amber-50 dark:hover:bg-surface transition-colors flex items-center justify-between"
                         >
                           <div>
-                            <p className="font-bold text-gray-900">{m.name}</p>
-                            <p className="text-[11px] text-gray-500 font-mono">{m.member_number} {m.class_name ? `· ${m.class_name}` : ''}</p>
+                            <p className="font-bold text-gray-900 dark:text-content">{m.name}</p>
+                            <p className="text-[10px] text-gray-500 dark:text-content-subtle">{m.member_number}</p>
                           </div>
-                          <div className="text-right">
-                            <span className="text-[10px] text-emerald-600 font-bold block">Saldo:</span>
-                            <Money amount={m.balance_cache} size="sm" className="font-bold text-emerald-700" />
-                          </div>
+                          <span className="font-mono text-amber-500 font-bold"><Money amount={m.balance_cache} size="sm" /></span>
                         </button>
                       ))}
                     </div>
                   ) : memberQuery.trim() !== '' ? (
-                    <div className="rounded-xl border border-dashed border-gray-300 p-2.5 text-center text-xs text-gray-400 bg-gray-50/50">
+                    <div className="rounded-xl border border-dashed border-gray-300 dark:border-border p-2.5 text-center text-xs text-gray-400 dark:text-content-muted bg-gray-50/50 dark:bg-surface-alt/50">
                       Anggota tidak ditemukan
                     </div>
                   ) : null}
                 </div>
               ) : (
-                <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 p-2">
-                  <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-200">
-                    <UserCircle className="size-full p-1 text-gray-500" />
+                <div className="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-border bg-gray-50 dark:bg-surface-alt p-2">
+                  <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-200 dark:bg-surface">
+                    <UserCircle className="size-full p-1 text-gray-500 dark:text-content-muted" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-semibold text-gray-900">{member.name}</p>
-                    <p className="text-[11px] text-gray-500">Saldo: <span className="font-mono font-medium text-navy-700"><Money amount={member.balance_cache} size="sm" /></span></p>
-                    <p className="text-[11px] text-gray-500">ID Member: {member.member_number}</p>
+                    <p className="truncate text-xs font-semibold text-gray-900 dark:text-content">{member.name}</p>
+                    <p className="text-[11px] text-gray-500 dark:text-content-muted">Saldo: <span className="font-mono font-medium text-amber-500"><Money amount={member.balance_cache} size="sm" /></span></p>
+                    <p className="text-[11px] text-gray-500 dark:text-content-muted">ID Member: {member.member_number}</p>
                     {member.level && <Badge className="mt-1 text-[10px]" variant="outline">{member.level.name}</Badge>}
                   </div>
                 </div>
@@ -1240,24 +1238,24 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
 
             {/* Ringkasan */}
             <section>
-              <h3 className="mb-2 text-xs font-bold uppercase tracking-widest text-gray-500">Ringkasan</h3>
+              <h3 className="mb-2 text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-content-muted">Ringkasan</h3>
               <div className="space-y-1.5 text-xs">
-                <div className="flex justify-between text-gray-600">
+                <div className="flex justify-between text-gray-600 dark:text-content-muted">
                   <span>Subtotal</span>
                   <Money amount={subtotal} size="sm" />
                 </div>
-                <div className="flex justify-between text-gray-500">
+                <div className="flex justify-between text-gray-500 dark:text-content-subtle">
                   <span>Diskon</span>
                   <span>−</span>
                 </div>
-                <div className="flex justify-between text-gray-600">
+                <div className="flex justify-between text-gray-600 dark:text-content-muted">
                   <span>Pajak</span>
                   <span>−</span>
                 </div>
-                <div className="mt-1.5 border-t border-gray-200 pt-1.5">
+                <div className="mt-1.5 border-t border-gray-200 dark:border-border pt-1.5">
                   <div className="flex items-baseline justify-between">
-                    <span className="text-sm font-bold text-gray-900">TOTAL</span>
-                    <span className="font-mono text-lg font-bold text-navy-700"><Money amount={subtotal} size="lg" /></span>
+                    <span className="text-sm font-bold text-gray-900 dark:text-content">TOTAL</span>
+                    <span className="font-mono text-lg font-bold text-amber-500"><Money amount={subtotal} size="lg" /></span>
                   </div>
                 </div>
               </div>
@@ -1265,7 +1263,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
 
             {/* METODE PEMBAYARAN (Grid Selector Direct - Compact Aesthetic State) */}
             <section>
-              <h3 className="mb-1.5 text-xs font-bold uppercase tracking-widest text-gray-500">Metode Pembayaran</h3>
+              <h3 className="mb-1.5 text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-content-muted">Metode Pembayaran</h3>
               <div className="grid grid-cols-2 gap-1.5">
                 {paymentMethods.map((pm) => {
                   const isSelected = activeMethod?.id === pm.id
@@ -1277,15 +1275,15 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                       className={cn(
                         'relative flex items-center justify-between rounded-lg border p-1.5 px-2.5 text-left transition-all duration-150 active:scale-95 shadow-2xs',
                         isSelected
-                          ? 'border-navy-900 bg-navy-900 text-white shadow-md shadow-navy-900/30 ring-1 ring-navy-600 scale-[1.01]'
-                          : 'border-gray-200 bg-white text-gray-800 hover:border-navy-400 hover:bg-navy-50/40',
+                          ? 'border-amber-500 bg-amber-500 text-white shadow-md ring-1 ring-amber-400 scale-[1.01]'
+                          : 'border-gray-200 dark:border-border bg-white dark:bg-surface-alt text-gray-800 dark:text-content hover:border-amber-400 dark:hover:border-amber-400',
                       )}
                     >
-                      <span className={cn('text-[11px] font-bold leading-tight truncate', isSelected ? 'text-white' : 'text-gray-900')}>
+                      <span className={cn('text-[11px] font-bold leading-tight truncate', isSelected ? 'text-white' : 'text-gray-900 dark:text-content')}>
                         {pm.name}
                       </span>
                       {isSelected && (
-                        <div className="flex size-3.5 items-center justify-center rounded-full bg-amber-400 text-navy-950 shadow-2xs shrink-0 ml-1">
+                        <div className="flex size-3.5 items-center justify-center rounded-full bg-white text-amber-600 shadow-2xs shrink-0 ml-1">
                           <Check className="size-2.5 stroke-[3]" />
                         </div>
                       )}
@@ -1297,29 +1295,41 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
 
             {/* FITUR KHUSUS CASH / TUNAI: Hitung Kembalian Otomatis */}
             {isCash && (
-              <section className="rounded-xl border border-gray-200 bg-gray-50/70 p-2.5 space-y-2">
+              <section className="rounded-xl border border-gray-200 dark:border-border bg-gray-50/70 dark:bg-surface-alt/70 p-2.5 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-gray-600">Nominal Uang Bayar</span>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-gray-600 dark:text-content-muted">Nominal Uang Bayar</span>
                   <button
                     type="button"
                     onClick={() => setCashInput(subtotal)}
-                    className="text-[11px] font-bold text-navy-700 hover:underline"
+                    className="text-[11px] font-bold text-amber-500 hover:underline"
                   >
                     Uang Pas
                   </button>
                 </div>
 
                 {/* Quick Nominal Chips */}
-                <div className="flex flex-wrap gap-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setCashInput(subtotal)}
+                    className={`inline-flex items-center gap-1.5 rounded-lg border-2 px-3 py-1.5 text-xs font-bold shadow-sm transition-all active:scale-95 cursor-pointer ${
+                      cashInput === subtotal
+                        ? 'border-emerald-600 bg-emerald-600 text-white'
+                        : 'border-emerald-500 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-950/70'
+                    }`}
+                  >
+                    <CheckCircle2 className="size-4 shrink-0" />
+                    <span>Uang Pas ({formatMoney(subtotal)})</span>
+                  </button>
                   {[10000, 20000, 50000, 100000].map((nominal) => (
                     <button
                       key={nominal}
                       type="button"
                       onClick={() => setCashInput(nominal)}
-                      className={`rounded-md border px-2 py-1 text-[11px] font-mono font-semibold transition-colors ${
+                      className={`rounded-lg border px-2.5 py-1.5 text-xs font-mono font-semibold transition-all active:scale-95 cursor-pointer ${
                         cashInput === nominal
-                          ? 'border-navy-600 bg-navy-600 text-white'
-                          : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-100'
+                          ? 'border-amber-500 bg-amber-500 text-white shadow-sm'
+                          : 'border-gray-300 dark:border-border bg-white dark:bg-surface text-gray-800 dark:text-content hover:bg-gray-100 dark:hover:bg-surface-alt'
                       }`}
                     >
                       {(nominal / 1000).toLocaleString('id-ID')}k
@@ -1333,7 +1343,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                     value={cashInput}
                     onChange={setCashInput}
                     placeholder="Uang diterima (Rp)…"
-                    className="h-9 w-full rounded-lg border border-gray-300 bg-white px-3 text-xs font-mono font-bold text-gray-900 placeholder:text-gray-400 shadow-sm focus:border-navy-500 focus:outline-none focus:ring-2 focus:ring-navy-500"
+                    className={`h-9 w-full rounded-lg border border-gray-300 dark:border-border bg-white dark:bg-surface px-3 text-xs font-mono font-bold text-gray-900 dark:text-content placeholder:text-gray-400 dark:placeholder:text-content-muted shadow-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400`}
                   />
                 </div>
 
@@ -1341,16 +1351,16 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                 {cashInput > 0 && (
                   <div>
                     {cashInput >= subtotal ? (
-                      <div className="flex items-center justify-between rounded-lg border border-green-300 bg-green-50 p-2 text-xs text-green-900 font-semibold">
+                      <div className="flex items-center justify-between rounded-lg border border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-950/40 p-2 text-xs text-green-900 dark:text-green-200 font-semibold">
                         <span>Kembalian:</span>
-                        <span className="font-mono text-sm font-extrabold text-green-700">
+                        <span className="font-mono text-sm font-extrabold text-green-700 dark:text-green-300">
                           Rp {(changeAmount).toLocaleString('id-ID')}
                         </span>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-between rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 font-semibold">
+                      <div className="flex items-center justify-between rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 p-2 text-xs text-amber-900 dark:text-amber-200 font-semibold">
                         <span>Uang Kurang:</span>
-                        <span className="font-mono text-xs font-bold text-amber-700">
+                        <span className="font-mono text-xs font-bold text-amber-700 dark:text-amber-300">
                           Rp {(underpaidAmount).toLocaleString('id-ID')}
                         </span>
                       </div>
@@ -1361,11 +1371,11 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
             )}
 
             {holdError && <p className="text-xs text-danger">{holdError}</p>}
-            {paymentError && <p className="text-xs text-red-600 font-semibold bg-red-50 p-2 rounded border border-red-200">{paymentError}</p>}
+            {paymentError && <p className="text-xs text-red-600 font-semibold bg-red-50 dark:bg-red-950/40 p-2 rounded border border-red-200 dark:border-red-800">{paymentError}</p>}
           </div>
 
           {/* Fixed Bottom Action Footer */}
-          <div className="shrink-0 border-t border-gray-200 bg-white p-3 space-y-2 shadow-md">
+          <div className="shrink-0 border-t border-gray-200 dark:border-border bg-white dark:bg-surface p-3 space-y-2 shadow-md">
             {/* Tombol Bayar Langsung */}
             <button
               type="button"
@@ -1384,28 +1394,28 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
               <button
                 type="button"
                 onClick={() => openCashDialog('in')}
-                className="group flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white p-2 text-left transition-colors hover:border-green-300 hover:bg-green-50"
+                className="group flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-border bg-white dark:bg-surface p-2 text-left transition-colors hover:border-green-300 dark:hover:border-green-500/50 hover:bg-green-50/50 dark:hover:bg-surface-alt"
               >
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-green-100 transition-colors group-hover:bg-green-200">
-                  <ArrowDownCircle className="size-4 text-green-600" />
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-green-100 dark:bg-emerald-950/60 transition-colors group-hover:bg-green-200 dark:group-hover:bg-emerald-900/60">
+                  <ArrowDownCircle className="size-4 text-green-600 dark:text-emerald-400" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-green-700">Cash Masuk</p>
-                  <p className="text-[10px] text-gray-500">Kas laci</p>
+                  <p className="text-xs font-bold text-green-700 dark:text-emerald-400">Cash Masuk</p>
+                  <p className="text-[10px] text-gray-500 dark:text-content-muted">Kas laci</p>
                 </div>
               </button>
 
               <button
                 type="button"
                 onClick={() => openCashDialog('out')}
-                className="group flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white p-2 text-left transition-colors hover:border-red-300 hover:bg-red-50"
+                className="group flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-border bg-white dark:bg-surface p-2 text-left transition-colors hover:border-red-300 dark:hover:border-red-500/50 hover:bg-red-50/50 dark:hover:bg-surface-alt"
               >
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-red-100 transition-colors group-hover:bg-red-200">
-                  <ArrowUpCircle className="size-4 text-red-600" />
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-red-100 dark:bg-red-950/60 transition-colors group-hover:bg-red-200 dark:group-hover:bg-red-900/60">
+                  <ArrowUpCircle className="size-4 text-red-600 dark:text-red-400" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-red-700">Cash Keluar</p>
-                  <p className="text-[10px] text-gray-500">Kas kecil</p>
+                  <p className="text-xs font-bold text-red-700 dark:text-red-400">Cash Keluar</p>
+                  <p className="text-[10px] text-gray-500 dark:text-content-muted">Kas kecil</p>
                 </div>
               </button>
             </div>
@@ -1413,7 +1423,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
             <button
               type="button"
               onClick={() => setHoldsOpen(true)}
-              className="w-full rounded-lg border border-gray-300 bg-white py-2 text-xs font-medium text-gray-600 hover:bg-gray-50"
+              className="w-full rounded-lg border border-gray-300 dark:border-border bg-white dark:bg-surface py-2 text-xs font-bold text-gray-700 dark:text-content hover:bg-gray-50 dark:hover:bg-surface-alt transition-colors"
             >
               Transaksi Ditahan ({holds.length})
             </button>
@@ -1422,7 +1432,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
     </div>
 
       <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
-        <DialogContent className="bg-white text-gray-900">
+        <DialogContent className="bg-white dark:bg-surface text-gray-900 dark:text-content border border-gray-200 dark:border-border sm:max-w-xl w-[92vw] max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-gray-900">Pembayaran</DialogTitle>
           </DialogHeader>
@@ -1451,7 +1461,21 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                       <div className="flex flex-col gap-1.5">
                         <Label className="text-xs text-gray-600">Uang Diterima</Label>
                         <MoneyInput value={line.received_amount ?? 0} onChange={(v) => updatePaymentLine(line.key, { received_amount: v })} className={posFieldClass} />
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => updatePaymentLine(line.key, { received_amount: line.amount })}
+                            className={cn(
+                              "inline-flex items-center gap-1.5 font-bold transition-all active:scale-95 cursor-pointer shadow-sm border-2",
+                              line.received_amount === line.amount
+                                ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600"
+                                : "border-emerald-500 bg-emerald-50 text-emerald-900 hover:bg-emerald-100 hover:border-emerald-600"
+                            )}
+                          >
+                            <CheckCircle2 className="size-3.5 shrink-0" />
+                            <span>Uang Pas</span>
+                          </Button>
                           {[20000, 50000, 100000].map((amt) => (
                             <Button key={amt} type="button" variant="outline" size="sm" onClick={() => updatePaymentLine(line.key, { received_amount: line.amount + amt })}>
                               +{formatMoney(amt)}
@@ -1571,7 +1595,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
       </Dialog>
 
       <Dialog open={holdsOpen} onOpenChange={setHoldsOpen}>
-        <DialogContent className="bg-white text-gray-900">
+        <DialogContent className="bg-white dark:bg-surface text-gray-900 dark:text-content border border-gray-200 dark:border-border">
           <DialogHeader>
             <DialogTitle className="text-gray-900">Transaksi Ditahan (Hold)</DialogTitle>
           </DialogHeader>
@@ -1591,7 +1615,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
       </Dialog>
 
       <Dialog open={cashDialog !== null} onOpenChange={(open) => !open && setCashDialog(null)}>
-        <DialogContent className="bg-white text-gray-900">
+        <DialogContent className="bg-white dark:bg-surface text-gray-900 dark:text-content border border-gray-200 dark:border-border">
           <DialogHeader>
             <DialogTitle className="text-gray-900">{cashDialog === 'in' ? 'Cash Masuk' : 'Cash Keluar'}</DialogTitle>
           </DialogHeader>
@@ -1614,7 +1638,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
 
       {/* Dialog Modal Input Metode Pembayaran (Phase 2) */}
       <Dialog open={methodDialog !== null} onOpenChange={(open) => !open && setMethodDialog(null)}>
-        <DialogContent className="bg-white text-gray-900 max-w-md">
+        <DialogContent className="bg-white dark:bg-surface text-gray-900 dark:text-content border border-gray-200 dark:border-border max-w-md">
           <DialogHeader>
             <DialogTitle className="text-gray-900 font-extrabold text-base">
               {methodDialog?.type === 'deposit' && 'Otentikasi PIN Deposit Member'}
@@ -1763,7 +1787,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
 
       {/* Modal Popup Berhasil Transaksi (Center Screen Overlay) */}
       <Dialog open={completedSale !== null} onOpenChange={(open) => !open && setCompletedSale(null)}>
-        <DialogContent className="bg-white text-gray-900 max-w-sm text-center p-6 rounded-2xl shadow-xl">
+        <DialogContent className="bg-white dark:bg-surface text-gray-900 dark:text-content border border-gray-200 dark:border-border max-w-sm text-center p-6 rounded-2xl shadow-xl">
           <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-md">
             <CheckCircle2 className="size-8 stroke-[2.5]" />
           </div>
@@ -1813,7 +1837,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
 
       {/* ── Modal Dialog Popup Estetik: Saldo Deposit Tidak Mencukupi ── */}
       <Dialog open={insufficientDepositModal !== null} onOpenChange={(open) => !open && setInsufficientDepositModal(null)}>
-        <DialogContent className="bg-white text-gray-900 max-w-md rounded-2xl p-6 shadow-2xl border border-rose-200">
+        <DialogContent className="bg-white dark:bg-surface text-gray-900 dark:text-content border border-gray-200 dark:border-border max-w-md rounded-2xl p-6 shadow-2xl border border-rose-200">
           <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
             <div className="flex size-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 border border-rose-200 shadow-sm shrink-0">
               <AlertCircle className="size-6 stroke-[2.5]" />
@@ -1869,22 +1893,22 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
 
       {/* ── Pakasir In-Page Payment Gateway Modal ── */}
       <Dialog open={pakasirModalUrl !== null} onOpenChange={(open) => !open && setPakasirModalUrl(null)}>
-        <DialogContent className="bg-white text-gray-900 max-w-md rounded-2xl p-6 shadow-2xl border border-mustard-200">
+        <DialogContent className="bg-white dark:bg-surface text-gray-900 dark:text-content border border-gray-200 dark:border-border sm:max-w-2xl w-[92vw] max-h-[92vh] rounded-2xl p-5 sm:p-6 shadow-2xl border border-mustard-200 overflow-y-auto">
           <div className="flex items-center justify-between border-b pb-3">
             <div className="flex items-center gap-2.5">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-mustard-100 text-mustard-700 font-bold">
-                <QrCode className="size-5" />
+              <div className="flex size-10 items-center justify-center rounded-xl bg-mustard-100 text-mustard-700 font-bold shrink-0">
+                <QrCode className="size-6" />
               </div>
               <div>
-                <h3 className="font-extrabold text-base text-navy-950">Pembayaran Pakasir PG</h3>
-                <p className="text-xs text-gray-500">Scan QRIS / Selesaikan Pembayaran</p>
+                <h3 className="font-extrabold text-lg text-navy-950">Pembayaran Pakasir PG</h3>
+                <p className="text-xs text-gray-500">Scan QRIS / Selesaikan Pembayaran Online</p>
               </div>
             </div>
-            <Badge className="bg-emerald-600 text-white font-bold text-[10px]">Realtime Callback</Badge>
+            <Badge className="bg-emerald-600 text-white font-bold text-xs px-2.5 py-1">Realtime Callback</Badge>
           </div>
 
-          <div className="mt-4 flex flex-col items-center gap-4">
-            <div className="w-full h-[420px] rounded-xl overflow-hidden border border-gray-200 bg-gray-50 shadow-inner">
+          <div className="mt-3 flex flex-col items-center gap-3">
+            <div className="w-full h-[540px] sm:h-[580px] rounded-xl overflow-hidden border border-gray-200 bg-gray-50 shadow-inner">
               <iframe
                 src={pakasirModalUrl || ''}
                 className="w-full h-full border-0"
