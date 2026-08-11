@@ -16,6 +16,9 @@ use Inertia\Inertia;
 // terdaftar). Setiap controller di sini WAJIB lewat
 // StorefrontService/Product::scopePublic(), lihat catatan keamanan di
 // app/Data/ProductPublicData.php.
+Route::redirect('/login/admin', '/admin/login');
+Route::redirect('/login', '/admin/login');
+
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/produk', [ProductController::class, 'index'])->name('produk.index');
 Route::get('/produk/{product:slug}', [ProductController::class, 'show'])->name('produk.show');
