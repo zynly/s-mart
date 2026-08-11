@@ -313,13 +313,14 @@ function NavLink({ item, collapsed }: { item: NavigationItem; collapsed: boolean
   const link = (
     <Link
       href={item.href}
-      prefetch
+      prefetch="hover"
+      cacheFor="30s"
       className={cn(
         'group relative flex items-center gap-3 py-2.5 text-xs transition-all duration-200 ease-in-out select-none',
         collapsed ? 'justify-center px-2 rounded-xl' : 'px-3 rounded-r-xl rounded-l-sm',
         isActive
-          ? 'bg-gradient-to-r from-navy-900 via-navy-850 to-navy-900 text-white font-bold shadow-md shadow-navy-900/25 border-l-4 border-amber-400 scale-[1.01]'
-          : 'border-l-4 border-transparent text-navy-800 hover:bg-navy-100/70 hover:text-navy-950 font-bold',
+          ? 'bg-navy-900 dark:bg-khaki-900/90 text-white font-bold shadow-md border-l-4 border-mustard-400 scale-[1.01]'
+          : 'border-l-4 border-transparent text-navy-800 dark:text-khaki-200 hover:bg-navy-100/70 dark:hover:bg-khaki-900/50 hover:text-navy-950 dark:hover:text-white font-bold',
       )}
     >
       <Icon
@@ -327,11 +328,11 @@ function NavLink({ item, collapsed }: { item: NavigationItem; collapsed: boolean
           'size-4 shrink-0 transition-all duration-200 group-hover:scale-110',
           isActive
             ? 'text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.8)]'
-            : 'text-navy-600 group-hover:text-navy-900',
+            : 'text-navy-600 dark:text-slate-400 group-hover:text-navy-900 dark:group-hover:text-white',
         )}
       />
       {!collapsed && (
-        <span className={cn('truncate tracking-wide font-bold', isActive ? 'text-white' : 'text-navy-900')}>
+        <span className={cn('truncate tracking-wide font-bold', isActive ? 'text-white' : 'text-navy-900 dark:text-slate-200 group-hover:text-navy-950 dark:group-hover:text-white')}>
           {item.label}
         </span>
       )}
@@ -377,10 +378,10 @@ function NavGroup({ group, collapsed }: { group: NavigationGroup; collapsed: boo
         <button
           type="button"
           onClick={() => toggleGroup(group.group)}
-          className="flex w-full items-center justify-between px-3 py-1.5 text-[10px] font-black tracking-widest text-navy-800 uppercase hover:text-navy-950 transition-colors"
+          className="flex w-full items-center justify-between px-3 py-1.5 text-[10px] font-black tracking-widest text-navy-800 dark:text-khaki-300 uppercase hover:text-navy-950 dark:hover:text-white transition-colors"
         >
           <span>{group.group}</span>
-          {isOpen ? <ChevronDown className="size-3.5 text-navy-600" /> : <ChevronRight className="size-3.5 text-navy-600" />}
+          {isOpen ? <ChevronDown className="size-3.5 text-navy-600 dark:text-khaki-400" /> : <ChevronRight className="size-3.5 text-navy-600 dark:text-khaki-400" />}
         </button>
       )}
       {isOpen && (
@@ -400,41 +401,40 @@ export function SidebarContent({ collapsed }: { collapsed: boolean }) {
   const isOwner = auth.user?.roles?.includes('owner') ?? false
 
   return (
-    <div className="flex h-full flex-col bg-surface text-content border-r border-border/90 shadow-lg">
-      <div
-        className={cn(
-          'flex h-16 shrink-0 items-center border-b border-border/90 font-mono text-sm font-bold tracking-wider text-navy-950 bg-surface neu-flat px-4',
-          collapsed ? 'justify-center px-2' : 'justify-between',
-        )}
-      >
-        <div className="flex items-center gap-3">
-          <img
-            src="/logo/logo2.png"
-            alt="Skillage Mart Logo"
-            className="size-8 object-contain rounded-xl p-0.5 bg-white border border-amber-300 shadow-md shrink-0"
-          />
-          {!collapsed && (
-            <div className="flex flex-col">
-              <span className="text-base font-extrabold tracking-tight text-navy-950 font-sans">
-                Skillage Mart
-              </span>
-              <span className="text-[10px] font-semibold text-navy-700 tracking-wider uppercase font-mono">Retail POS System</span>
-            </div>
+    <TooltipProvider>
+      <div className="flex h-full flex-col bg-surface text-content border-r border-border/90 shadow-lg">
+        <div
+          className={cn(
+            'flex h-16 shrink-0 items-center border-b border-border/90 font-mono text-sm font-bold tracking-wider text-navy-950 bg-surface neu-flat px-4',
+            collapsed ? 'justify-center px-2' : 'justify-between',
           )}
+        >
+          <div className="flex items-center gap-3">
+            <img
+              src="/logo/logo2.png"
+              alt="Skillage Mart Logo"
+              className="size-8 object-contain rounded-xl p-0.5 bg-white border border-amber-300 shadow-md shrink-0"
+            />
+            {!collapsed && (
+              <div className="flex flex-col">
+                <span className="text-base font-extrabold tracking-tight text-navy-950 dark:text-white font-sans">
+                  Skillage Mart
+                </span>
+                <span className="text-[10px] font-semibold text-navy-700 dark:text-khaki-300 tracking-wider uppercase font-mono">Retail POS System</span>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-      <TooltipProvider>
         <nav className="flex-1 space-y-3.5 overflow-y-auto px-2.5 py-3.5">
           {navigation.map((group) => (
             <NavGroup key={group.group} group={group} collapsed={collapsed} />
           ))}
         </nav>
-      </TooltipProvider>
       <div className="shrink-0 space-y-2 border-t border-border/90 bg-surface neu-flat px-3 py-3">
         {!collapsed && activeOutlet && (
-          <div className="flex items-center gap-2.5 rounded-xl bg-emerald-50 border border-emerald-200/80 px-3 py-2 text-xs text-emerald-950 font-medium shadow-2xs">
+          <div className="flex items-center gap-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 px-3 py-2 text-xs text-emerald-950 dark:text-emerald-200 font-medium shadow-2xs">
             <span className="size-2.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)] shrink-0" />
-            <p className="truncate font-semibold text-navy-900">Outlet: <span className="text-emerald-800 font-bold">{activeOutlet.name}</span></p>
+            <p className="truncate font-semibold text-navy-900 dark:text-emerald-200">Outlet: <span className="text-emerald-800 dark:text-emerald-300 font-bold">{activeOutlet.name}</span></p>
           </div>
         )}
 
@@ -489,12 +489,13 @@ export function SidebarContent({ collapsed }: { collapsed: boolean }) {
         )}
 
         {!collapsed && DEV_LINKS.map((link) => (
-          <Link key={link.href} href={link.href} prefetch className="block rounded-lg px-3 py-1.5 text-xs text-navy-700 hover:bg-navy-100/80 hover:text-navy-950 font-medium transition-colors">
+          <Link key={link.href} href={link.href} prefetch className="block rounded-lg px-3 py-1.5 text-xs text-navy-700 dark:text-slate-300 hover:bg-navy-100/80 dark:hover:bg-navy-800 hover:text-navy-950 dark:hover:text-white font-medium transition-colors">
             {link.label}
           </Link>
         ))}
       </div>
     </div>
+    </TooltipProvider>
   )
 }
 
@@ -554,7 +555,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           <MasqueradeBanner label={masquerade.label} />
         )}
 
-        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-navy-950/80 backdrop-blur-md px-5 shadow-xs transition-all">
+        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-surface/90 backdrop-blur-md px-5 shadow-xs transition-all">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
@@ -573,20 +574,20 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               onClick={toggle}
               aria-label={collapsed ? 'Bentangkan sidebar' : 'Lipat sidebar'}
             >
-              {collapsed ? <PanelLeftOpen className="size-5 text-navy-700" /> : <PanelLeftClose className="size-5 text-navy-700" />}
+              {collapsed ? <PanelLeftOpen className="size-5 text-slate-700 dark:text-khaki-200 transition-colors group-hover:text-amber-500" /> : <PanelLeftClose className="size-5 text-slate-700 dark:text-khaki-200 transition-colors group-hover:text-amber-500" />}
             </Button>
 
             {/* Redesigned Search Command Trigger Pill */}
             <button
               type="button"
-              className="group hidden sm:flex items-center justify-between gap-4 rounded-full border border-slate-200/90 dark:border-slate-700/90 bg-slate-100/80 dark:bg-slate-800/80 px-4 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:border-amber-400 hover:bg-white dark:hover:bg-slate-800 hover:shadow-xs transition-all duration-200 min-w-[240px] md:min-w-[280px]"
+              className="group hidden sm:flex items-center justify-between gap-4 rounded-full border border-slate-300 dark:border-khaki-800/80 bg-slate-100 dark:bg-surface-alt px-4 py-1.5 text-xs text-slate-700 dark:text-khaki-100 hover:border-amber-400 dark:hover:border-amber-400 hover:bg-white dark:hover:bg-surface shadow-xs transition-all duration-200 min-w-[260px] md:min-w-[300px]"
               onClick={() => setSearchOpen(true)}
             >
               <div className="flex items-center gap-2.5">
                 <Search className="size-4 text-amber-500 group-hover:scale-110 transition-transform duration-200" />
-                <span className="font-semibold text-slate-600 dark:text-slate-300">Cari sesuatu…</span>
+                <span className="font-bold text-slate-700 dark:text-khaki-100">Cari sesuatu…</span>
               </div>
-              <kbd className="rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-navy-950 font-mono font-extrabold text-[10px] px-2 py-0.5 shadow-2xs">
+              <kbd className="rounded-full bg-amber-400 dark:bg-amber-400 text-khaki-950 font-mono font-black text-[10px] px-2.5 py-0.5 shadow-2xs">
                 Ctrl K
               </kbd>
             </button>

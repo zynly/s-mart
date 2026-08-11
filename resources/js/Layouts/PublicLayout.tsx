@@ -19,10 +19,10 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
   return (
     <div className="flex min-h-screen flex-col bg-bg text-content selection:bg-mustard-500 selection:text-navy-900">
       {/* Top Banner Announcement */}
-      <div className="bg-gradient-to-r from-navy-900 via-navy-800 to-navy-900 px-4 py-2 text-center text-xs font-medium text-navy-100 shadow-inner flex items-center justify-center gap-2">
+      <div className="bg-navy-950 px-4 py-2 text-center text-xs font-medium text-navy-100 shadow-inner flex items-center justify-center gap-2">
         <Sparkles className="size-3.5 text-mustard-400 animate-pulse" />
         <span>Katalog Minimarket SMK Skill Village — Transparan, Realtime & Tanpa Login</span>
-        <span className="hidden sm:inline-block rounded-full bg-mustard-500/20 px-2 py-0.5 text-[10px] text-mustard-300 font-semibold border border-mustard-400/30">
+        <span className="hidden sm:inline-block rounded-full bg-navy-900 px-2 py-0.5 text-[10px] text-mustard-300 font-semibold border border-navy-700">
           S-Mart Digital
         </span>
       </div>
@@ -31,7 +31,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
       <header className="sticky top-0 z-50 border-b border-border/80 bg-surface/90 backdrop-blur-md transition-all shadow-xs">
         <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-navy-700 to-navy-900 text-mustard-400 shadow-md group-hover:scale-105 transition-transform">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-navy-900 text-mustard-400 shadow-md group-hover:scale-105 transition-transform border border-navy-800">
               <ShoppingBag className="size-5" />
             </div>
             <div className="flex flex-col">
@@ -64,7 +64,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
           <div className="flex items-center gap-2">
             <Link
               href="/wali/login"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-navy-700 to-navy-900 px-4 py-2 text-xs font-bold text-navy-50 shadow-md transition-all hover:from-navy-800 hover:to-navy-950 hover:shadow-lg active:scale-95"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-navy-900 px-4 py-2 text-xs font-bold text-navy-50 shadow-md transition-all hover:bg-navy-800 hover:shadow-lg active:scale-95 border border-navy-800"
             >
               <UserCheck className="size-3.5 text-mustard-400" />
               <span>Portal Wali</span>

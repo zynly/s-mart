@@ -118,24 +118,24 @@ export default function PosLayout({
 
           {/* Sisi Kanan: Status Kasir & Sesi */}
           <div className="flex items-center gap-2 shrink-0">
-            <div className="hidden xl:flex items-center gap-1.5 rounded-full border border-navy-200/80 bg-navy-50/90 px-3 py-1 text-xs text-navy-900 font-semibold shadow-2xs" title={sessionLabel}>
-              <User className="size-3.5 text-navy-600" />
-              <span className="truncate max-w-[110px]">Kasir: <strong className="text-navy-950">{cashierName}</strong></span>
+            <div className="hidden xl:flex items-center gap-1.5 rounded-full border border-navy-200/80 dark:border-border bg-navy-50/90 dark:bg-surface-alt px-3 py-1 text-xs text-navy-900 dark:text-content font-semibold shadow-2xs" title={sessionLabel}>
+              <User className="size-3.5 text-navy-600 dark:text-khaki-300" />
+              <span className="truncate max-w-[110px]">Kasir: <strong className="text-navy-950 dark:text-white">{cashierName}</strong></span>
             </div>
 
             {hasActiveSession && (
-              <div className="hidden md:inline-flex rounded-full border border-amber-300/80 bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-900 shadow-2xs" title={sessionLabel}>
+              <div className="hidden md:inline-flex rounded-full border border-amber-300/80 dark:border-amber-500/50 bg-amber-50 dark:bg-amber-500/20 px-2.5 py-0.5 text-[11px] font-bold text-amber-900 dark:text-amber-300 shadow-2xs" title={sessionLabel}>
                 Shift Aktif
               </div>
             )}
 
-            <div className="flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800 shadow-2xs">
+            <div className="flex items-center gap-1.5 rounded-full border border-emerald-200 dark:border-emerald-500/50 bg-emerald-50 dark:bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800 dark:text-emerald-300 shadow-2xs">
               <span className={`size-2 rounded-full ${online ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]' : 'bg-red-500'}`} />
               <span className="hidden sm:inline">{online ? 'Online' : 'Offline'}</span>
             </div>
 
-            <div className="hidden md:flex items-center gap-1 rounded-full border border-navy-200/80 bg-navy-50 px-2.5 py-0.5 text-[11px] font-mono font-bold text-navy-800 shadow-2xs">
-              <Clock className="size-3 text-navy-600" />
+            <div className="hidden md:flex items-center gap-1 rounded-full border border-navy-200/80 dark:border-border bg-navy-50 dark:bg-surface-alt px-2.5 py-0.5 text-[11px] font-mono font-bold text-navy-800 dark:text-content shadow-2xs">
+              <Clock className="size-3 text-navy-600 dark:text-khaki-300" />
               {clock}
             </div>
 
@@ -145,11 +145,11 @@ export default function PosLayout({
               className={cn(
                 'flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold transition-all duration-150 shadow-2xs active:scale-95',
                 hasActiveSession
-                  ? 'border-red-200 bg-red-50 hover:bg-red-100 text-red-700'
-                  : 'border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800'
+                  ? 'border-red-200 dark:border-red-500/50 bg-red-50 dark:bg-red-500/20 hover:bg-red-100 dark:hover:bg-red-500/30 text-red-700 dark:text-red-300'
+                  : 'border-amber-200 dark:border-amber-500/50 bg-amber-50 dark:bg-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/30 text-amber-800 dark:text-amber-300'
               )}
             >
-              <Lock className={cn('size-3', hasActiveSession ? 'text-red-600' : 'text-amber-600')} />
+              <Lock className={cn('size-3', hasActiveSession ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400')} />
               <span className="hidden sm:inline">{hasActiveSession ? 'Keluar' : 'Kelola Sesi'}</span>
             </button>
           </div>
