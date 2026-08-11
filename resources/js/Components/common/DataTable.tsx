@@ -133,8 +133,8 @@ export function DataTable<TData>({
 
   return (
     <div className="flex flex-col gap-3 flex-1 min-h-[450px]">
-      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3 dark:border-slate-800 dark:bg-slate-900/60 text-xs">
-        <span className="font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mr-1 flex items-center gap-1.5 shrink-0">
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3 dark:border-border dark:bg-surface-alt/60 text-xs">
+        <span className="font-extrabold uppercase tracking-wider text-slate-500 dark:text-content-muted mr-1 flex items-center gap-1.5 shrink-0">
           <SlidersHorizontal className="size-3.5 text-amber-500" />
           <span>Tampilkan Kolom:</span>
         </span>
@@ -149,8 +149,8 @@ export function DataTable<TData>({
                 className={cn(
                   'flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-bold transition-all cursor-pointer select-none',
                   isVisible
-                    ? 'border-slate-300 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-white shadow-2xs'
-                    : 'border-slate-200/60 bg-slate-100/60 text-slate-400 dark:border-slate-800 dark:bg-slate-900/40 opacity-50',
+                    ? 'border-slate-300 bg-white text-slate-900 dark:border-border dark:bg-surface dark:text-content shadow-2xs'
+                    : 'border-slate-200/60 bg-slate-100/60 text-slate-400 dark:border-border dark:bg-surface-alt/40 opacity-50',
                 )}
               >
                 <Checkbox

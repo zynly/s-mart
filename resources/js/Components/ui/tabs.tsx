@@ -65,9 +65,9 @@ function TabsTrigger({
       className={cn(
         "relative inline-flex flex-1 w-full items-center justify-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-semibold tracking-wide transition-all duration-200 ease-in-out disabled:pointer-events-none disabled:opacity-50 select-none text-center",
         // Inactive State: Clean Border & Subtle Surface
-        "border-border bg-surface text-content-muted hover:border-navy-300 hover:bg-navy-50/60 hover:text-navy-950 shadow-sm",
-        // Active State: Deep Navy Gradient with Bold Amber/Gold Border
-        "data-[state=active]:border-2 data-[state=active]:border-amber-400 data-[state=active]:bg-linear-to-r data-[state=active]:from-navy-900 data-[state=active]:via-navy-850 data-[state=active]:to-navy-900 data-[state=active]:text-white data-[state=active]:font-bold data-[state=active]:shadow-md data-[state=active]:shadow-navy-900/30 data-[state=active]:scale-[1.02]",
+        "border-border bg-surface text-content-muted hover:border-amber-400 hover:bg-surface-alt hover:text-content shadow-sm",
+        // Active State: Amber Gold Accent Solid Surface with Pure Black Text
+        "data-[state=active]:border-2 data-[state=active]:border-amber-400 data-[state=active]:bg-amber-500 data-[state=active]:text-black data-[state=active]:font-black data-[state=active]:shadow-md data-[state=active]:scale-[1.02]",
         className
       )}
       {...props}

@@ -63,7 +63,7 @@ export function StatCard({ label, value, icon: Icon, trend, trendLabel, color = 
   return (
     <div
       className={cn(
-        'group relative overflow-hidden rounded-2xl border bg-white dark:bg-navy-950 p-5 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:shadow-lg',
+        'group relative overflow-hidden rounded-2xl border bg-white dark:bg-surface p-5 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:shadow-lg',
         style.border,
       )}
     >
