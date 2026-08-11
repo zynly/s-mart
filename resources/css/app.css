@@ -69,23 +69,23 @@
 }
 
 .dark {
-  --surface: #26231e;
-  --surface-alt: #342f28;
-  --bg: #1a1814; /* khaki gelap, hangat — bukan abu-abu dingin */
-  --border: #403930; /* khaki-900 */
-  --border-strong: #5f5440; /* khaki-800 */
-  --content: #ede9e0;
-  --content-muted: #b8b0a0;
-  --content-subtle: #8a8273;
-  --primary: #8aa6d1; /* navy-300, lebih terang di gelap */
+  --surface: #12100e;
+  --surface-alt: #1a1815;
+  --bg: #0a0908;
+  --border: #2a2621;
+  --border-strong: #403b33;
+  --content: #ffffff;
+  --content-muted: #cbd5e1;
+  --content-subtle: #94a3b8;
+  --primary: #fbbf24;
 
-  --sidebar: #0f1b33; /* navy-900 */
-  --sidebar-fg: #cbd5e1;
-  --sidebar-active: #1b3a6b; /* navy-600 */
+  --sidebar: #0e0c0a;
+  --sidebar-fg: #ffffff;
+  --sidebar-active: #1f1c18;
 
-  --success: #34a86e;
-  --warning: #e6961e;
-  --danger: #dc5046;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
 
   --background: var(--bg);
   --foreground: var(--content);
@@ -93,16 +93,16 @@
   --card-foreground: var(--content);
   --popover: var(--surface);
   --popover-foreground: var(--content);
-  --primary-foreground: #0f1b33;
-  --secondary: #403930;
-  --secondary-foreground: #ede9e0;
+  --primary-foreground: #000000;
+  --secondary: #2a2620;
+  --secondary-foreground: #ffffff;
   --muted: var(--surface-alt);
   --muted-foreground: var(--content-muted);
   --accent: var(--surface-alt);
-  --accent-foreground: #ede9e0;
+  --accent-foreground: #ffffff;
   --destructive: var(--danger);
   --input: var(--border);
-  --ring: #8aa6d1;
+  --ring: #fbbf24;
 }
 
 @theme {
@@ -119,6 +119,7 @@
   --color-navy-700: #152e56;
   --color-navy-800: #1b2a4a;
   --color-navy-900: #0f1b33;
+  --color-navy-950: #0a1224;
 
   /* §2.2 — 70%: khaki, warna dasar/dominan */
   --color-khaki-50: #faf9f5;
@@ -266,6 +267,55 @@
   }
   *::-webkit-scrollbar-corner {
     background: transparent;
+  }
+
+  /* FLUID TYPOGRAPHY & AUTO SCALING BASE */
+  :root {
+    --font-scale-step: clamp(0.875rem, 0.8rem + 0.35vw, 1.125rem);
+  }
+
+  /* Prevent Mobile Browser Address Bar Height Glitches */
+  .min-h-dvh {
+    min-height: 100dvh;
+  }
+  .h-dvh {
+    height: 100dvh;
+  }
+}
+
+/*
+ * AUTO-SCALING & FLUID RESPONSIVE UTILITIES
+ */
+@layer utilities {
+  /* Fluid Auto-Fit Grids (Tablet & Mobile Auto-Responsive) */
+  .grid-auto-fit-product {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 140px), 1fr));
+  }
+  @media (min-width: 640px) {
+    .grid-auto-fit-product {
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr));
+    }
+  }
+
+  .grid-auto-fit-card {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  }
+
+  /* Ergonomic Touch Targets for Mobile & Tablet */
+  @media (pointer: coarse) {
+    button, input, select, a.btn {
+      min-height: 44px;
+    }
+  }
+
+  /* Fluid Responsive Padding & Spacing */
+  .fluid-p {
+    padding: clamp(0.75rem, 2vw, 1.75rem);
+  }
+  .fluid-gap {
+    gap: clamp(0.5rem, 1.5vw, 1.25rem);
   }
 }
 
