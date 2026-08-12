@@ -9,7 +9,7 @@ use App\Http\Controllers\Public\HomeController;
 use App\Http\Controllers\Public\ProductController;
 use App\Http\Controllers\Public\PromoController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
+use App\Http\Controllers\Auth\UnifiedLoginController;
 
 // T-111 (Fase 19). Storefront publik — tanpa auth, sengaja (ADR-0009:
 // transparansi harga utk CALON santri/wali, bukan cuma yang sudah
@@ -17,18 +17,10 @@ use Inertia\Inertia;
 // StorefrontService/Product::scopePublic(), lihat catatan keamanan di
 // app/Data/ProductPublicData.php.
 Route::redirect('/login/admin', '/login');
-Route::get('/login', function (\Illuminate\Http\Request $request) {
-    if (\Illuminate\Support\Facades\Auth::guard('web')->check()) {
-        return redirect()->intended('/admin');
-    }
-    if (\Illuminate\Support\Facades\Auth::guard('guardian')->check()) {
-        return redirect()->intended('/wali');
-    }
-    return Inertia::render('Auth/Login', [
-        'defaultTab' => $request->query('tab', 'staff'),
-        'status' => session('status'),
-    ]);
-})->name('login');
+Route::get('/login', [UnifiedLoginController::class, 'show'])->name('login');
+Route::post('/login', [UnifiedLoginController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('login.store');
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/produk', [ProductController::class, 'index'])->name('produk.index');
