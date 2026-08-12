@@ -22,7 +22,7 @@ export default function Login({ status }: LoginProps) {
 
   const submit: FormEventHandler = (e) => {
     e.preventDefault()
-    post(route('login.store'))
+    post(route('login.post'))
   }
 
   return (

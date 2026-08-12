@@ -33,14 +33,15 @@ class UnifiedLoginController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $credentials = $request->validate([
-            'identity' => ['required', 'string'],
-            'password' => ['required', 'string'],
-        ]);
-
-        $identity = trim($credentials['identity']);
-        $password = $credentials['password'];
+        $identity = trim((string) ($request->input('identity') ?? $request->input('username') ?? $request->input('phone') ?? ''));
+        $password = (string) $request->input('password', '');
         $remember = $request->boolean('remember');
+
+        if (empty($identity) || empty($password)) {
+            throw ValidationException::withMessages([
+                'identity' => 'Username, No. HP, atau password wajib diisi.',
+            ]);
+        }
 
         // 1. Coba autentikasi sebagai User / Staff / Admin / Kasir / Manager (Guard 'web')
         $userFields = ['username', 'email', 'phone'];

@@ -20,7 +20,7 @@ Route::redirect('/login/admin', '/login');
 Route::get('/login', [UnifiedLoginController::class, 'show'])->name('login');
 Route::post('/login', [UnifiedLoginController::class, 'store'])
     ->middleware('throttle:10,1')
-    ->name('login.store');
+    ->name('login.post');
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/produk', [ProductController::class, 'index'])->name('produk.index');
