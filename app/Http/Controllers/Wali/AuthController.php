@@ -17,9 +17,11 @@ use Inertia\Response;
  */
 class AuthController extends Controller
 {
-    public function showLogin(): Response
+    public function showLogin(Request $request): Response
     {
-        return Inertia::render('Wali/Auth/Login');
+        return Inertia::render('Auth/Login', [
+            'defaultTab' => 'wali',
+        ]);
     }
 
     public function login(Request $request): RedirectResponse

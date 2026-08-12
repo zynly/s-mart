@@ -63,11 +63,15 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
 
           <div className="flex items-center gap-2">
             <Link
-              href="/wali/login"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-navy-900 px-4 py-2 text-xs font-bold text-navy-50 shadow-md transition-all hover:bg-navy-800 hover:shadow-lg active:scale-95 border border-navy-800"
+              href="/login"
+              title="Tekan untuk login (Staff, Admin, Kasir, atau Wali Santri)"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-navy-900 px-4 py-2 text-xs font-bold text-navy-50 shadow-md transition-all hover:bg-navy-800 hover:shadow-lg active:scale-95 border border-navy-800 group"
             >
-              <UserCheck className="size-3.5 text-mustard-400" />
-              <span>Portal Wali</span>
+              <UserCheck className="size-3.5 text-mustard-400 group-hover:scale-110 transition-transform" />
+              <div className="flex flex-col items-start leading-none">
+                <span>Login</span>
+                <span className="text-[9px] font-normal text-navy-300 mt-0.5">Tekan untuk login</span>
+              </div>
             </Link>
           </div>
         </div>
@@ -92,8 +96,8 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
               <ShieldCheck className="size-3.5" />
               Sistem Terintegrasi POS & Deposit Santri
             </div>
-            <Link href="/admin/login" className="text-xs text-content-muted hover:text-primary transition-colors hover:underline">
-              Login Akses Staff / Admin POS →
+            <Link href="/login" className="text-xs text-content-muted hover:text-primary transition-colors hover:underline">
+              Pintu Login Terpadu (Staff, Admin & Wali Santri) →
             </Link>
           </div>
         </div>

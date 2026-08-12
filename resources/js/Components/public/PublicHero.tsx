@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react'
 import { Button } from '@/Components/ui/button'
-import { ShoppingBag, ArrowRight, ShieldCheck, Sparkles, Wallet, Store } from 'lucide-react'
+import { ShoppingBag, ArrowRight, ShieldCheck, Sparkles, Wallet, Store, LogIn } from 'lucide-react'
 
 export function PublicHero() {
   return (
@@ -41,9 +41,9 @@ export function PublicHero() {
             className="rounded-xl border-navy-700 bg-navy-900 text-navy-100 hover:bg-navy-800 hover:text-white px-5 py-2 text-xs transition-all"
             asChild
           >
-            <Link href="/wali/login" className="flex items-center gap-1.5">
-              <Wallet className="size-3.5 text-mustard-400" />
-              <span>Portal Wali Santri</span>
+            <Link href="/login" className="flex items-center gap-1.5">
+              <LogIn className="size-3.5 text-mustard-400" />
+              <span>Login Portal</span>
             </Link>
           </Button>
         </div>

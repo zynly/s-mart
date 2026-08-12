@@ -16,8 +16,19 @@ use Inertia\Inertia;
 // terdaftar). Setiap controller di sini WAJIB lewat
 // StorefrontService/Product::scopePublic(), lihat catatan keamanan di
 // app/Data/ProductPublicData.php.
-Route::redirect('/login/admin', '/admin/login');
-Route::redirect('/login', '/admin/login');
+Route::redirect('/login/admin', '/login');
+Route::get('/login', function (\Illuminate\Http\Request $request) {
+    if (\Illuminate\Support\Facades\Auth::guard('web')->check()) {
+        return redirect()->intended('/admin');
+    }
+    if (\Illuminate\Support\Facades\Auth::guard('guardian')->check()) {
+        return redirect()->intended('/wali');
+    }
+    return Inertia::render('Auth/Login', [
+        'defaultTab' => $request->query('tab', 'staff'),
+        'status' => session('status'),
+    ]);
+})->name('login');
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/produk', [ProductController::class, 'index'])->name('produk.index');
