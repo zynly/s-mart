@@ -281,52 +281,97 @@ export default function Index({ tab, topupRequests, filters }: TopupRequestsInde
       >
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>Setujui Top-Up — {approveTarget?.reference}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Check className="size-5 text-emerald-600" />
+              Setujui Top-Up — {approveTarget?.reference}
+            </DialogTitle>
           </DialogHeader>
-          <div className="flex flex-col gap-4">
-            {/* Direct Pratinjau Foto Bukti Transfer di dalam Dialog Approve */}
-            {approveTarget?.proof_image && (
-              <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 bg-slate-50 dark:bg-slate-900/50 flex flex-col gap-2">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
-                  <span className="flex items-center gap-1.5"><ImageIcon className="size-4 text-amber-600" /> Pratinjau Bukti Transfer:</span>
-                  <a
-                    href={route('admin.topup-requests.proof', approveTarget.id)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-amber-600 dark:text-amber-400 hover:underline text-xs flex items-center gap-1 font-semibold"
-                  >
-                    <ExternalLink className="size-3" /> Perbesar
-                  </a>
+
+          {approveTarget && (
+            <div className="flex flex-col gap-4">
+              {/* Rincian Detail Transaksi Top-Up */}
+              <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50 dark:bg-slate-900/70 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800">
+                <div>
+                  <span className="font-semibold text-slate-500 dark:text-slate-400 block">Santri:</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">{approveTarget.member?.name ?? '—'}</span>
+                  {approveTarget.member?.member_number && (
+                    <span className="text-[10px] text-slate-400 block">({approveTarget.member.member_number})</span>
+                  )}
                 </div>
-                <div className="relative max-h-48 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800 flex justify-center bg-black/5 dark:bg-black/40 p-1">
-                  <img
-                    src={route('admin.topup-requests.proof', approveTarget.id)}
-                    alt="Bukti Transfer"
-                    className="max-h-44 object-contain rounded-md"
-                  />
+                <div>
+                  <span className="font-semibold text-slate-500 dark:text-slate-400 block">Wali Santri:</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">{approveTarget.guardian?.name ?? '—'}</span>
+                  {approveTarget.guardian?.phone && (
+                    <span className="text-[10px] text-slate-400 block">({approveTarget.guardian.phone})</span>
+                  )}
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-500 dark:text-slate-400 block">Nominal Top-Up:</span>
+                  <Money amount={approveTarget.amount} className="font-extrabold text-sm text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-500 dark:text-slate-400 block">Bank / Pengirim:</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">{approveTarget.bank_name ?? '—'}</span>
+                  <span className="text-[11px] text-slate-500 block">a.n {approveTarget.sender_name ?? '—'}</span>
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-500 dark:text-slate-400 block">Tanggal Transfer:</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">{approveTarget.transfer_date ?? '—'}</span>
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-500 dark:text-slate-400 block">Tanggal Pengajuan:</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">{approveTarget.created_at ? new Date(approveTarget.created_at).toLocaleDateString('id-ID') : '—'}</span>
                 </div>
               </div>
-            )}
 
-            <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
-              <Checkbox id="bank_verified" checked={bankVerified} onCheckedChange={(v) => setBankVerified(v === true)} className="mt-0.5" />
-              <Label htmlFor="bank_verified" className="font-semibold text-xs text-slate-900 dark:text-slate-100 cursor-pointer leading-relaxed">
-                Saya sudah mencocokkan pengajuan ini dengan mutasi rekening koran sekolah — bukan hanya melihat foto bukti transfer.
-              </Label>
+              {/* Pratinjau Foto Bukti Transfer di dalam Dialog Approve */}
+              {approveTarget.proof_image ? (
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 bg-slate-50 dark:bg-slate-900/50 flex flex-col gap-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <span className="flex items-center gap-1.5"><ImageIcon className="size-4 text-amber-600" /> Foto Bukti Transfer:</span>
+                    <a
+                      href={route('admin.topup-requests.proof', approveTarget.id)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-amber-600 dark:text-amber-400 hover:underline text-xs flex items-center gap-1 font-semibold"
+                    >
+                      <ExternalLink className="size-3" /> Perbesar / Buka Tab Baru
+                    </a>
+                  </div>
+                  <div className="relative max-h-56 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800 flex justify-center bg-black/5 dark:bg-black/40 p-1">
+                    <img
+                      src={route('admin.topup-requests.proof', approveTarget.id)}
+                      alt="Bukti Transfer"
+                      className="max-h-52 object-contain rounded-md"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-800 p-3 text-center text-xs text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-900/30">
+                  Tidak ada foto lampiran bukti transfer.
+                </div>
+              )}
+
+              <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
+                <Checkbox id="bank_verified" checked={bankVerified} onCheckedChange={(v) => setBankVerified(v === true)} className="mt-0.5" />
+                <Label htmlFor="bank_verified" className="font-semibold text-xs text-slate-900 dark:text-slate-100 cursor-pointer leading-relaxed">
+                  Saya sudah mencocokkan pengajuan ini dengan mutasi rekening koran sekolah — bukan hanya melihat foto bukti transfer.
+                </Label>
+              </div>
+              {approveTarget.is_possible_duplicate && (
+                <p className="rounded-xl border border-amber-500/40 bg-warning/10 p-3 text-xs font-semibold text-warning">
+                  ⚠ Ada pengajuan top-up LAIN dengan nominal &amp; tanggal transfer yang sama persis — periksa dengan teliti, kemungkinan bukti transfer dipakai berulang.
+                </p>
+              )}
+              {approveTarget.amount > TRANSFER_PIN_THRESHOLD && (
+                <p className="text-xs font-medium text-slate-500">Nominal di atas Rp {TRANSFER_PIN_THRESHOLD.toLocaleString('id-ID')} — PIN supervisor/owner akan diminta setelah ini.</p>
+              )}
+              <div className="space-y-1.5">
+                <Label htmlFor="approve_note" className="text-xs font-bold">Catatan (opsional)</Label>
+                <Textarea id="approve_note" value={approveNote} onChange={(e) => setApproveNote(e.target.value)} placeholder="Mis. dicocokkan dengan mutasi BCA 01/08" className="text-xs" />
+              </div>
             </div>
-            {approveTarget?.is_possible_duplicate && (
-              <p className="rounded-xl border border-amber-500/40 bg-warning/10 p-3 text-xs font-semibold text-warning">
-                ⚠ Ada pengajuan top-up LAIN dengan nominal &amp; tanggal transfer yang sama persis — periksa dengan teliti, kemungkinan bukti transfer dipakai berulang.
-              </p>
-            )}
-            {approveTarget && approveTarget.amount > TRANSFER_PIN_THRESHOLD && (
-              <p className="text-xs font-medium text-slate-500">Nominal di atas Rp {TRANSFER_PIN_THRESHOLD.toLocaleString('id-ID')} — PIN supervisor/owner akan diminta setelah ini.</p>
-            )}
-            <div className="space-y-1.5">
-              <Label htmlFor="approve_note" className="text-xs font-bold">Catatan (opsional)</Label>
-              <Textarea id="approve_note" value={approveNote} onChange={(e) => setApproveNote(e.target.value)} placeholder="Mis. dicocokkan dengan mutasi BCA 01/08" className="text-xs" />
-            </div>
-          </div>
+          )}
           <DialogFooter>
             <Button onClick={submitApprove} disabled={!bankVerified} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold">Setujui &amp; Tambah Saldo</Button>
           </DialogFooter>
