@@ -22,6 +22,25 @@ Route::post('/login', [UnifiedLoginController::class, 'store'])
     ->middleware('throttle:10,1')
     ->name('login.post');
 
+// Fortify View Routes (karena config('fortify.views') = false untuk mencegah bentrokan nama route 'login')
+Route::prefix('admin')->group(function () {
+    Route::get('/forgot-password', [\Laravel\Fortify\Http\Controllers\PasswordResetLinkController::class, 'create'])
+        ->middleware('guest:web')
+        ->name('password.request');
+
+    Route::get('/reset-password/{token}', [\Laravel\Fortify\Http\Controllers\NewPasswordController::class, 'create'])
+        ->middleware('guest:web')
+        ->name('password.reset');
+
+    Route::get('/user/confirm-password', [\Laravel\Fortify\Http\Controllers\ConfirmablePasswordController::class, 'show'])
+        ->middleware('auth:web')
+        ->name('password.confirm');
+
+    Route::get('/two-factor-challenge', [\Laravel\Fortify\Http\Controllers\TwoFactorAuthenticatedSessionController::class, 'create'])
+        ->middleware('guest:web')
+        ->name('two-factor.login');
+});
+
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/produk', [ProductController::class, 'index'])->name('produk.index');
 Route::get('/produk/{product:slug}', [ProductController::class, 'show'])->name('produk.show');
