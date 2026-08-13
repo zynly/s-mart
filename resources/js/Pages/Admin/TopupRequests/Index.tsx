@@ -14,7 +14,7 @@ import { Label } from '@/Components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
 import { SupervisorPinDialog } from '@/Components/common/SupervisorPinDialog'
-import { Check, Eye, ExternalLink, Image as ImageIcon } from 'lucide-react'
+import { Check, Eye, ExternalLink, Image as ImageIcon, Trash2 } from 'lucide-react'
 import { cn } from '@/Lib/utils'
 import type { Paginated } from '@/Types'
 
@@ -59,6 +59,7 @@ export default function Index({ tab, topupRequests, filters }: TopupRequestsInde
   const [approveNote, setApproveNote] = useState('')
   const [approvePinOpen, setApprovePinOpen] = useState(false)
   const [previewProofTarget, setPreviewProofTarget] = useState<TopupRequestRow | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<TopupRequestRow | null>(null)
 
   function applyFilter(status: string) {
     setStatusFilter(status)
@@ -68,9 +69,6 @@ export default function Index({ tab, topupRequests, filters }: TopupRequestsInde
   function submitApprove() {
     if (!approveTarget || !bankVerified) return
 
-    // REVISI-R1-v2.md §6.3 Jalur B — nominal besar butuh PIN
-    // supervisor/owner SEBELUM disetujui, di atas checkbox konfirmasi
-    // mutasi rekening yang sudah ada.
     if (approveTarget.amount > TRANSFER_PIN_THRESHOLD) {
       setApprovePinOpen(true)
       return
@@ -100,6 +98,14 @@ export default function Index({ tab, topupRequests, filters }: TopupRequestsInde
         setRejectTarget(null)
         setRejectReason('')
       },
+    })
+  }
+
+  function submitDelete() {
+    if (!deleteTarget) return
+
+    router.delete(route('admin.topup-requests.destroy', deleteTarget.id), {
+      onSuccess: () => setDeleteTarget(null),
     })
   }
 
@@ -147,13 +153,29 @@ export default function Index({ tab, topupRequests, filters }: TopupRequestsInde
     {
       id: 'actions',
       header: 'Aksi',
-      cell: ({ row }) => row.original.status === 'pending' ? (
-        <div className="flex gap-2">
-          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold" onClick={() => setApproveTarget(row.original)}>Setujui</Button>
-          <Button size="sm" variant="outline" className="text-rose-600 border-rose-200 hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-950" onClick={() => setRejectTarget(row.original)}>Tolak</Button>
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1.5">
+          {row.original.status === 'pending' && (
+            <>
+              <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-8 text-xs" onClick={() => setApproveTarget(row.original)}>Setujui</Button>
+              <Button size="sm" variant="outline" className="h-8 text-xs text-rose-600 border-rose-200 hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-950" onClick={() => setRejectTarget(row.original)}>Tolak</Button>
+            </>
+          )}
+          {row.original.status !== 'approved' && (
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              className="h-8 w-8 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer"
+              title="Hapus Pengajuan"
+              onClick={() => setDeleteTarget(row.original)}
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          )}
+          {row.original.status === 'approved' && (
+            <span className="text-xs text-content-muted">{row.original.verifier?.name}</span>
+          )}
         </div>
-      ) : (
-        <span className="text-xs text-content-muted">{row.original.verifier?.name}</span>
       ),
     },
   ]
@@ -397,6 +419,32 @@ export default function Index({ tab, topupRequests, filters }: TopupRequestsInde
           </div>
           <DialogFooter>
             <Button onClick={submitReject} disabled={!rejectReason.trim()} variant="destructive">Tolak Pengajuan</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Dialog Hapus */}
+      <Dialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+              <Trash2 className="size-5" />
+              Hapus Pengajuan Top-Up — {deleteTarget?.reference}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="text-xs text-slate-600 dark:text-slate-400 flex flex-col gap-2.5">
+            <p>Apakah Anda yakin ingin menghapus data pengajuan top-up ini?</p>
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 p-3 space-y-1 text-xs">
+              <div><span className="font-semibold text-slate-500">Referensi:</span> <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{deleteTarget?.reference}</span></div>
+              <div><span className="font-semibold text-slate-500">Santri:</span> <span className="font-bold text-slate-900 dark:text-slate-100">{deleteTarget?.member?.name}</span></div>
+              <div><span className="font-semibold text-slate-500">Wali:</span> <span className="font-bold text-slate-900 dark:text-slate-100">{deleteTarget?.guardian?.name}</span></div>
+              <div><span className="font-semibold text-slate-500">Nominal:</span> <Money amount={deleteTarget?.amount ?? 0} className="font-bold text-rose-600 dark:text-rose-400" /></div>
+            </div>
+            <p className="text-rose-500 font-semibold text-[11px]">⚠ Berkas bukti transfer (jika ada) akan ikut dihapus permanen. Tindakan ini tidak dapat dibatalkan.</p>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>Batal</Button>
+            <Button variant="destructive" className="font-bold" onClick={submitDelete}>Ya, Hapus Data</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

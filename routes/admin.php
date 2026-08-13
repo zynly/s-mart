@@ -177,6 +177,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     });
     Route::put('/topup-requests/{topupRequest}/approve', [TopupRequestController::class, 'approve'])->name('topup-requests.approve')->middleware('can:topup.approve');
     Route::put('/topup-requests/{topupRequest}/reject', [TopupRequestController::class, 'reject'])->name('topup-requests.reject')->middleware('can:topup.approve');
+    Route::delete('/topup-requests/{topupRequest}', [TopupRequestController::class, 'destroy'])->name('topup-requests.destroy')->middleware('can:topup.approve');
 
     // Inventory & Stock Layer FEFO (Fase 5)
     Route::middleware('can:stock.view')->group(function () {

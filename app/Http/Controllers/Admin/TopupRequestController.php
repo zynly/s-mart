@@ -140,4 +140,22 @@ class TopupRequestController extends Controller
 
         return back()->with('success', "Top-up {$rejected->reference} ditolak.");
     }
+
+    public function destroy(TopupRequest $topupRequest): RedirectResponse
+    {
+        if ($topupRequest->status === 'approved') {
+            throw ValidationException::withMessages([
+                'status' => 'Pengajuan top-up yang sudah disetujui tidak dapat dihapus (sudah masuk ke saldo/buku besar deposit).',
+            ]);
+        }
+
+        if ($topupRequest->proof_image && \Illuminate\Support\Facades\Storage::disk('local')->exists($topupRequest->proof_image)) {
+            \Illuminate\Support\Facades\Storage::disk('local')->delete($topupRequest->proof_image);
+        }
+
+        $ref = $topupRequest->reference;
+        $topupRequest->delete();
+
+        return back()->with('success', "Pengajuan top-up {$ref} berhasil dihapus.");
+    }
 }
