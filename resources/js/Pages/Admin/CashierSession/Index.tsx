@@ -121,9 +121,17 @@ type SessionDetailData = {
     opened_at: string
     closed_at: string | null
     opening_cash: number
+    total_sales_cash: number
+    total_sales_noncash: number
+    total_sales_deposit: number
+    total_topup_cash: number
+    total_receivable_cash: number
+    total_cash_in: number
+    total_cash_out: number
     expected_cash: number
     actual_cash: number | null
     difference: number | null
+    difference_reason: string | null
     notes: string | null
   }
   sales: DetailSale[]
@@ -1144,28 +1152,79 @@ export default function Index({
                 </div>
               </div>
 
-              {/* Rincian Kas Summary Grid (4 Cards Audit) */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
-                  <span className="text-[11px] text-slate-500 font-bold">Modal Awal Kas</span>
-                  <Money amount={sessionDetail.session.opening_cash} size="md" className="font-black text-slate-900 dark:text-white mt-0.5" />
+              {/* Rincian Kas Summary Grid Komplit (Audit Keuangan Sesi) */}
+              <div className="space-y-2">
+                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Rincian Komplit Arus Kas Sesi Kasir:</div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                  {/* Row 1: Modal Awal & Penjualan */}
+                  <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Modal Awal Kas</span>
+                    <Money amount={sessionDetail.session.opening_cash} size="sm" className="font-extrabold text-slate-900 dark:text-white mt-1" />
+                  </div>
+                  <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Penjualan Tunai</span>
+                    <Money amount={sessionDetail.session.total_sales_cash} size="sm" className="font-extrabold text-emerald-600 dark:text-emerald-400 mt-1" />
+                  </div>
+                  <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Penjualan Deposit Santri</span>
+                    <Money amount={sessionDetail.session.total_sales_deposit} size="sm" className="font-extrabold text-purple-600 dark:text-purple-400 mt-1" />
+                  </div>
+                  <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Penjualan Non-Tunai</span>
+                    <Money amount={sessionDetail.session.total_sales_noncash} size="sm" className="font-extrabold text-blue-600 dark:text-blue-400 mt-1" />
+                  </div>
+
+                  {/* Row 2: Topup, Piutang, Kas Masuk/Keluar */}
+                  <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Topup Tunai</span>
+                    <Money amount={sessionDetail.session.total_topup_cash} size="sm" className="font-extrabold text-cyan-600 dark:text-cyan-400 mt-1" />
+                  </div>
+                  <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Pelunasan Piutang</span>
+                    <Money amount={sessionDetail.session.total_receivable_cash} size="sm" className="font-extrabold text-indigo-600 dark:text-indigo-400 mt-1" />
+                  </div>
+                  <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Kas Masuk Ops</span>
+                    <Money amount={sessionDetail.session.total_cash_in} size="sm" className="font-extrabold text-teal-600 dark:text-teal-400 mt-1" />
+                  </div>
+                  <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Kas Keluar Ops</span>
+                    <Money amount={sessionDetail.session.total_cash_out} size="sm" className="font-extrabold text-rose-600 dark:text-rose-400 mt-1" />
+                  </div>
+
+                  {/* Row 3: Expected, Actual, Diff, Status */}
+                  <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-500/5 flex flex-col">
+                    <span className="text-[10px] text-amber-700 dark:text-amber-300 font-bold uppercase tracking-wider">Uang Expected</span>
+                    <Money amount={sessionDetail.session.expected_cash} size="sm" className="font-black text-amber-700 dark:text-amber-400 mt-1" />
+                  </div>
+                  <div className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 flex flex-col">
+                    <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-bold uppercase tracking-wider">Uang Fisik (Aktual)</span>
+                    <Money amount={sessionDetail.session.actual_cash ?? 0} size="sm" className="font-black text-emerald-700 dark:text-emerald-400 mt-1" />
+                  </div>
+                  <div className="p-3 rounded-xl border border-blue-500/30 bg-blue-500/5 flex flex-col">
+                    <span className="text-[10px] text-blue-700 dark:text-blue-300 font-bold uppercase tracking-wider">Selisih Kas</span>
+                    {sessionDetail.session.difference !== null ? (
+                      <Money amount={sessionDetail.session.difference} size="sm" showSign className="font-black text-blue-700 dark:text-blue-400 mt-1" />
+                    ) : (
+                      <span className="text-slate-400 mt-1 font-bold">—</span>
+                    )}
+                  </div>
+                  <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col justify-between">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Status Sesi</span>
+                    <div className="mt-1">
+                      <Badge variant="outline" className={STATUS_BADGE[sessionDetail.session.status] ?? ''}>
+                        {STATUS_LABELS[sessionDetail.session.status] ?? sessionDetail.session.status}
+                      </Badge>
+                    </div>
+                  </div>
                 </div>
-                <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
-                  <span className="text-[11px] text-slate-500 font-bold">Uang Diharapkan (Expected)</span>
-                  <Money amount={sessionDetail.session.expected_cash} size="md" className="font-black text-amber-600 dark:text-amber-400 mt-0.5" />
-                </div>
-                <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
-                  <span className="text-[11px] text-slate-500 font-bold">Uang Fisik (Aktual)</span>
-                  <Money amount={sessionDetail.session.actual_cash ?? 0} size="md" className="font-black text-emerald-600 dark:text-emerald-400 mt-0.5" />
-                </div>
-                <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
-                  <span className="text-[11px] text-slate-500 font-bold">Selisih Kas</span>
-                  {sessionDetail.session.difference !== null ? (
-                    <Money amount={sessionDetail.session.difference} size="md" showSign className="font-black text-blue-600 dark:text-blue-400 mt-0.5" />
-                  ) : (
-                    <span className="text-slate-400 mt-0.5 font-bold">—</span>
-                  )}
-                </div>
+
+                {/* Optional Catatan Selisih */}
+                {sessionDetail.session.difference_reason && (
+                  <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-xs text-amber-800 dark:text-amber-300">
+                    <strong>Catatan Selisih:</strong> {sessionDetail.session.difference_reason}
+                  </div>
+                )}
               </div>
 
               {/* Daftar Nota Penjualan */}
