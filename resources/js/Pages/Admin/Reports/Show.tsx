@@ -79,6 +79,7 @@ export default function Show({ reportKey, title, filterDefs, columns, rows, summ
   const [pdfOpen, setPdfOpen] = useState(false)
   const [excelOpen, setExcelOpen] = useState(false)
   const [pageSize, setPageSize] = useState<'A4' | 'F4'>('A4')
+  const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('landscape')
 
   const [form, setForm] = useState<Record<string, string>>({
     date_from: filters.date_from ?? '',
@@ -371,11 +372,36 @@ export default function Show({ reportKey, title, filterDefs, columns, rows, summ
                 <DialogTitle className="font-bold text-base text-white tracking-wide">
                   Pratinjau Cetak PDF Dokumen Laporan
                 </DialogTitle>
-                <p className="text-xs text-navy-300">Ukuran Kertas Aktif: <strong className="text-amber-400 font-mono">{pageSize}</strong> — Siap cetak / simpan PDF</p>
+                <p className="text-xs text-navy-300">Ukuran &amp; Orientasi: <strong className="text-amber-400 font-mono">{pageSize} ({orientation === 'landscape' ? 'Mendatar / Landscape' : 'Tegak / Portrait'})</strong> — Siap cetak / simpan PDF</p>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
+              {/* Orientation Selector Buttons */}
+              <div className="flex items-center gap-1 rounded-lg bg-navy-900 p-1 border border-navy-800">
+                <span className="text-[11px] font-bold text-navy-300 px-2 uppercase tracking-wider">Orientasi:</span>
+                <button
+                  type="button"
+                  onClick={() => setOrientation('landscape')}
+                  className={cn(
+                    "px-3 py-1 text-xs font-bold rounded-md transition-all",
+                    orientation === 'landscape' ? "bg-amber-400 text-navy-950 shadow-xs scale-105" : "text-navy-200 hover:text-white"
+                  )}
+                >
+                  🖼️ Landscape (Mendatar)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOrientation('portrait')}
+                  className={cn(
+                    "px-3 py-1 text-xs font-bold rounded-md transition-all",
+                    orientation === 'portrait' ? "bg-amber-400 text-navy-950 shadow-xs scale-105" : "text-navy-200 hover:text-white"
+                  )}
+                >
+                  📱 Portrait (Tegak)
+                </button>
+              </div>
+
               {/* Paper Size Selector Buttons */}
               <div className="flex items-center gap-1 rounded-lg bg-navy-900 p-1 border border-navy-800">
                 <span className="text-[11px] font-bold text-navy-300 px-2 uppercase tracking-wider">Kertas:</span>
@@ -387,7 +413,7 @@ export default function Show({ reportKey, title, filterDefs, columns, rows, summ
                     pageSize === 'A4' ? "bg-amber-400 text-navy-950 shadow-xs scale-105" : "text-navy-200 hover:text-white"
                   )}
                 >
-                  📄 A4 (21 x 29.7 cm)
+                  📄 A4
                 </button>
                 <button
                   type="button"
@@ -397,24 +423,36 @@ export default function Show({ reportKey, title, filterDefs, columns, rows, summ
                     pageSize === 'F4' ? "bg-amber-400 text-navy-950 shadow-xs scale-105" : "text-navy-200 hover:text-white"
                   )}
                 >
-                  📜 F4 / Folio (21.5 x 33 cm)
+                  📜 F4 / Folio
                 </button>
               </div>
 
               <Button onClick={handlePrintPDF} size="sm" className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 shadow-sm">
                 <Printer className="size-4 mr-1.5" />
-                <span>Cetak PDF ({pageSize})</span>
+                <span>Cetak PDF</span>
               </Button>
             </div>
           </div>
 
           {/* Body Preview Area (Scrollable Background) */}
           <div className="flex-1 overflow-y-auto bg-slate-300/80 p-6 flex justify-center">
+            {/* Inject dynamic print page style for browser print dialog */}
+            <style>{`
+              @media print {
+                @page {
+                  size: ${pageSize === 'F4' ? '215mm 330mm' : 'A4'} ${orientation};
+                  margin: 8mm;
+                }
+              }
+            `}</style>
+
             {/* Printable Document Sheet */}
             <div
               className={cn(
                 "print-document-modal w-full bg-white shadow-2xl rounded-none text-slate-900 font-sans flex flex-col justify-between border border-slate-300 transition-all duration-300",
-                pageSize === 'A4' ? "max-w-[794px] min-h-[1123px] p-9" : "max-w-[812px] min-h-[1247px] p-10"
+                orientation === 'landscape'
+                  ? (pageSize === 'A4' ? "max-w-[1123px] min-h-[794px] p-6" : "max-w-[1247px] min-h-[812px] p-7")
+                  : (pageSize === 'A4' ? "max-w-[794px] min-h-[1123px] p-9" : "max-w-[812px] min-h-[1247px] p-10")
               )}
             >
               <div>
