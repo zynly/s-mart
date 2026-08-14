@@ -480,25 +480,36 @@ export default function Index({
       ) : (
         /* Dashboard Sesi Kasir Aktif */
         <div className="flex flex-col gap-5 sm:gap-6">
-          {/* Sub-Tabs Sesi Kasir Aktif (Pills Tab Horizontal) */}
+          {/* Sub-Tabs Sesi Kasir Aktif (High Contrast Redesigned Pill Bar) */}
           {openSessions && openSessions.length > 0 && (
-            <div className="flex flex-col gap-3 bg-white dark:bg-surface border border-amber-500/30 rounded-2xl p-4 shadow-sm">
+            <div className="flex flex-col gap-3.5 bg-slate-900 text-white border border-amber-500/40 rounded-2xl p-4 shadow-lg">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="flex size-7 items-center justify-center rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold shrink-0">
-                    <Store className="size-4" />
+                <div className="flex items-center gap-2.5">
+                  <div className="flex size-8 items-center justify-center rounded-xl bg-amber-500 text-navy-950 font-black shrink-0 shadow-xs">
+                    <Store className="size-4.5" />
                   </div>
-                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-900 dark:text-white">
-                    Tab Sesi Kasir Aktif ({openSessions.length} Sesi Terbuka)
-                  </h4>
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-amber-400">
+                      Sesi Kasir Terbuka ({openSessions.length} Sesi Aktif)
+                    </h4>
+                    <p className="text-[11px] text-slate-300 font-medium">
+                      Pilih tab sesi untuk meninjau laci kasir, transaksi, atau melakukan penutupan sesi.
+                    </p>
+                  </div>
                 </div>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">
-                  Klik tab untuk meninjau atau menutup sesi laci kasir tertentu
-                </span>
+
+                {/* Status Indicator */}
+                <div className="hidden md:flex items-center gap-2 bg-slate-800/90 border border-slate-700 px-3 py-1.5 rounded-xl text-xs text-slate-300">
+                  <span className="relative flex size-2 shrink-0">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full size-2 bg-emerald-500" />
+                  </span>
+                  <span className="font-semibold text-[11px]">Realtime Multi-Drawer Active</span>
+                </div>
               </div>
 
               {/* Horizontal Scrollable Tabs */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+              <div className="flex items-center gap-2.5 overflow-x-auto pb-1 scrollbar-thin">
                 {openSessions.map((s) => {
                   const isSelected = active?.id === s.id
                   return (
@@ -513,24 +524,24 @@ export default function Index({
                         )
                       }}
                       className={cn(
-                        "flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all shrink-0 cursor-pointer",
+                        "flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-xs font-black transition-all shrink-0 cursor-pointer shadow-sm",
                         isSelected
-                          ? "bg-amber-500 text-navy-950 border-amber-500 shadow-md ring-2 ring-amber-500/30"
-                          : "bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          ? "bg-amber-500 text-navy-950 border-amber-400 shadow-md ring-2 ring-amber-400/50 scale-[1.02]"
+                          : "bg-slate-800/90 text-slate-200 border-slate-700 hover:bg-slate-700 hover:text-white"
                       )}
                     >
                       <span className="relative flex size-2.5 shrink-0">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                         <span className="relative inline-flex rounded-full size-2.5 bg-emerald-500" />
                       </span>
-                      <span className="font-mono text-xs">{s.reference}</span>
-                      <span className={cn("text-[11px] truncate font-medium", isSelected ? "text-navy-900 font-semibold" : "text-slate-500 dark:text-slate-400")}>
+                      <span className="font-mono text-xs tracking-tight">{s.reference}</span>
+                      <span className={cn("text-[11px] truncate font-semibold", isSelected ? "text-navy-950 font-bold" : "text-slate-300")}>
                         {s.drawer_name} ({s.user_name})
                       </span>
                       {s.is_own && (
                         <span className={cn(
                           "text-[10px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider",
-                          isSelected ? "bg-navy-950/20 text-navy-950" : "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+                          isSelected ? "bg-navy-950 text-amber-400" : "bg-emerald-500/30 text-emerald-300 border border-emerald-500/40"
                         )}>
                           Sesi Anda
                         </span>
@@ -539,13 +550,13 @@ export default function Index({
                   )
                 })}
 
-                {/* Tab button untuk membuka sesi kasir tambahan */}
+                {/* Tab Button "+ Buka Sesi Kasir Lain" — High Contrast Solid Button */}
                 <button
                   type="button"
                   onClick={() => setShowOpenNewSessionDialog(true)}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-dashed border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 text-xs font-bold transition-all shrink-0 cursor-pointer"
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border-2 border-amber-400 text-amber-300 font-black text-xs transition-all shrink-0 cursor-pointer shadow-sm active:scale-95"
                 >
-                  <Plus className="size-4 text-amber-500" />
+                  <Plus className="size-4 text-amber-400 stroke-[3]" />
                   <span>+ Buka Sesi Kasir Lain</span>
                 </button>
               </div>

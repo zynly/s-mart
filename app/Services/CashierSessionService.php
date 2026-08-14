@@ -18,7 +18,19 @@ class CashierSessionService
     public function open(User $user, CashAccount $cashAccount, int $openingCash): CashierSession
     {
         return DB::transaction(function () use ($user, $cashAccount, $openingCash) {
-            // Validasi: pastikan laci kasir ini belum sedang dibuka oleh siapa pun
+            // 1. Validasi: Kasir biasa (bukan owner/admin/supervisor) tidak boleh membuka 2 sesi aktif bersamaan di beda device
+            if (! $user->hasAnyRole(['owner', 'admin', 'supervisor', 'manager'])) {
+                $userOpenSession = CashierSession::where('user_id', $user->id)
+                    ->where('status', 'open')
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($userOpenSession !== null) {
+                    throw new DomainException("Kasir {$user->name} sudah memiliki sesi kasir yang aktif ({$userOpenSession->reference}). Sesi yang sudah dibuka tidak dapat dibuka ulang.");
+                }
+            }
+
+            // 2. Validasi: Laci Kasir (CashAccount) ini tidak boleh dibuka ganda jika sedang dipakai sesi aktif lain
             $account = CashAccount::lockForUpdate()->findOrFail($cashAccount->id);
 
             $accountOpen = CashierSession::with('user:id,name')
