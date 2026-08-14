@@ -202,14 +202,6 @@ async function run() {
     copiedFiles.push(destPath)
   }
 
-  if (os.platform() === 'linux') {
-    const appImage = copiedFiles.find((f) => f.endsWith('.AppImage'))
-    if (appImage) {
-      fs.chmodSync(appImage, '755')
-      registerLinuxAppMenu(appImage)
-    }
-  }
-
   drawProgressBar('🚚 Memindahkan Installer & Registrasi Shortcut Menu Aplikasi', 4, 4, 100, `${C_GREEN}Disimpan & Didaftarkan 100%!${C_RESET}`)
   process.stdout.write('\n\n')
 
@@ -220,7 +212,34 @@ async function run() {
     copiedFiles.forEach((f) => console.log(`  📦 ${path.basename(f)}`))
   }
   console.log(`\n📁 Lokasi Penyimpanan : ${C_YELLOW}${TARGET_DIR}${C_RESET}`)
-  console.log(`📱 Menu Aplikasi OS  : ${C_GREEN}Skillage Mart POS MUNCUL LANGSUNG di OS Linux Anda!${C_RESET}`)
+
+  // AUTO-DETEKSI OS & AUTO-INSTALL SHOWCASE BLOCK
+  const currentPlatform = os.platform()
+  console.log(`${C_CYAN}========================================================================${C_RESET}`)
+  console.log(`${C_BOLD}${C_GREEN}🔍 AUTO-DETEKSI OS & AUTO-INSTALL SISTEM:${C_RESET}`)
+  console.log(`${C_CYAN}========================================================================${C_RESET}`)
+
+  if (currentPlatform === 'linux') {
+    const appImage = copiedFiles.find((f) => f.endsWith('.AppImage'))
+    if (appImage) {
+      fs.chmodSync(appImage, '755')
+      registerLinuxAppMenu(appImage)
+      console.log(`  🐧 ${C_GREEN}OS Terdeteksi       : LINUX (${os.arch()})${C_RESET}`)
+      console.log(`  ✅ ${C_GREEN}Status Auto-Install : SUKSES DIDAFTARKAN!${C_RESET}`)
+      console.log(`  📱 ${C_YELLOW}Menu Aplikasi OS   : Skillage Mart POS MUNCUL LANGSUNG di OS Menu Linux Anda!${C_RESET}`)
+      console.log(`  🚀 ${C_CYAN}Buka Langsung       : Cari "Skillage Mart POS" di Application Launcher / Start Menu Linux.${C_RESET}`)
+    }
+  } else if (currentPlatform === 'win32') {
+    const exeFile = copiedFiles.find((f) => f.endsWith('.exe'))
+    if (exeFile) {
+      console.log(`  🪟 ${C_GREEN}OS Terdeteksi       : WINDOWS (${os.arch()})${C_RESET}`)
+      console.log(`  ✅ ${C_GREEN}Status Auto-Install : BERKAS SETUP SIAP!${C_RESET}`)
+      console.log(`  🚀 ${C_CYAN}Auto-Launch Setup  : Membuka Installer ${path.basename(exeFile)}...${C_RESET}`)
+      try {
+        execSync(`start "" "${exeFile}"`, { stdio: 'ignore' })
+      } catch (e) {}
+    }
+  }
   console.log(`${C_CYAN}========================================================================${C_RESET}\n`)
 }
 
