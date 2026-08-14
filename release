@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # ==============================================================================
-# SKILLAGE MART - DESKTOP RELEASE MANAGER (100% LOKAL)
+# SKILLAGE MART - DUAL-OS DESKTOP RELEASE MANAGER (100% LOKAL)
 # ==============================================================================
 
 # Colors & Formatting
@@ -19,17 +19,16 @@ TARGET_DIR="/home/pak-hakim/Hakim/Worker/Dokumen Arsip/Skill Village/POS Dekstop
 function print_banner() {
     clear
     echo -e "${CYAN}========================================================================${NC}"
-    echo -e "${BOLD}${MAGENTA}       🏪 SKILLAGE MART — LOKAL DESKTOP BUILDER (TUI) ${NC}"
+    echo -e "${BOLD}${MAGENTA}   🏪 SKILLAGE MART — DUAL-OS (LINUX & WINDOWS) BUILDER (TUI) ${NC}"
     echo -e "${CYAN}========================================================================${NC}"
-    echo -e " Mode: ${GREEN}100% BUILD LOKAL (Tanpa GitHub Actions)${NC}"
-    echo -e " Target Penyimpanan: ${YELLOW}${TARGET_DIR}${NC}"
+    echo -e " Mode Target        : ${GREEN}100% LOKAL (Linux .AppImage/.deb & Windows .exe/.msi)${NC}"
+    echo -e " Folder Penyimpanan : ${YELLOW}${TARGET_DIR}${NC}"
+    echo -e " Domain Server      : ${GREEN}https://pos.skillage-mart.com${NC}"
     echo -e "${CYAN}========================================================================${NC}"
     echo ""
 }
 
 function build_local() {
-    print_banner
-    echo -e "${BOLD}${GREEN}🔨 MENJALANKAN BUILD DESKTOP LOKAL & PEMASANGAN OTOMATIS...${NC}\n"
     node scripts/build-and-install-local.js
     echo ""
     read -p "Tekan [Enter] untuk kembali ke menu..."
@@ -47,7 +46,7 @@ function list_installers() {
         echo -e "Jalankan opsi [1] untuk melakukan build lokal."
     fi
     echo ""
-    read -p "Tekan [Enter] untuk kembali ke menu..."
+    read -p "Tekan [Enter] me-refresh..."
 }
 
 function clean_local() {
@@ -64,8 +63,8 @@ function clean_local() {
 
 while true; do
     print_banner
-    echo -e " ${BOLD}MENU OPSI UTAMA LOKAL:${NC}"
-    echo -e "  ${GREEN}[1]${NC} 🔨 Build Desktop Lokal & Pasang ke Menu Aplikasi"
+    echo -e " ${BOLD}MENU OPSI UTAMA DUAL-OS:${NC}"
+    echo -e "  ${GREEN}[1]${NC} 🔨 Build Dual-OS (Linux .AppImage + Windows .exe) & Pasang"
     echo -e "  ${GREEN}[2]${NC} 📂 Lihat Berkas Installer di Folder Target"
     echo -e "  ${GREEN}[3]${NC} 🧹 Bersihkan Installer Lama di Folder Target"
     echo -e "  ${RED}[0]${NC} 🚪 Keluar"

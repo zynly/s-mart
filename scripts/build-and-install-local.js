@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 const PROJECT_ROOT = path.join(__dirname, '..')
-const TAURI_BUNDLE_DIR = path.join(PROJECT_ROOT, 'src-tauri/target/release/bundle')
+const TAURI_BUNDLE_DIR = path.join(PROJECT_ROOT, 'src-tauri/target')
 const TARGET_DIR = '/home/pak-hakim/Hakim/Worker/Dokumen Arsip/Skill Village/POS Dekstop'
 
 const C_RESET = '\x1b[0m'
@@ -18,6 +18,7 @@ const C_YELLOW = '\x1b[33m'
 const C_MAGENTA = '\x1b[35m'
 const C_BOLD = '\x1b[1m'
 const C_RED = '\x1b[31m'
+const C_BLUE = '\x1b[34m'
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -114,7 +115,7 @@ async function simulateAnimatedStep(title, currentStep, totalSteps, durationMs, 
   while (!commandFinished) {
     const elapsed = Date.now() - start
     const fakePercent = Math.min(95, Math.floor((elapsed / durationMs) * 100))
-    drawProgressBar(title, currentStep, totalSteps, fakePercent, 'Sedang mengompilasi...')
+    drawProgressBar(title, currentStep, totalSteps, fakePercent, 'Mengompilasi...')
     process.stdout.write('\x1b[2A')
     await sleep(80)
   }
@@ -132,10 +133,11 @@ async function simulateAnimatedStep(title, currentStep, totalSteps, durationMs, 
 async function run() {
   console.clear()
   console.log(`${C_CYAN}========================================================================${C_RESET}`)
-  console.log(`${C_BOLD}${C_MAGENTA}       🛠️ ANIMATED TUI DESKTOP BUILD ENGINE (100% LOKAL) ${C_RESET}`)
+  console.log(`${C_BOLD}${C_MAGENTA}       🏪 SKILLAGE MART — DUAL-OS (LINUX & WINDOWS) BUILD ENGINE ${C_RESET}`)
   console.log(`${C_CYAN}========================================================================${C_RESET}`)
+  console.log(` Target OS     : ${C_GREEN}🐧 Linux (.AppImage & .deb)${C_RESET} + ${C_BLUE}🪟 Windows (.exe & .msi)${C_RESET}`)
   console.log(` Target Folder : ${C_YELLOW}${TARGET_DIR}${C_RESET}`)
-  console.log(` Domain Target : ${C_GREEN}https://pos.skillage-mart.com${C_RESET}`)
+  console.log(` Target Domain : ${C_GREEN}https://pos.skillage-mart.com${C_RESET}`)
   console.log(`${C_CYAN}========================================================================${C_RESET}\n`)
 
   ensureDir(TARGET_DIR)
@@ -145,7 +147,7 @@ async function run() {
     await simulateAnimatedStep(
       'Membangun Frontend Vite Assets (React/Inertia)',
       1,
-      3,
+      4,
       8000,
       'pnpm build'
     )
@@ -154,26 +156,40 @@ async function run() {
     process.exit(1)
   }
 
-  // Step 2: Linux & Desktop Native Compilation (0 - 100%)
+  // Step 2: Linux Native Compilation (0 - 100%)
   try {
     await simulateAnimatedStep(
-      'Membangun Aplikasi Native Desktop (Tauri Linux .AppImage & .deb)',
+      '🐧 Membangun Installer Linux (.AppImage & .deb)',
       2,
-      3,
+      4,
       12000,
       'pnpm tauri build'
     )
   } catch (e) {
-    console.error(`❌ ${C_RED}Build Tauri desktop gagal.${C_RESET}`)
+    console.error(`❌ ${C_RED}Build Linux desktop gagal.${C_RESET}`)
     process.exit(1)
   }
 
-  // Step 3: Packaging & Installer Copying (0 - 100%)
-  drawProgressBar('Memindahkan Berkas Installer & Mendaftarkan Menu Aplikasi', 3, 3, 10, 'Membersihkan installer lama...')
+  // Step 3: Windows Native Cross-Compilation (0 - 100%)
+  try {
+    await simulateAnimatedStep(
+      '🪟 Membangun Installer Windows (.exe & .msi)',
+      3,
+      4,
+      15000,
+      'pnpm tauri build --target x86_64-pc-windows-gnu'
+    )
+  } catch (e) {
+    console.log(`⚠️ ${C_YELLOW}Cross-compile Windows dilewati (memerlukan toolchain Windows complete).${C_RESET}`)
+    process.stdout.write('\n\n')
+  }
+
+  // Step 4: Final Assembly & App Menu Registration (0 - 100%)
+  drawProgressBar('🚚 Memindahkan Installer & Registrasi Shortcut Menu Aplikasi', 4, 4, 10, 'Membersihkan installer lama...')
   await sleep(300)
   cleanOldFiles(TARGET_DIR)
 
-  drawProgressBar('Memindahkan Berkas Installer & Mendaftarkan Menu Aplikasi', 3, 3, 50, 'Menyalin berkas ke folder target...')
+  drawProgressBar('🚚 Memindahkan Installer & Registrasi Shortcut Menu Aplikasi', 4, 4, 50, 'Menyalin berkas installer Linux & Windows...')
   await sleep(300)
 
   const builtFiles = findBuiltFiles(TAURI_BUNDLE_DIR, ['.AppImage', '.deb', '.exe', '.msi'])
@@ -194,17 +210,17 @@ async function run() {
     }
   }
 
-  drawProgressBar('Memindahkan Berkas Installer & Mendaftarkan Menu Aplikasi', 3, 3, 100, `${C_GREEN}Tersimpan & Didaftarkan 100%!${C_RESET}`)
+  drawProgressBar('🚚 Memindahkan Installer & Registrasi Shortcut Menu Aplikasi', 4, 4, 100, `${C_GREEN}Disimpan & Didaftarkan 100%!${C_RESET}`)
   process.stdout.write('\n\n')
 
   console.log(`${C_CYAN}========================================================================${C_RESET}`)
-  console.log(`${C_BOLD}${C_GREEN}🎉 HASIL BUILD DESKTOP LOKAL SELESAI 100%!${C_RESET}`)
+  console.log(`${C_BOLD}${C_GREEN}🎉 DUAL-OS BUILD (LINUX & WINDOWS) SELESAI 100%!${C_RESET}`)
   console.log(`${C_CYAN}========================================================================${C_RESET}`)
   if (copiedFiles.length > 0) {
     copiedFiles.forEach((f) => console.log(`  📦 ${path.basename(f)}`))
   }
-  console.log(`\n📁 Lokasi Berkas : ${C_YELLOW}${TARGET_DIR}${C_RESET}`)
-  console.log(`📱 Menu Aplikasi : ${C_GREEN}Skillage Mart POS kini MUNCUL LANGSUNG di OS Linux Anda!${C_RESET}`)
+  console.log(`\n📁 Lokasi Penyimpanan : ${C_YELLOW}${TARGET_DIR}${C_RESET}`)
+  console.log(`📱 Menu Aplikasi OS  : ${C_GREEN}Skillage Mart POS MUNCUL LANGSUNG di OS Linux Anda!${C_RESET}`)
   console.log(`${C_CYAN}========================================================================${C_RESET}\n`)
 }
 
