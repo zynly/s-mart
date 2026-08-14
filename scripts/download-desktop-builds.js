@@ -8,8 +8,8 @@ import { fileURLToPath } from 'url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-const REPO_OWNER = 'velora-1d'
-const REPO_NAME = 'POS-Skillage'
+const REPO_OWNER = 'zynly'
+const REPO_NAME = 's-mart'
 
 // Direct Target Directory requested by User
 const PRIMARY_OUTPUT_DIR = '/home/pak-hakim/Hakim/Worker/Dokumen Arsip/Skill Village/POS Dekstop'

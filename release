@@ -94,7 +94,7 @@ function check_status() {
     print_banner
     echo -e "${BOLD}${BLUE}📊 PILIHAN 4: CEK STATUS RILIS GITHUB${NC}\n"
     echo -e "${YELLOW}Mengambil data rilis publik dari GitHub REST API...${NC}"
-    curl -s "https://api.github.com/repos/velora-1d/POS-Skillage/releases" | node -e '
+    curl -s "https://api.github.com/repos/zynly/s-mart/releases" | node -e '
       let data = "";
       process.stdin.on("data", c => data += c);
       process.stdin.on("end", () => {
