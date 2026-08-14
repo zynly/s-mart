@@ -9,6 +9,7 @@
         "desktop:dev": "tauri dev",
         "desktop:build": "tauri build",
         "download:desktop": "node scripts/download-desktop-builds.js",
+        "release": "./release",
         "lint": "eslint resources/js --ext .ts,.tsx",
         "format": "prettier --write resources/js",
         "type-check": "tsc --noEmit"
