@@ -10,6 +10,7 @@ const __dirname = path.dirname(__filename)
 const PROJECT_ROOT = path.join(__dirname, '..')
 const TAURI_BUNDLE_DIR = path.join(PROJECT_ROOT, 'src-tauri/target')
 const TARGET_DIR = '/home/pak-hakim/Hakim/Worker/Dokumen Arsip/Skill Village/POS Dekstop'
+const LOG_FILE = path.join(PROJECT_ROOT, 'desktop-build.log')
 
 const C_RESET = '\x1b[0m'
 const C_CYAN = '\x1b[36m'
@@ -33,7 +34,6 @@ function drawProgressBar(title, currentStep, totalSteps, percent, statusMsg) {
   let color = C_YELLOW
   if (percent >= 100) color = C_GREEN
 
-  // Clear 3 lines
   process.stdout.write('\x1b[2K')
   process.stdout.write(`  ${C_BOLD}${C_CYAN}[${currentStep}/${totalSteps}] ${title}${C_RESET}\n`)
   process.stdout.write('\x1b[2K')
@@ -49,17 +49,15 @@ function ensureDir(dir) {
 function autoUninstallOldVersion() {
   console.log(`  🗑️  ${C_YELLOW}AUTO-UNINSTALL VERSI LAMA: Memeriksa dan mencabut instalasi lama...${C_RESET}`)
   
-  // 1. Uninstall old desktop menu launcher shortcut
   const appsDir = path.join(os.homedir(), '.local/share/applications')
   const desktopFile = path.join(appsDir, 'skillage-mart-pos.desktop')
   if (fs.existsSync(desktopFile)) {
     try {
       fs.unlinkSync(desktopFile)
-      console.log(`     └─> ✅ Shortcut versi lama (${desktopFile}) berhasil dicabut/dihapus!`)
+      console.log(`     └─> ✅ Shortcut versi lama (${desktopFile}) berhasil dicabut!`)
     } catch (e) {}
   }
 
-  // 2. Clean old installer binaries from target directory
   try {
     if (fs.existsSync(TARGET_DIR)) {
       const files = fs.readdirSync(TARGET_DIR)
@@ -70,7 +68,7 @@ function autoUninstallOldVersion() {
           deletedCount++
         }
       }
-      console.log(`     └─> ✅ ${deletedCount} berkas installer lama di folder target berhasil dibersihkan bersih!`)
+      console.log(`     └─> ✅ ${deletedCount} berkas installer lama di folder target dibersihkan!`)
     }
   } catch (e) {}
 
@@ -124,13 +122,17 @@ async function simulateAnimatedStep(title, currentStep, totalSteps, durationMs, 
   const start = Date.now()
   let commandFinished = false
   let commandError = null
+  let outputBuffer = ''
 
   const child = spawn('bash', ['-c', command], { cwd: PROJECT_ROOT })
+
+  child.stdout.on('data', (d) => (outputBuffer += d.toString()))
+  child.stderr.on('data', (d) => (outputBuffer += d.toString()))
 
   child.on('exit', (code) => {
     commandFinished = true
     if (code !== 0) {
-      commandError = new Error(`Command failed with exit code ${code}`)
+      commandError = new Error(`Proses kompilasi '${title}' gagal dengan exit code ${code}`)
     }
   })
 
@@ -143,8 +145,23 @@ async function simulateAnimatedStep(title, currentStep, totalSteps, durationMs, 
   }
 
   if (commandError) {
-    drawProgressBar(title, currentStep, totalSteps, 0, `${C_RED}Gagal!${C_RESET}`)
+    drawProgressBar(title, currentStep, totalSteps, 0, `${C_RED}GAGAL!${C_RESET}`)
     process.stdout.write('\n\n')
+    
+    // Write output log to desktop-build.log
+    fs.writeFileSync(LOG_FILE, outputBuffer, 'utf8')
+
+    console.log(`${C_RED}========================================================================${C_RESET}`)
+    console.log(`${C_BOLD}${C_RED}❌ TERJADI KESALAHAN PADA PROSES: ${title}${C_RESET}`)
+    console.log(`${C_RED}========================================================================${C_RESET}`)
+    console.log(`📄 Log Rincian Error Disimpan Ke: ${C_YELLOW}${LOG_FILE}${C_RESET}\n`)
+    console.log(`${C_BOLD}Rincian Baris Error Terakhir:${C_RESET}`)
+    
+    const lines = outputBuffer.split('\n').filter(Boolean)
+    const lastLines = lines.slice(-25).join('\n')
+    console.log(`${C_RED}${lastLines}${C_RESET}`)
+    console.log(`${C_RED}========================================================================${C_RESET}\n`)
+    
     throw commandError
   }
 
@@ -174,21 +191,19 @@ async function run() {
       'pnpm build'
     )
   } catch (e) {
-    console.error(`❌ ${C_RED}Build frontend gagal.${C_RESET}`)
     process.exit(1)
   }
 
   // Step 2: Linux Native Compilation (0 - 100%)
   try {
     await simulateAnimatedStep(
-      '🐧 Membangun Installer Linux (.AppImage & .deb)',
+      '🐧 Membangun Installer Linux (.deb & App Package)',
       2,
       4,
       12000,
-      'pnpm tauri build'
+      'NO_STRIP=1 pnpm tauri build --bundles deb'
     )
   } catch (e) {
-    console.error(`❌ ${C_RED}Build Linux desktop gagal.${C_RESET}`)
     process.exit(1)
   }
 
@@ -210,7 +225,6 @@ async function run() {
   drawProgressBar('🚚 Auto-Uninstall Lama, Salin Installer Baru & Registrasi Menu', 4, 4, 10, 'Mencabut & menghapus versi lama...')
   await sleep(300)
 
-  // EXECUTE AUTO-UNINSTALL OF OLD VERSION
   autoUninstallOldVersion()
 
   drawProgressBar('🚚 Auto-Uninstall Lama, Salin Installer Baru & Registrasi Menu', 4, 4, 50, 'Menyalin berkas installer versi baru...')
@@ -237,7 +251,6 @@ async function run() {
   }
   console.log(`\n📁 Lokasi Penyimpanan : ${C_YELLOW}${TARGET_DIR}${C_RESET}`)
 
-  // AUTO-DETEKSI OS & AUTO-INSTALL SHOWCASE BLOCK
   const currentPlatform = os.platform()
   console.log(`${C_CYAN}========================================================================${C_RESET}`)
   console.log(`${C_BOLD}${C_GREEN}🔍 AUTO-UNINSTALL LAMA & AUTO-INSTALL BARU STATUS:${C_RESET}`)
