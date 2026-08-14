@@ -14,16 +14,18 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // PostgreSQL: tambah nilai baru ke constraint CHECK atau hapus & buat ulang constraint
-        // Cek apakah constraint check sudah ada
-        DB::statement("ALTER TABLE topup_requests DROP CONSTRAINT IF EXISTS topup_requests_status_check");
-        DB::statement("ALTER TABLE topup_requests ADD CONSTRAINT topup_requests_status_check CHECK (status IN ('pending','approved','rejected','expired'))");
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement("ALTER TABLE topup_requests DROP CONSTRAINT IF EXISTS topup_requests_status_check");
+            DB::statement("ALTER TABLE topup_requests ADD CONSTRAINT topup_requests_status_check CHECK (status IN ('pending','approved','rejected','expired'))");
+        }
     }
 
     public function down(): void
     {
-        DB::statement("UPDATE topup_requests SET status = 'rejected' WHERE status = 'expired'");
-        DB::statement("ALTER TABLE topup_requests DROP CONSTRAINT IF EXISTS topup_requests_status_check");
-        DB::statement("ALTER TABLE topup_requests ADD CONSTRAINT topup_requests_status_check CHECK (status IN ('pending','approved','rejected'))");
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement("UPDATE topup_requests SET status = 'rejected' WHERE status = 'expired'");
+            DB::statement("ALTER TABLE topup_requests DROP CONSTRAINT IF EXISTS topup_requests_status_check");
+            DB::statement("ALTER TABLE topup_requests ADD CONSTRAINT topup_requests_status_check CHECK (status IN ('pending','approved','rejected'))");
+        }
     }
 };

@@ -61,6 +61,8 @@ class CashierSessionController extends Controller
             );
         } catch (SessionAlreadyOpenException $e) {
             throw ValidationException::withMessages(['cash_account_id' => $e->getMessage()]);
+        } catch (DomainException $e) {
+            throw ValidationException::withMessages(['cash_account_id' => $e->getMessage()]);
         }
 
         return back()->with('success', 'Sesi kasir dibuka.');

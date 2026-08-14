@@ -26,9 +26,19 @@ class CashierSessionService
 
             $account = CashAccount::lockForUpdate()->findOrFail($cashAccount->id);
 
+            $outletId = $account->outlet_id
+                ?? session('active_outlet_id')
+                ?? $user->primaryOutletId()
+                ?? \App\Models\Outlet::where('is_main', true)->value('id')
+                ?? \App\Models\Outlet::value('id');
+
+            if (! $outletId) {
+                throw new DomainException('Outlet tidak ditemukan. Sesi kasir wajib terikat pada outlet yang valid.');
+            }
+
             return CashierSession::create([
-                'reference' => ReferenceGenerator::generate('SES', $account->outlet_id),
-                'outlet_id' => $account->outlet_id,
+                'reference' => ReferenceGenerator::generate('SES', (int) $outletId),
+                'outlet_id' => $outletId,
                 'user_id' => $user->id,
                 'cash_account_id' => $account->id,
                 'opened_at' => now(),

@@ -34,7 +34,7 @@ class ReferenceGenerator
      * persis. Parameter $outletId dipertahankan (tidak dipakai) supaya
      * semua pemanggil lama di 11 fase sebelumnya tidak perlu diubah.
      */
-    public static function generate(string $prefix, int $outletId): string
+    public static function generate(string $prefix, ?int $outletId = 0): string
     {
         $date = now()->format('Ymd');
         $lastNumber = self::increment($prefix, 0, $date);
@@ -100,7 +100,8 @@ class ReferenceGenerator
      */
     private static function increment(string $prefix, int $outletId, string $dateKey): int
     {
-        $connection = DB::connection('reference_counters');
+        $connectionName = app()->environment('testing') ? config('database.default') : 'reference_counters';
+        $connection = DB::connection($connectionName);
         $now = now();
 
         return $connection->transaction(function () use ($connection, $prefix, $outletId, $dateKey, $now) {

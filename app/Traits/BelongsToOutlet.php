@@ -49,14 +49,19 @@ trait BelongsToOutlet
                 return;
             }
 
-            $builder->whereIn($builder->getModel()->getTable().'.outlet_id', $outletIds->all());
+            $builder->where(function (Builder $q) use ($builder, $outletIds) {
+                $q->whereIn($builder->getModel()->getTable().'.outlet_id', $outletIds->all())
+                  ->orWhereNull($builder->getModel()->getTable().'.outlet_id');
+            });
         });
 
         static::creating(function ($model) {
             if (empty($model->outlet_id)) {
                 $user = auth()->user();
                 $model->outlet_id = session('active_outlet_id')
-                    ?? $user?->primaryOutletId();
+                    ?? $user?->primaryOutletId()
+                    ?? \App\Models\Outlet::where('is_main', true)->value('id')
+                    ?? \App\Models\Outlet::value('id');
             }
         });
     }
