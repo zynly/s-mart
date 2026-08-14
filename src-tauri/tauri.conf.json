@@ -5,7 +5,7 @@
   "identifier": "com.skillagemart.pos",
   "build": {
     "frontendDist": "https://pos.skillage-mart.com",
-    "devUrl": "http://127.0.0.1:8000"
+    "devUrl": "https://pos.skillage-mart.com"
   },
   "app": {
     "windows": [
