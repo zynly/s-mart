@@ -1195,7 +1195,20 @@ export default function Index({
                               </span>
                             </div>
 
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 flex-wrap justify-end">
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {sale.payments && sale.payments.length > 0 ? (
+                                  sale.payments.map((p, idx) => (
+                                    <Badge key={idx} variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30 text-[10px] font-bold">
+                                      {p.method_name}
+                                    </Badge>
+                                  ))
+                                ) : (
+                                  <Badge variant="outline" className="bg-slate-100 text-slate-600 text-[10px]">
+                                    Tunai
+                                  </Badge>
+                                )}
+                              </div>
                               <Money amount={sale.grand_total} size="sm" className="font-bold" />
                               <Badge variant="outline" className={SALE_STATUS_BADGE[sale.status] ?? ''}>
                                 {SALE_STATUS_LABELS[sale.status] ?? sale.status}

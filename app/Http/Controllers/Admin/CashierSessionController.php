@@ -218,6 +218,8 @@ class CashierSessionController extends Controller
                 ]),
                 'payments' => $sale->payments->map(fn ($pm) => [
                     'method_name' => $pm->paymentMethod?->name ?? 'Pembayaran',
+                    'method_code' => $pm->paymentMethod?->code ?? 'CASH',
+                    'method_type' => $pm->paymentMethod?->type ?? 'cash',
                     'amount' => $pm->amount,
                 ]),
             ]),
