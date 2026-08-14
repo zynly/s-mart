@@ -94,10 +94,17 @@ type SessionRow = {
 type ActiveSaleRow = {
   id: number
   reference: string
+  kasir_name?: string
+  customer_name?: string
   sale_date: string
+  payment_methods?: string[]
+  subtotal?: number
+  discount_amount?: number
+  tax_amount?: number
   grand_total: number
   status: string
   voided_at: string | null
+  notes?: string | null
 }
 
 type DetailSaleItem = {
@@ -321,9 +328,36 @@ export default function Index({
   const sessions = Array.isArray(recentSessions) ? recentSessions : recentSessions.data
 
   const saleColumns: ColumnDef<ActiveSaleRow, unknown>[] = [
-    { accessorKey: 'reference', header: 'Referensi' },
-    { id: 'date', header: 'Waktu', cell: ({ row }) => new Date(row.original.sale_date).toLocaleString('id-ID') },
-    { id: 'total', header: 'Total', cell: ({ row }) => <Money amount={row.original.grand_total} size="sm" /> },
+    {
+      accessorKey: 'reference',
+      header: 'Referensi',
+      cell: ({ row }) => <span className="font-mono font-bold text-amber-600 dark:text-amber-400">{row.original.reference}</span>,
+    },
+    { id: 'kasir', header: 'Kasir', cell: ({ row }) => <span className="font-semibold text-slate-800 dark:text-slate-200">{row.original.kasir_name ?? 'Kasir'}</span> },
+    { id: 'customer', header: 'Pelanggan', cell: ({ row }) => <span className="text-slate-600 dark:text-slate-400 text-xs">{row.original.customer_name ?? 'Pelanggan Umum'}</span> },
+    { id: 'date', header: 'Waktu', cell: ({ row }) => new Date(row.original.sale_date).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) },
+    {
+      id: 'payments',
+      header: 'Metode Pembayaran',
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1 flex-wrap">
+          {row.original.payment_methods && row.original.payment_methods.length > 0 ? (
+            row.original.payment_methods.map((method, idx) => (
+              <Badge key={idx} variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30 text-[10px] font-bold">
+                {method}
+              </Badge>
+            ))
+          ) : (
+            <Badge variant="outline" className="bg-slate-100 text-slate-600 text-[10px]">
+              Tunai
+            </Badge>
+          )}
+        </div>
+      ),
+    },
+    { id: 'subtotal', header: 'Subtotal', cell: ({ row }) => <Money amount={row.original.subtotal ?? row.original.grand_total} size="sm" /> },
+    { id: 'diskon', header: 'Diskon', cell: ({ row }) => <Money amount={row.original.discount_amount ?? 0} size="sm" className="text-slate-500" /> },
+    { id: 'total', header: 'Total Struk', cell: ({ row }) => <Money amount={row.original.grand_total} size="sm" className="font-bold text-slate-900 dark:text-white" /> },
     {
       id: 'status',
       header: 'Status',
@@ -337,18 +371,18 @@ export default function Index({
       id: 'actions',
       header: 'Aksi',
       cell: ({ row }) => (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <Button
             size="sm"
             variant="outline"
-            className="h-8 gap-1 border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-200 font-medium text-xs px-2.5 rounded-lg"
+            className="h-8 gap-1 border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-200 font-bold text-xs px-2.5 rounded-lg"
             onClick={() => window.open(route('pos.sales.receipt-pdf', row.original.id), '_blank')}
           >
             <Receipt className="size-3.5 text-slate-500" />
-            Lihat Nota
+            PDF Struk
           </Button>
           {row.original.status === 'completed' && (
-            <Button size="sm" variant="outline" className="h-8 text-red-600 border-red-200 hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-950/50 font-medium text-xs px-2.5 rounded-lg" onClick={() => { setVoidTarget(row.original); setVoidReason('') }}>
+            <Button size="sm" variant="outline" className="h-8 text-red-600 border-red-200 hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-950/50 font-bold text-xs px-2.5 rounded-lg" onClick={() => { setVoidTarget(row.original); setVoidReason('') }}>
               Void
             </Button>
           )}

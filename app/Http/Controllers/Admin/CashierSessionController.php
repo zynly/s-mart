@@ -102,9 +102,29 @@ class CashierSessionController extends Controller
                 })->values()->all(),
             'outlets' => Outlet::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'activeSales' => $active !== null
-                ? Sale::where('cashier_session_id', $active->id)
-                    ->orderByDesc('id')
-                    ->get(['id', 'reference', 'sale_date', 'grand_total', 'status', 'voided_at'])
+                ? Sale::with([
+                    'user:id,name',
+                    'member:id,name,member_number',
+                    'payments.paymentMethod:id,name,type',
+                ])
+                ->where('cashier_session_id', $active->id)
+                ->orderByDesc('id')
+                ->get()
+                ->map(fn ($sale) => [
+                    'id' => $sale->id,
+                    'reference' => $sale->reference,
+                    'kasir_name' => $sale->user?->name ?? 'Kasir',
+                    'customer_name' => $sale->member?->name ? ($sale->member->name . ' (' . $sale->member->member_number . ')') : 'Pelanggan Umum',
+                    'sale_date' => $sale->sale_date?->toIso8601String(),
+                    'payment_methods' => $sale->payments->map(fn ($p) => $p->paymentMethod?->name ?? 'Tunai')->values()->all(),
+                    'subtotal' => $sale->subtotal ?? $sale->grand_total,
+                    'discount_amount' => $sale->discount_amount ?? 0,
+                    'tax_amount' => $sale->tax_amount ?? 0,
+                    'grand_total' => $sale->grand_total,
+                    'status' => $sale->status,
+                    'voided_at' => $sale->voided_at?->toIso8601String(),
+                    'notes' => $sale->notes,
+                ])
                 : [],
             'recentSessions' => CashierSession::with(['user:id,name', 'cashAccount:id,name'])
                 ->where('status', '!=', 'open')
