@@ -1116,36 +1116,40 @@ export default function Index({
           {detailLoading ? (
             <div className="flex flex-col items-center justify-center py-12 gap-3">
               <Loader2 className="size-8 animate-spin text-amber-500" />
-              <span className="text-xs text-slate-500 font-bold">Mengambil data transaksi & item barang…</span>
+              <span className="text-xs text-slate-500 font-bold">Mengambil data audit transaksi & item barang…</span>
             </div>
           ) : sessionDetail ? (
             <div className="flex flex-col gap-4 overflow-y-auto pr-1">
               {/* Header Info Sesi */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-xs">
                 <div>
-                  <span className="text-slate-400 font-medium">Kasir:</span>
-                  <div className="font-bold text-slate-900 dark:text-white">{sessionDetail.session.user_name}</div>
+                  <span className="text-slate-400 font-medium text-[11px]">Kasir Sesi:</span>
+                  <div className="font-bold text-slate-900 dark:text-white mt-0.5">{sessionDetail.session.user_name}</div>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium">Laci Kasir:</span>
-                  <div className="font-bold text-slate-900 dark:text-white">{sessionDetail.session.drawer_name}</div>
+                  <span className="text-slate-400 font-medium text-[11px]">Laci Kasir:</span>
+                  <div className="font-bold text-slate-900 dark:text-white mt-0.5">{sessionDetail.session.drawer_name}</div>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium">Waktu Buka:</span>
-                  <div className="font-semibold text-slate-700 dark:text-slate-300">
+                  <span className="text-slate-400 font-medium text-[11px]">Waktu Buka Sesi:</span>
+                  <div className="font-semibold text-slate-700 dark:text-slate-300 mt-0.5">
                     {new Date(sessionDetail.session.opened_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}
                   </div>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium">Waktu Tutup:</span>
-                  <div className="font-semibold text-slate-700 dark:text-slate-300">
-                    {sessionDetail.session.closed_at ? new Date(sessionDetail.session.closed_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                  <span className="text-slate-400 font-medium text-[11px]">Waktu Tutup Sesi:</span>
+                  <div className="font-semibold text-slate-700 dark:text-slate-300 mt-0.5">
+                    {sessionDetail.session.closed_at ? new Date(sessionDetail.session.closed_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '🔴 Sesi Masih Aktif'}
                   </div>
                 </div>
               </div>
 
-              {/* Rincian Kas Summary */}
-              <div className="grid grid-cols-3 gap-3 text-xs">
+              {/* Rincian Kas Summary Grid (4 Cards Audit) */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
+                  <span className="text-[11px] text-slate-500 font-bold">Modal Awal Kas</span>
+                  <Money amount={sessionDetail.session.opening_cash} size="md" className="font-black text-slate-900 dark:text-white mt-0.5" />
+                </div>
                 <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
                   <span className="text-[11px] text-slate-500 font-bold">Uang Diharapkan (Expected)</span>
                   <Money amount={sessionDetail.session.expected_cash} size="md" className="font-black text-amber-600 dark:text-amber-400 mt-0.5" />
@@ -1159,20 +1163,32 @@ export default function Index({
                   {sessionDetail.session.difference !== null ? (
                     <Money amount={sessionDetail.session.difference} size="md" showSign className="font-black text-blue-600 dark:text-blue-400 mt-0.5" />
                   ) : (
-                    <span className="text-slate-400 mt-0.5">—</span>
+                    <span className="text-slate-400 mt-0.5 font-bold">—</span>
                   )}
                 </div>
               </div>
 
               {/* Daftar Nota Penjualan */}
               <div className="space-y-3 mt-1">
-                <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center justify-between">
-                  <span>Daftar Nota Penjualan ({sessionDetail.sales.length} Nota)</span>
-                </h4>
+                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
+                    <Receipt className="size-4 text-amber-500" />
+                    <span>Daftar Nota Penjualan ({sessionDetail.sales.length} Nota)</span>
+                  </h4>
+                  <Badge variant="outline" className="font-mono text-[10px] border-amber-500/40 text-amber-600 dark:text-amber-400">
+                    {sessionDetail.sales.length} Transaksi
+                  </Badge>
+                </div>
 
                 {sessionDetail.sales.length === 0 ? (
-                  <div className="text-center py-8 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-xs text-slate-400">
-                    Tidak ada transaksi penjualan pada sesi ini.
+                  <div className="flex flex-col items-center justify-center py-10 px-4 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-center bg-slate-50/50 dark:bg-slate-900/50">
+                    <div className="flex size-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 mb-3">
+                      <Receipt className="size-6" />
+                    </div>
+                    <h5 className="text-sm font-bold text-slate-900 dark:text-white">Belum Ada Nota Penjualan</h5>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mt-1">
+                      Sesi kasir ini belum memiliki riwayat transaksi nota penjualan (0 Nota). Sesi baru dibuka atau belum ada transaksi kasir yang diselesaikan.
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-2.5">
