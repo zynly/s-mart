@@ -563,55 +563,56 @@ export default function Index({
             </div>
           )}
 
-          {/* Hero Active Session Banner */}
-          <div className="relative overflow-hidden rounded-3xl border border-amber-400/30 bg-surface dark:bg-surface-alt p-6 text-content shadow-xl">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex size-14 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-md shrink-0">
-                  <Coins className="size-7" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-black tracking-wider uppercase text-amber-400">
-                      Sesi Aktif
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-950/60 border border-emerald-500/40 px-2.5 py-0.5 text-[11px] font-bold text-emerald-300">
-                      <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
-                      Terbuka
-                    </span>
-                    {active?.user && (
-                      <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40 text-xs font-bold px-2 py-0.5">
-                        Kasir: {active.user.name}
-                      </Badge>
-                    )}
+          {/* Hero Active Session Banner — Premium High-Contrast Card */}
+          <Card className="overflow-hidden border-slate-200/90 bg-white shadow-sm dark:border-slate-800 dark:bg-surface">
+            <CardContent className="p-5 sm:p-6">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-start sm:items-center gap-4">
+                  <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-600 dark:bg-amber-400/20 dark:text-amber-400 border border-amber-500/30 shadow-xs">
+                    <Coins className="size-7" />
                   </div>
-                  <h2 className="text-xl sm:text-2xl font-black tracking-tight text-content mt-1">
-                    {active.reference}
-                  </h2>
-                  <p className="text-xs text-content-muted mt-1">
-                    Laci: <strong className="text-content font-bold">{active.cash_account.name}</strong> · Dibuka sejak {new Date(active.opened_at).toLocaleString('id-ID')}
-                  </p>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 gap-1.5 text-[11px] font-extrabold px-2.5 py-0.5">
+                        <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+                        Sesi Aktif Terbuka
+                      </Badge>
+                      {active?.user && (
+                        <Badge variant="outline" className="border-slate-300 text-slate-700 dark:border-slate-700 dark:text-slate-300 text-xs font-bold px-2.5 py-0.5">
+                          Kasir: {active.user.name}
+                        </Badge>
+                      )}
+                    </div>
+                    <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white font-mono">
+                      {active.reference}
+                    </h2>
+                    <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 flex-wrap font-medium">
+                      <span>Laci Kasir: <strong className="text-slate-800 dark:text-slate-200 font-bold">{active.cash_account.name}</strong></span>
+                      <span>•</span>
+                      <span>Dibuka: {new Date(active.opened_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              {/* Expected Cash Highlight Badge & POS Button */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                <div className="flex flex-col items-start sm:items-end rounded-2xl border border-amber-400/50 bg-surface-alt dark:bg-surface px-5 py-3.5 shadow-md">
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-300">
-                    Expected Cash (Uang Diharapkan)
-                  </span>
-                  <Money amount={expected ?? 0} size="xl" className="text-amber-400 font-black text-2xl mt-0.5" />
+                {/* Expected Cash Highlight & POS Button */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
+                  <div className="flex flex-col items-start sm:items-end rounded-2xl border border-slate-200/90 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-800/60 px-5 py-3.5 shadow-2xs">
+                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Expected Cash (Uang Diharapkan)
+                    </span>
+                    <Money amount={expected ?? 0} size="xl" className="text-emerald-700 dark:text-emerald-400 font-black text-2xl mt-0.5" />
+                  </div>
+                  <Button
+                    onClick={() => router.visit(route('pos.index'))}
+                    className="h-12 py-3 px-5 gap-2 rounded-2xl bg-amber-500 hover:bg-amber-400 text-navy-950 font-black text-sm shadow-md transition-all active:scale-95 shrink-0"
+                  >
+                    <ShoppingBag className="size-5" />
+                    <span>Buka Terminal POS</span>
+                  </Button>
                 </div>
-                <Button
-                  onClick={() => router.visit(route('pos.index'))}
-                  className="h-full py-4.5 px-5 gap-2 rounded-2xl bg-amber-500 hover:bg-amber-400 text-navy-950 font-black text-sm shadow-md transition-all active:scale-95"
-                >
-                  <ShoppingBag className="size-5" />
-                  <span>Buka Terminal POS</span>
-                </Button>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
             {/* Detailed Cash Breakdown Card */}
