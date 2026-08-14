@@ -2,7 +2,7 @@ import { useState, type ReactElement } from 'react'
 import { router } from '@inertiajs/react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { toast } from 'sonner'
-import { FileText, FileSpreadsheet, Printer, Download, CheckCircle2, Building2, Filter, Calendar, Package } from 'lucide-react'
+import { FileText, FileSpreadsheet, Printer, Download, CheckCircle2, Building2, Filter, Calendar, Package, UserCheck, Store } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
 import { DataTable } from '@/Components/common/DataTable'
@@ -35,6 +35,7 @@ type ReportsShowProps = {
   outlets: Ref[]
   cashiers: Ref[]
   products: ProductRef[]
+  sessions?: Ref[]
   canExport: boolean
 }
 
@@ -73,7 +74,7 @@ function humanizeKey(key: string): string {
   return key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-export default function Show({ reportKey, title, filterDefs, columns, rows, summary, filters, outlets, products, canExport }: ReportsShowProps) {
+export default function Show({ reportKey, title, filterDefs, columns, rows, summary, filters, outlets, cashiers, products, sessions, canExport }: ReportsShowProps) {
   const [exporting, setExporting] = useState(false)
   const [pdfOpen, setPdfOpen] = useState(false)
   const [excelOpen, setExcelOpen] = useState(false)
@@ -84,6 +85,7 @@ export default function Show({ reportKey, title, filterDefs, columns, rows, summ
     date_to: filters.date_to ?? '',
     outlet_id: filters.outlet_id ?? '',
     cashier_id: filters.cashier_id ?? '',
+    session_id: filters.session_id ?? '',
     product_id: filters.product_id ?? '',
     min_days: filters.min_days ?? '',
   })
@@ -242,6 +244,46 @@ export default function Show({ reportKey, title, filterDefs, columns, rows, summ
                     <SelectContent>
                       <SelectItem value="all">Semua outlet</SelectItem>
                       {outlets.map((o) => <SelectItem key={o.id} value={String(o.id)}>{o.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )
+            }
+
+            if (f.type === 'user') {
+              return (
+                <div key={f.key} className="space-y-1.5 flex-1 min-w-[170px] w-full">
+                  <Label className="font-bold text-xs text-navy-900 flex items-center gap-1.5">
+                    <UserCheck className="size-3.5 text-navy-600" />
+                    <span>{f.label}</span>
+                  </Label>
+                  <Select value={form[f.key] || 'all'} onValueChange={(v) => setForm((prev) => ({ ...prev, [f.key]: v === 'all' ? '' : v }))}>
+                    <SelectTrigger className="w-full h-9 bg-white border-slate-200 font-medium">
+                      <SelectValue placeholder="Semua kasir" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua kasir</SelectItem>
+                      {cashiers.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )
+            }
+
+            if (f.type === 'session') {
+              return (
+                <div key={f.key} className="space-y-1.5 flex-1 min-w-[240px] w-full">
+                  <Label className="font-bold text-xs text-navy-900 flex items-center gap-1.5">
+                    <Store className="size-3.5 text-amber-600" />
+                    <span>{f.label}</span>
+                  </Label>
+                  <Select value={form[f.key] || 'all'} onValueChange={(v) => setForm((prev) => ({ ...prev, [f.key]: v === 'all' ? '' : v }))}>
+                    <SelectTrigger className="w-full h-9 bg-white border-slate-200 font-medium">
+                      <SelectValue placeholder="Semua Sesi Kasir" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Sesi Kasir</SelectItem>
+                      {(sessions ?? []).map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Exports\ReportExport;
 use App\Http\Controllers\Controller;
 use App\Jobs\GenerateReportExportJob;
+use App\Models\CashierSession;
 use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\User;
@@ -83,6 +84,10 @@ class ReportController extends Controller
             'outlets' => Outlet::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'cashiers' => User::role('cashier')->orderBy('name')->get(['id', 'name']),
             'products' => Product::where('is_active', true)->orderBy('name')->limit(500)->get(['id', 'name', 'sku']),
+            'sessions' => CashierSession::orderByDesc('opened_at')->limit(100)->get(['id', 'reference', 'user_id', 'opened_at', 'status'])->map(fn ($s) => [
+                'id' => $s->id,
+                'name' => $s->reference . ' (' . ($s->opened_at ? $s->opened_at->format('d/m/Y H:i') : '') . ')',
+            ]),
         ]);
     }
 
