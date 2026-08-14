@@ -2,7 +2,7 @@ import { useState, type ReactElement } from 'react'
 import { Link } from '@inertiajs/react'
 import {
   ShoppingBag, Package, Wallet, Scale, Download, FileSpreadsheet, ArrowRight,
-  TrendingUp, BarChart3, Clock, AlertTriangle, Layers, Calendar, CheckCircle2,
+  TrendingUp, BarChart3, Clock, AlertTriangle, Layers, Calendar, CheckCircle2, Store,
 } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
@@ -32,6 +32,7 @@ const REPORT_DESCRIPTIONS: Record<string, string> = {
   'sales-summary': 'Ringkasan total omzet, laba kotor, dan jumlah transaksi harian/periodik.',
   'sales-by-product': 'Rincian volume dan nilai penjualan per jenis barang/produk.',
   'sales-by-cashier': 'Laporan omzet dan performa transaksi per petugas kasir.',
+  'cashier-sessions': 'Audit detail sesi kasir, kas awal, expected cash, actual cash, dan selisih.',
   'sales-by-payment-method': 'Breakdown pembayaran via Tunai, QRIS, maupun Deposit Santri.',
   'stock-summary': 'Ringkasan posisi nilai dan kuantitas persediaan barang terkini.',
   'stock-card': 'Kartu riwayat mutasi masuk, keluar, dan penyesuaian stok produk.',
@@ -45,6 +46,7 @@ const REPORT_ICONS: Record<string, typeof ShoppingBag> = {
   'sales-summary': TrendingUp,
   'sales-by-product': Layers,
   'sales-by-cashier': BarChart3,
+  'cashier-sessions': Store,
   'sales-by-payment-method': Wallet,
   'stock-summary': Package,
   'stock-card': Clock,

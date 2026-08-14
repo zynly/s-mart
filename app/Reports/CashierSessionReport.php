@@ -21,7 +21,7 @@ class CashierSessionReport extends BaseReport
 
     public function category(): string
     {
-        return 'kasir';
+        return 'penjualan';
     }
 
     public function requiredPermission(): string
