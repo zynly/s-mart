@@ -40,7 +40,7 @@ function fetchJson(url) {
   })
 }
 
-function downloadFile(url, destPath) {
+function downloadFileWithProgress(url, destPath, fileName, versionTag) {
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(destPath)
     const options = {
@@ -51,14 +51,43 @@ function downloadFile(url, destPath) {
 
     https.get(url, options, (res) => {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        return downloadFile(res.headers.location, destPath).then(resolve).catch(reject)
+        return downloadFileWithProgress(res.headers.location, destPath, fileName, versionTag).then(resolve).catch(reject)
       }
       if (res.statusCode !== 200) {
-        return reject(new Error(`Failed to download: HTTP ${res.statusCode}`))
+        return reject(new Error(`Gagal mengunduh berkas: HTTP status ${res.statusCode}`))
       }
+
+      const totalBytes = parseInt(res.headers['content-length'] || '0', 10)
+      let downloadedBytes = 0
+
+      console.log(`\n⬇️  Mengunduh Versi [${versionTag}] — ${fileName}`)
+
+      res.on('data', (chunk) => {
+        downloadedBytes += chunk.length
+        if (totalBytes > 0) {
+          const percent = Math.min(100, Math.floor((downloadedBytes / totalBytes) * 100))
+          const barLength = 25
+          const filledLength = Math.floor((percent / 100) * barLength)
+          const bar = '█'.repeat(filledLength) + '░'.repeat(barLength - filledLength)
+          const dlMB = (downloadedBytes / 1024 / 1024).toFixed(1)
+          const totalMB = (totalBytes / 1024 / 1024).toFixed(1)
+
+          process.stdout.write(
+            `\r  [${bar}] ${percent}% (${dlMB} MB / ${totalMB} MB)`
+          )
+        } else {
+          const dlMB = (downloadedBytes / 1024 / 1024).toFixed(1)
+          process.stdout.write(`\r  Mengunduh: ${dlMB} MB...`)
+        }
+      })
+
       res.pipe(file)
+
       file.on('finish', () => {
-        file.close(() => resolve())
+        file.close(() => {
+          process.stdout.write('\n  ✅ Selesai 100%!\n')
+          resolve()
+        })
       })
     }).on('error', (err) => {
       fs.unlink(destPath, () => {})
@@ -68,22 +97,23 @@ function downloadFile(url, destPath) {
 }
 
 async function run() {
-  console.log(`🔍 Memeriksa berkas rilis desktop terbaru dari GitHub (${REPO_OWNER}/${REPO_NAME})...`)
+  console.log(`\n🔍 Memeriksa berkas rilis desktop terbaru dari GitHub (${REPO_OWNER}/${REPO_NAME})...`)
 
   try {
     const releases = await fetchJson(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases`)
 
     if (!Array.isArray(releases) || releases.length === 0) {
-      console.log('⚠️ Belum ada rilis/release berkas desktop di GitHub.')
-      console.log('💡 Silakan jalankan GitHub Actions (push ke main) terlebih dahulu!')
+      console.log('\n⚠️ Belum ada rilis berkas desktop di GitHub.')
+      console.log('💡 Silakan jalankan Opsi [1] pada ./release untuk memicu build GitHub Actions!')
       return
     }
 
     const latestRelease = releases[0]
-    console.log(`📦 Ditemukan Rilis: ${latestRelease.name || latestRelease.tag_name}`)
+    const versionTag = latestRelease.tag_name || latestRelease.name || 'v1.0.0'
+    console.log(`📌 versi Rilis Aktif: ${versionTag} (${latestRelease.name})`)
 
     if (!latestRelease.assets || latestRelease.assets.length === 0) {
-      console.log('⚠️ Belum ada berkas installer yang terlampir pada rilis ini.')
+      console.log('⚠️ Belum ada berkas installer yang terlampir pada rilis versi ini.')
       return
     }
 
@@ -92,14 +122,12 @@ async function run() {
       const downloadUrl = asset.browser_download_url
       const targetPath = path.join(OUTPUT_DIR, fileName)
 
-      console.log(`⬇️ Mengunduh: ${fileName} (${(asset.size / 1024 / 1024).toFixed(2)} MB)...`)
-      await downloadFile(downloadUrl, targetPath)
-      console.log(`✅ Berhasil diunduh ke: ${targetPath}`)
+      await downloadFileWithProgress(downloadUrl, targetPath, fileName, versionTag)
     }
 
-    console.log(`\n🎉 Seluruh berkas installer desktop berhasil disimpan di folder: ${OUTPUT_DIR}`)
+    console.log(`\n🎉 Seluruh berkas installer [${versionTag}] berhasil diunduh 100% di: ${OUTPUT_DIR}`)
   } catch (error) {
-    console.error('❌ Gagal mengunduh berkas:', error.message)
+    console.error('\n❌ Gagal mengunduh berkas:', error.message)
   }
 }
 
