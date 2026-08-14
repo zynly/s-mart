@@ -82,7 +82,24 @@ class CashierSessionController extends Controller
                 'is_own' => $s->user_id === $user->id,
             ])->values()->all(),
             'ownActiveSessionId' => $ownActive?->id,
-            'cashAccounts' => CashAccount::where('is_drawer', true)->where('is_active', true)->orderBy('name')->get(['id', 'name', 'code', 'current_balance', 'is_default', 'outlet_id']),
+            'cashAccounts' => CashAccount::where('is_drawer', true)
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'name', 'code', 'current_balance', 'is_default', 'outlet_id'])
+                ->map(function ($acc) use ($user) {
+                    $openSession = CashierSession::with('user:id,name')->where('cash_account_id', $acc->id)->where('status', 'open')->first();
+                    return [
+                        'id' => $acc->id,
+                        'name' => $acc->name,
+                        'code' => $acc->code,
+                        'current_balance' => $acc->current_balance,
+                        'is_default' => $acc->is_default,
+                        'outlet_id' => $acc->outlet_id,
+                        'is_open' => $openSession !== null,
+                        'open_user_name' => $openSession?->user?->name,
+                        'is_own_open' => $openSession?->user_id === $user->id,
+                    ];
+                })->values()->all(),
             'outlets' => Outlet::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'activeSales' => $active !== null
                 ? Sale::where('cashier_session_id', $active->id)

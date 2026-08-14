@@ -371,21 +371,30 @@ export default function Index({
                 {safeAccounts.map((a) => {
                   const openingCash = openingCashMap[a.id] ?? 0
                   const isOpeningThis = openingDrawerId === a.id
+                  const isOpenByOther = a.is_open && !a.is_own_open
 
                   return (
                     <div
                       key={a.id}
-                      className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200/90 bg-white p-4.5 shadow-xs dark:border-slate-800 dark:bg-surface/90 hover:border-amber-500/40 hover:shadow-md transition-all"
+                      className={cn(
+                        "flex flex-col justify-between gap-4 rounded-2xl border bg-white p-4.5 shadow-xs dark:bg-surface/90 transition-all",
+                        isOpenByOther
+                          ? "border-red-200 dark:border-red-900/40 bg-red-50/20 dark:bg-red-950/10 opacity-90"
+                          : "border-slate-200/90 dark:border-slate-800 hover:border-amber-500/40 hover:shadow-md"
+                      )}
                     >
                       <div className="flex flex-col gap-3">
                         {/* Drawer Header */}
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                            <div className={cn(
+                              "flex size-10 shrink-0 items-center justify-center rounded-2xl",
+                              isOpenByOther ? "bg-red-500/15 text-red-600 dark:text-red-400" : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                            )}>
                               <Store className="size-5" />
                             </div>
                             <div className="flex flex-col">
-                              <div className="flex items-center gap-1.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
                                 <h4 className="text-base font-extrabold text-slate-900 dark:text-white">
                                   {a.name}
                                 </h4>
@@ -393,6 +402,11 @@ export default function Index({
                                   <span className="text-[9px] font-black uppercase bg-amber-500/20 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded-md">
                                     Default
                                   </span>
+                                )}
+                                {isOpenByOther && (
+                                  <Badge className="bg-red-500/15 text-red-700 dark:text-red-300 border-red-500/30 text-[10px] px-1.5 py-0">
+                                    Terbuka: {a.open_user_name}
+                                  </Badge>
                                 )}
                               </div>
                               <span className="text-xs text-slate-400 font-medium">
@@ -427,6 +441,7 @@ export default function Index({
                           </Label>
                           <MoneyInput
                             value={openingCash}
+                            disabled={isOpenByOther}
                             onChange={(v) => setOpeningCashMap((prev) => ({ ...prev, [a.id]: v }))}
                             className="h-11 rounded-xl text-base font-bold"
                           />
@@ -436,12 +451,23 @@ export default function Index({
                       {/* Buka Sesi Button inside Card */}
                       <Button
                         type="button"
-                        disabled={isOpeningThis}
+                        disabled={isOpeningThis || isOpenByOther}
                         onClick={() => handleOpenSession(a.id)}
-                        className="h-11 w-full gap-2 rounded-xl bg-amber-500 text-navy-950 hover:bg-amber-400 font-bold shadow-xs transition-all mt-1"
+                        className={cn(
+                          "h-11 w-full gap-2 rounded-xl font-bold shadow-xs transition-all mt-1",
+                          isOpenByOther
+                            ? "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400 cursor-not-allowed"
+                            : "bg-amber-500 text-navy-950 hover:bg-amber-400"
+                        )}
                       >
                         <PlayCircle className="size-4.5 fill-current" />
-                        <span>{isOpeningThis ? 'Memproses…' : `Buka Sesi ${a.name} Sekarang`}</span>
+                        <span>
+                          {isOpeningThis
+                            ? 'Memproses…'
+                            : isOpenByOther
+                            ? `Dipakai oleh ${a.open_user_name}`
+                            : `Buka Sesi ${a.name} Sekarang`}
+                        </span>
                       </Button>
                     </div>
                   )
