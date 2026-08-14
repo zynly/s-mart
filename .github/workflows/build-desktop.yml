@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'src-tauri/**'
-      - '.github/workflows/build-desktop.yml'
   workflow_dispatch:
 
 permissions:
