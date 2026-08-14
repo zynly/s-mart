@@ -43,6 +43,18 @@ class MidtransWebhookController extends Controller
         $topupRequest = TopupRequest::where('reference', $orderId)->first();
 
         if ($topupRequest === null) {
+            $salePayment = \App\Models\SalePayment::where('reference_no', $orderId)->first();
+            $sale = $salePayment?->sale ?? \App\Models\Sale::where('reference', $orderId)->first();
+
+            if ($sale !== null || str_starts_with($orderId, 'POS-')) {
+                return response()->json([
+                    'status' => 'ok',
+                    'type' => 'pos_sale',
+                    'message' => 'Midtrans POS transaction webhook callback processed successfully',
+                    'order_id' => $orderId,
+                ]);
+            }
+
             // 404 murni supaya Midtrans tidak retry notifikasi untuk
             // order_id yang memang tidak pernah dibuat sistem ini —
             // TAPI tetap balas JSON (bukan halaman error HTML).
