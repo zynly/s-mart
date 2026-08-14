@@ -38,6 +38,18 @@ type DrawerAccount = {
 
 type Ref = { id: number; name: string }
 
+type OpenSessionItem = {
+  id: number
+  reference: string
+  user_id: number
+  user_name: string
+  drawer_name: string
+  outlet_name: string
+  opened_at: string
+  opening_cash: number
+  is_own: boolean
+}
+
 type ActiveSession = {
   id: number
   reference: string
@@ -53,6 +65,8 @@ type ActiveSession = {
   total_drop: number
   total_refund_cash: number
   cash_account: Ref
+  user?: Ref
+  outlet?: Ref
 }
 
 type SessionRow = {
@@ -80,6 +94,8 @@ type CashierSessionIndexProps = {
   tab: string
   active: ActiveSession | null
   expected: number | null
+  openSessions?: OpenSessionItem[]
+  ownActiveSessionId?: number | null
   cashAccounts: DrawerAccount[]
   outlets: Ref[]
   activeSales: ActiveSaleRow[]
@@ -114,6 +130,8 @@ export default function Index({
   tab = 'cashier-session',
   active = null,
   expected = null,
+  openSessions = [],
+  ownActiveSessionId = null,
   cashAccounts = [],
   outlets = [],
   activeSales = [],
@@ -435,6 +453,59 @@ export default function Index({
       ) : (
         /* Dashboard Sesi Kasir Aktif */
         <div className="flex flex-col gap-5 sm:gap-6">
+          {/* Multi Open Session Switcher Dropdown Bar (Jika terdapat 1+ Sesi Aktif Terbuka) */}
+          {openSessions && openSessions.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white dark:bg-surface border border-amber-500/30 rounded-2xl p-3.5 sm:px-5 shadow-sm">
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-8 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold shrink-0">
+                  <Store className="size-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-900 dark:text-white">
+                    Pilih Sesi Kasir Aktif ({openSessions.length} Sesi Terbuka)
+                  </h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Pilih sesi laci kasir untuk meninjau transaksi, kas, atau memproses penutupan sesi.
+                  </p>
+                </div>
+              </div>
+
+              <div className="w-full sm:w-auto flex items-center gap-2">
+                <Select
+                  value={String(active?.id ?? '')}
+                  onValueChange={(val) => {
+                    router.get(
+                      route('admin.cashier-session.index'),
+                      { selected_session_id: Number(val) },
+                      { preserveState: true, preserveScroll: true }
+                    )
+                  }}
+                >
+                  <SelectTrigger className="w-full sm:w-[340px] h-10 bg-slate-50 dark:bg-slate-800/90 border-amber-500/40 text-slate-900 dark:text-white font-bold text-xs rounded-xl shadow-xs focus:ring-amber-500">
+                    <SelectValue placeholder="Pilih sesi kasir..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-slate-900 border-amber-500/30 text-slate-900 dark:text-white">
+                    {openSessions.map((s) => (
+                      <SelectItem key={s.id} value={String(s.id)} className="text-xs focus:bg-amber-500/15 font-medium py-2.5">
+                        <div className="flex items-center justify-between w-full gap-3">
+                          <span className="font-mono font-bold text-amber-600 dark:text-amber-400">{s.reference}</span>
+                          <span className="text-slate-700 dark:text-slate-300 font-semibold truncate">
+                            {s.drawer_name} · {s.user_name}
+                          </span>
+                          {s.is_own && (
+                            <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 text-[10px] px-1.5 py-0">
+                              Kasir Anda
+                            </Badge>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
           {/* Hero Active Session Banner */}
           <div className="relative overflow-hidden rounded-3xl border border-amber-400/30 bg-surface dark:bg-surface-alt p-6 text-content shadow-xl">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -451,6 +522,11 @@ export default function Index({
                       <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
                       Terbuka
                     </span>
+                    {active?.user && (
+                      <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40 text-xs font-bold px-2 py-0.5">
+                        Kasir: {active.user.name}
+                      </Badge>
+                    )}
                   </div>
                   <h2 className="text-xl sm:text-2xl font-black tracking-tight text-content mt-1">
                     {active.reference}

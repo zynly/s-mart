@@ -30,23 +30,74 @@ class CashierSessionController extends Controller
 
     public function index(Request $request): Response
     {
-        $active = $this->sessionService->getActive($request->user());
+        $user = $request->user();
+
+        // 1. Dapatkan semua sesi kasir yang berstatus 'open' (aktif)
+        $openSessionsQuery = CashierSession::with([
+            'user:id,name,username',
+            'cashAccount:id,name,code,outlet_id',
+            'outlet:id,name',
+        ])
+        ->where('status', 'open');
+
+        // Jika bukan Owner global, filter berdasarkan outlet aktif / primary outlet user
+        if (! $user->hasRole('owner')) {
+            $outletId = session('active_outlet_id') ?? $user->primaryOutletId();
+            if ($outletId) {
+                $openSessionsQuery->where('outlet_id', $outletId);
+            }
+        }
+
+        $openSessions = $openSessionsQuery->orderByDesc('opened_at')->get();
+
+        // 2. Dapatkan sesi kasir milik user yang sedang login saat ini (jika ada)
+        $ownActive = $openSessions->firstWhere('user_id', $user->id);
+
+        // 3. Tentukan sesi aktif yang dipilih untuk ditampilkan (query param selected_session_id, atau default milik sendiri / sesi open pertama)
+        $selectedId = $request->integer('selected_session_id');
+        $active = null;
+
+        if ($selectedId > 0) {
+            $active = $openSessions->firstWhere('id', $selectedId)
+                ?? CashierSession::with(['user:id,name,username', 'cashAccount:id,name,code', 'outlet:id,name'])->find($selectedId);
+        }
+
+        if ($active === null) {
+            $active = $ownActive ?? $openSessions->first();
+        }
 
         return Inertia::render('Admin/CashierSession/Index', [
             'tab' => 'cashier-session',
-            'active' => $active?->load('cashAccount:id,name'),
+            'active' => $active?->load(['cashAccount:id,name,code', 'user:id,name,username', 'outlet:id,name']),
             'expected' => $active !== null ? $this->sessionService->calculateExpected($active) : null,
+            'openSessions' => $openSessions->map(fn ($s) => [
+                'id' => $s->id,
+                'reference' => $s->reference,
+                'user_id' => $s->user_id,
+                'user_name' => $s->user->name ?? 'Kasir',
+                'drawer_name' => $s->cashAccount->name ?? 'Laci Kasir',
+                'outlet_name' => $s->outlet->name ?? '',
+                'opened_at' => $s->opened_at?->toIso8601String(),
+                'opening_cash' => $s->opening_cash,
+                'is_own' => $s->user_id === $user->id,
+            ])->values()->all(),
+            'ownActiveSessionId' => $ownActive?->id,
             'cashAccounts' => CashAccount::where('is_drawer', true)->where('is_active', true)->orderBy('name')->get(['id', 'name', 'code', 'current_balance', 'is_default', 'outlet_id']),
-            'outlets' => \App\Models\Outlet::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'outlets' => Outlet::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'activeSales' => $active !== null
                 ? Sale::where('cashier_session_id', $active->id)
                     ->orderByDesc('id')
                     ->get(['id', 'reference', 'sale_date', 'grand_total', 'status', 'voided_at'])
                 : [],
-            'recentSessions' => CashierSession::where('user_id', $request->user()->id)
-                ->where('status', '!=', 'open')
+            'recentSessions' => CashierSession::where('status', '!=', 'open')
+                ->when(! $user->hasRole('owner'), function ($q) use ($user) {
+                    $outletId = session('active_outlet_id') ?? $user->primaryOutletId();
+                    if ($outletId) {
+                        $q->where('outlet_id', $outletId);
+                    }
+                })
                 ->orderByDesc('closed_at')
-                ->limit(10)
+                ->limit(15)
                 ->get(['id', 'reference', 'opened_at', 'closed_at', 'opening_cash', 'expected_cash', 'actual_cash', 'difference', 'status']),
         ]);
     }
