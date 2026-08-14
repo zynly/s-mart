@@ -479,55 +479,64 @@ export default function Index({
       ) : (
         /* Dashboard Sesi Kasir Aktif */
         <div className="flex flex-col gap-5 sm:gap-6">
-          {/* Multi Open Session Switcher Dropdown Bar (Jika terdapat 1+ Sesi Aktif Terbuka) */}
+          {/* Sub-Tabs Sesi Kasir Aktif (Pills Tab Horizontal) */}
           {openSessions && openSessions.length > 0 && (
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white dark:bg-surface border border-amber-500/30 rounded-2xl p-3.5 sm:px-5 shadow-sm">
-              <div className="flex items-center gap-2.5">
-                <div className="flex size-8 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold shrink-0">
-                  <Store className="size-4" />
-                </div>
-                <div>
+            <div className="flex flex-col gap-3 bg-white dark:bg-surface border border-amber-500/30 rounded-2xl p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="flex size-7 items-center justify-center rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold shrink-0">
+                    <Store className="size-4" />
+                  </div>
                   <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-900 dark:text-white">
-                    Pilih Sesi Kasir Aktif ({openSessions.length} Sesi Terbuka)
+                    Tab Sesi Kasir Aktif ({openSessions.length} Sesi Terbuka)
                   </h4>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Pilih sesi laci kasir untuk meninjau transaksi, kas, atau memproses penutupan sesi.
-                  </p>
                 </div>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">
+                  Klik tab untuk meninjau atau menutup sesi laci kasir tertentu
+                </span>
               </div>
 
-              <div className="w-full sm:w-auto flex items-center gap-2">
-                <Select
-                  value={String(active?.id ?? '')}
-                  onValueChange={(val) => {
-                    router.get(
-                      route('admin.cashier-session.index'),
-                      { selected_session_id: Number(val) },
-                      { preserveState: true, preserveScroll: true }
-                    )
-                  }}
-                >
-                  <SelectTrigger className="w-full sm:w-[340px] h-10 bg-slate-50 dark:bg-slate-800/90 border-amber-500/40 text-slate-900 dark:text-white font-bold text-xs rounded-xl shadow-xs focus:ring-amber-500">
-                    <SelectValue placeholder="Pilih sesi kasir..." />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-slate-900 border-amber-500/30 text-slate-900 dark:text-white">
-                    {openSessions.map((s) => (
-                      <SelectItem key={s.id} value={String(s.id)} className="text-xs focus:bg-amber-500/15 font-medium py-2.5">
-                        <div className="flex items-center justify-between w-full gap-3">
-                          <span className="font-mono font-bold text-amber-600 dark:text-amber-400">{s.reference}</span>
-                          <span className="text-slate-700 dark:text-slate-300 font-semibold truncate">
-                            {s.drawer_name} · {s.user_name}
-                          </span>
-                          {s.is_own && (
-                            <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 text-[10px] px-1.5 py-0">
-                              Kasir Anda
-                            </Badge>
-                          )}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {/* Horizontal Scrollable Tabs */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+                {openSessions.map((s) => {
+                  const isSelected = active?.id === s.id
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => {
+                        router.get(
+                          route('admin.cashier-session.index'),
+                          { selected_session_id: s.id },
+                          { preserveState: true, preserveScroll: true }
+                        )
+                      }}
+                      className={cn(
+                        "flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all shrink-0 cursor-pointer",
+                        isSelected
+                          ? "bg-amber-500 text-navy-950 border-amber-500 shadow-md ring-2 ring-amber-500/30"
+                          : "bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      )}
+                    >
+                      <span className="relative flex size-2.5 shrink-0">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full size-2.5 bg-emerald-500" />
+                      </span>
+                      <span className="font-mono text-xs">{s.reference}</span>
+                      <span className={cn("text-[11px] truncate font-medium", isSelected ? "text-navy-900 font-semibold" : "text-slate-500 dark:text-slate-400")}>
+                        {s.drawer_name} ({s.user_name})
+                      </span>
+                      {s.is_own && (
+                        <span className={cn(
+                          "text-[10px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider",
+                          isSelected ? "bg-navy-950/20 text-navy-950" : "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+                        )}>
+                          Sesi Anda
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           )}

@@ -18,12 +18,7 @@ class CashierSessionService
     public function open(User $user, CashAccount $cashAccount, int $openingCash): CashierSession
     {
         return DB::transaction(function () use ($user, $cashAccount, $openingCash) {
-            $existing = CashierSession::where('user_id', $user->id)->where('status', 'open')->lockForUpdate()->first();
-
-            if ($existing !== null) {
-                throw SessionAlreadyOpenException::make();
-            }
-
+            // Validasi: pastikan laci kasir ini belum sedang dibuka oleh siapa pun
             $account = CashAccount::lockForUpdate()->findOrFail($cashAccount->id);
 
             $accountOpen = CashierSession::with('user:id,name')
