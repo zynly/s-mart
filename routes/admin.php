@@ -215,6 +215,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // Sesi Kasir & Kas (Fase 7)
     Route::middleware('can:pos.view')->group(function () {
         Route::get('/cashier-session', [CashierSessionController::class, 'index'])->name('cashier-session.index');
+        Route::get('/cashier-session/{cashierSession}', [CashierSessionController::class, 'show'])->name('cashier-session.show');
     });
     Route::post('/cashier-session/open', [CashierSessionController::class, 'open'])->name('cashier-session.open')->middleware('can:pos.create');
     Route::put('/cashier-session/{cashierSession}/close', [CashierSessionController::class, 'close'])->name('cashier-session.close')->middleware('can:pos.update');

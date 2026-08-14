@@ -1,11 +1,12 @@
 import { useState, type FormEventHandler, type ReactElement } from 'react'
 import { router, useForm, usePage } from '@inertiajs/react'
+import axios from 'axios'
 import { toast } from 'sonner'
 import type { ColumnDef } from '@tanstack/react-table'
 import {
   AlertCircle, AlertTriangle, ArrowDownCircle, ArrowDownLeft, ArrowUpCircle,
-  ArrowUpRight, Banknote, Check, CheckCircle2, Coins, CreditCard, DollarSign,
-  Edit2, History, Info, Lock, PlayCircle, Plus, PlusCircle, QrCode, Receipt, ShieldAlert,
+  ArrowUpRight, Banknote, Check, CheckCircle2, ChevronDown, ChevronUp, Coins, CreditCard, DollarSign,
+  Edit2, History, Info, Loader2, Lock, PlayCircle, Plus, PlusCircle, QrCode, Receipt, ShieldAlert,
   ShoppingBag, Store, UserCheck, Wallet, XCircle,
 } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
@@ -88,6 +89,44 @@ type ActiveSaleRow = {
   grand_total: number
   status: string
   voided_at: string | null
+}
+
+type DetailSaleItem = {
+  id: number
+  product_name: string
+  product_sku: string
+  quantity: number
+  unit_price: number
+  subtotal: number
+}
+
+type DetailSale = {
+  id: number
+  reference: string
+  sale_date: string
+  grand_total: number
+  status: string
+  items: DetailSaleItem[]
+  payments: Array<{ method_name: string; amount: number }>
+}
+
+type SessionDetailData = {
+  session: {
+    id: number
+    reference: string
+    status: string
+    user_name: string
+    drawer_name: string
+    outlet_name: string
+    opened_at: string
+    closed_at: string | null
+    opening_cash: number
+    expected_cash: number
+    actual_cash: number | null
+    difference: number | null
+    notes: string | null
+  }
+  sales: DetailSale[]
 }
 
 type CashierSessionIndexProps = {
@@ -301,8 +340,44 @@ export default function Index({
     },
   ]
 
+  const [detailModalOpen, setDetailModalOpen] = useState(false)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [sessionDetail, setSessionDetail] = useState<SessionDetailData | null>(null)
+  const [expandedSaleId, setExpandedSaleId] = useState<number | null>(null)
+
+  function handleViewSessionDetail(sessionId: number) {
+    setDetailLoading(true)
+    setDetailModalOpen(true)
+    setSessionDetail(null)
+    setExpandedSaleId(null)
+
+    axios
+      .get(route('admin.cashier-session.show', sessionId))
+      .then((res) => {
+        setSessionDetail(res.data)
+      })
+      .catch(() => {
+        toast.error('Gagal mengambil detail transaksi sesi kasir.')
+      })
+      .finally(() => {
+        setDetailLoading(false)
+      })
+  }
+
   const columns: ColumnDef<SessionRow, unknown>[] = [
-    { accessorKey: 'reference', header: 'Referensi' },
+    {
+      accessorKey: 'reference',
+      header: 'Referensi',
+      cell: ({ row }) => (
+        <button
+          type="button"
+          onClick={() => handleViewSessionDetail(row.original.id)}
+          className="font-mono font-bold text-amber-600 dark:text-amber-400 hover:underline text-left cursor-pointer"
+        >
+          {row.original.reference}
+        </button>
+      ),
+    },
     { id: 'opened', header: 'Dibuka', cell: ({ row }) => new Date(row.original.opened_at).toLocaleString('id-ID') },
     { id: 'expected', header: 'Expected', cell: ({ row }) => <Money amount={row.original.expected_cash} size="sm" /> },
     { id: 'actual', header: 'Aktual', cell: ({ row }) => (row.original.actual_cash !== null ? <Money amount={row.original.actual_cash} size="sm" /> : '—') },
@@ -314,6 +389,21 @@ export default function Index({
         <Badge variant="outline" className={STATUS_BADGE[row.original.status] ?? ''}>
           {STATUS_LABELS[row.original.status] ?? row.original.status}
         </Badge>
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Aksi',
+      cell: ({ row }) => (
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 gap-1.5 border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-300 font-bold text-xs px-2.5 rounded-lg"
+          onClick={() => handleViewSessionDetail(row.original.id)}
+        >
+          <Receipt className="size-3.5 text-amber-500" />
+          Detail Transaksi
+        </Button>
       ),
     },
   ]
@@ -1004,6 +1094,155 @@ export default function Index({
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowOpenNewSessionDialog(false)}>
+              Tutup
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Detail Transaksi & Item Barang Sesi Kasir */}
+      <Dialog open={detailModalOpen} onOpenChange={setDetailModalOpen}>
+        <DialogContent className="sm:max-w-[850px] border-slate-200 dark:border-slate-800 dark:bg-surface max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-white">
+              <Receipt className="size-5 text-amber-500" />
+              Audit & Detail Transaksi Sesi — {sessionDetail?.session.reference ?? 'Memuat...'}
+            </DialogTitle>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Rincian ringkasan kas, daftar nota penjualan, dan item barang yang dibeli pada sesi kasir ini.
+            </p>
+          </DialogHeader>
+
+          {detailLoading ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <Loader2 className="size-8 animate-spin text-amber-500" />
+              <span className="text-xs text-slate-500 font-bold">Mengambil data transaksi & item barang…</span>
+            </div>
+          ) : sessionDetail ? (
+            <div className="flex flex-col gap-4 overflow-y-auto pr-1">
+              {/* Header Info Sesi */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-xs">
+                <div>
+                  <span className="text-slate-400 font-medium">Kasir:</span>
+                  <div className="font-bold text-slate-900 dark:text-white">{sessionDetail.session.user_name}</div>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-medium">Laci Kasir:</span>
+                  <div className="font-bold text-slate-900 dark:text-white">{sessionDetail.session.drawer_name}</div>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-medium">Waktu Buka:</span>
+                  <div className="font-semibold text-slate-700 dark:text-slate-300">
+                    {new Date(sessionDetail.session.opened_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-medium">Waktu Tutup:</span>
+                  <div className="font-semibold text-slate-700 dark:text-slate-300">
+                    {sessionDetail.session.closed_at ? new Date(sessionDetail.session.closed_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Rincian Kas Summary */}
+              <div className="grid grid-cols-3 gap-3 text-xs">
+                <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
+                  <span className="text-[11px] text-slate-500 font-bold">Uang Diharapkan (Expected)</span>
+                  <Money amount={sessionDetail.session.expected_cash} size="md" className="font-black text-amber-600 dark:text-amber-400 mt-0.5" />
+                </div>
+                <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
+                  <span className="text-[11px] text-slate-500 font-bold">Uang Fisik (Aktual)</span>
+                  <Money amount={sessionDetail.session.actual_cash ?? 0} size="md" className="font-black text-emerald-600 dark:text-emerald-400 mt-0.5" />
+                </div>
+                <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
+                  <span className="text-[11px] text-slate-500 font-bold">Selisih Kas</span>
+                  {sessionDetail.session.difference !== null ? (
+                    <Money amount={sessionDetail.session.difference} size="md" showSign className="font-black text-blue-600 dark:text-blue-400 mt-0.5" />
+                  ) : (
+                    <span className="text-slate-400 mt-0.5">—</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Daftar Nota Penjualan */}
+              <div className="space-y-3 mt-1">
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center justify-between">
+                  <span>Daftar Nota Penjualan ({sessionDetail.sales.length} Nota)</span>
+                </h4>
+
+                {sessionDetail.sales.length === 0 ? (
+                  <div className="text-center py-8 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-xs text-slate-400">
+                    Tidak ada transaksi penjualan pada sesi ini.
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {sessionDetail.sales.map((sale) => {
+                      const isExpanded = expandedSaleId === sale.id
+                      return (
+                        <div key={sale.id} className="border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900/60 overflow-hidden shadow-2xs">
+                          <div className="p-3 flex items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/40 text-xs">
+                            <div className="flex items-center gap-3">
+                              <button
+                                type="button"
+                                onClick={() => setExpandedSaleId(isExpanded ? null : sale.id)}
+                                className="flex items-center gap-1.5 font-mono font-bold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                              >
+                                {isExpanded ? <ChevronUp className="size-4 text-slate-400" /> : <ChevronDown className="size-4 text-slate-400" />}
+                                <span>{sale.reference}</span>
+                              </button>
+                              <span className="text-slate-400 font-medium hidden sm:inline">
+                                {new Date(sale.sale_date).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <Money amount={sale.grand_total} size="sm" className="font-bold" />
+                              <Badge variant="outline" className={SALE_STATUS_BADGE[sale.status] ?? ''}>
+                                {SALE_STATUS_LABELS[sale.status] ?? sale.status}
+                              </Badge>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-[11px] gap-1 px-2 border-slate-200 dark:border-slate-700"
+                                onClick={() => window.open(route('pos.sales.receipt-pdf', sale.id), '_blank')}
+                              >
+                                <Receipt className="size-3" />
+                                <span>PDF</span>
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Detail Barang yang Dibeli */}
+                          {isExpanded && (
+                            <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/90 text-xs space-y-2">
+                              <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Rincian Barang yang Dibeli ({sale.items.length} Item):</div>
+                              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                                {sale.items.map((item) => (
+                                  <div key={item.id} className="py-1.5 flex items-center justify-between text-xs">
+                                    <div className="flex flex-col">
+                                      <span className="font-semibold text-slate-900 dark:text-white">{item.product_name}</span>
+                                      <span className="text-[10px] font-mono text-slate-400">SKU: {item.product_sku}</span>
+                                    </div>
+                                    <div className="flex items-center gap-4 text-right">
+                                      <span className="text-slate-500">{item.quantity} x {formatMoney(item.unit_price)}</span>
+                                      <strong className="font-bold text-slate-900 dark:text-white">{formatMoney(item.subtotal)}</strong>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailModalOpen(false)}>
               Tutup
             </Button>
           </DialogFooter>
