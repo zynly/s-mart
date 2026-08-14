@@ -372,14 +372,14 @@ export default function Index({
                 {safeAccounts.map((a) => {
                   const openingCash = openingCashMap[a.id] ?? 0
                   const isOpeningThis = openingDrawerId === a.id
-                  const isOpenByOther = a.is_open && !a.is_own_open
+                  const isDrawerOpen = Boolean(a.is_open)
 
                   return (
                     <div
                       key={a.id}
                       className={cn(
                         "flex flex-col justify-between gap-4 rounded-2xl border bg-white p-4.5 shadow-xs dark:bg-surface/90 transition-all",
-                        isOpenByOther
+                        isDrawerOpen
                           ? "border-red-200 dark:border-red-900/40 bg-red-50/20 dark:bg-red-950/10 opacity-90"
                           : "border-slate-200/90 dark:border-slate-800 hover:border-amber-500/40 hover:shadow-md"
                       )}
@@ -390,7 +390,7 @@ export default function Index({
                           <div className="flex items-center gap-3">
                             <div className={cn(
                               "flex size-10 shrink-0 items-center justify-center rounded-2xl",
-                              isOpenByOther ? "bg-red-500/15 text-red-600 dark:text-red-400" : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                              isDrawerOpen ? "bg-red-500/15 text-red-600 dark:text-red-400" : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
                             )}>
                               <Store className="size-5" />
                             </div>
@@ -404,9 +404,13 @@ export default function Index({
                                     Default
                                   </span>
                                 )}
-                                {isOpenByOther && (
+                                {isDrawerOpen ? (
                                   <Badge className="bg-red-500/15 text-red-700 dark:text-red-300 border-red-500/30 text-[10px] px-1.5 py-0">
-                                    Terbuka: {a.open_user_name}
+                                    Terbuka: {a.is_own_open ? 'Anda' : (a.open_user_name ?? 'Kasir')}
+                                  </Badge>
+                                ) : (
+                                  <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 text-[10px] px-1.5 py-0">
+                                    Tersedia
                                   </Badge>
                                 )}
                               </div>
@@ -442,7 +446,7 @@ export default function Index({
                           </Label>
                           <MoneyInput
                             value={openingCash}
-                            disabled={isOpenByOther}
+                            disabled={isDrawerOpen}
                             onChange={(v) => setOpeningCashMap((prev) => ({ ...prev, [a.id]: v }))}
                             className="h-11 rounded-xl text-base font-bold"
                           />
@@ -452,11 +456,11 @@ export default function Index({
                       {/* Buka Sesi Button inside Card */}
                       <Button
                         type="button"
-                        disabled={isOpeningThis || isOpenByOther}
+                        disabled={isOpeningThis || isDrawerOpen}
                         onClick={() => handleOpenSession(a.id)}
                         className={cn(
                           "h-11 w-full gap-2 rounded-xl font-bold shadow-xs transition-all mt-1",
-                          isOpenByOther
+                          isDrawerOpen
                             ? "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400 cursor-not-allowed"
                             : "bg-amber-500 text-navy-950 hover:bg-amber-400"
                         )}
@@ -465,8 +469,8 @@ export default function Index({
                         <span>
                           {isOpeningThis
                             ? 'Memproses…'
-                            : isOpenByOther
-                            ? `Dipakai oleh ${a.open_user_name}`
+                            : isDrawerOpen
+                            ? `Terbuka oleh ${a.is_own_open ? 'Anda' : (a.open_user_name ?? 'Kasir')}`
                             : `Buka Sesi ${a.name} Sekarang`}
                         </span>
                       </Button>
@@ -929,15 +933,15 @@ export default function Index({
             {safeAccounts.map((a) => {
               const openingCash = openingCashMap[a.id] ?? 0
               const isOpeningThis = openingDrawerId === a.id
-              const isOpenByOther = a.is_open && !a.is_own_open
+              const isDrawerOpen = Boolean(a.is_open)
 
               return (
                 <div
                   key={a.id}
                   className={cn(
                     "flex flex-col justify-between gap-3 rounded-2xl border p-4 shadow-xs transition-all",
-                    isOpenByOther
-                      ? "border-red-200 dark:border-red-900/40 bg-red-50/20 dark:bg-red-950/10"
+                    isDrawerOpen
+                      ? "border-red-200 dark:border-red-900/40 bg-red-50/20 dark:bg-red-950/10 opacity-90"
                       : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 hover:border-amber-500/40"
                   )}
                 >
@@ -946,9 +950,9 @@ export default function Index({
                       <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">
                         {a.name}
                       </h4>
-                      {isOpenByOther ? (
+                      {isDrawerOpen ? (
                         <Badge className="bg-red-500/15 text-red-700 dark:text-red-300 border-red-500/30 text-[10px]">
-                          Terbuka: {a.open_user_name}
+                          Terbuka: {a.is_own_open ? 'Anda' : (a.open_user_name ?? 'Kasir')}
                         </Badge>
                       ) : (
                         <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 text-[10px]">
@@ -963,7 +967,7 @@ export default function Index({
                       </Label>
                       <MoneyInput
                         value={openingCash}
-                        disabled={isOpenByOther}
+                        disabled={isDrawerOpen}
                         onChange={(v) => setOpeningCashMap((prev) => ({ ...prev, [a.id]: v }))}
                         className="h-10 text-sm font-bold"
                       />
@@ -972,20 +976,26 @@ export default function Index({
 
                   <Button
                     type="button"
-                    disabled={isOpeningThis || isOpenByOther}
+                    disabled={isOpeningThis || isDrawerOpen}
                     onClick={() => {
                       handleOpenSession(a.id)
                       setShowOpenNewSessionDialog(false)
                     }}
                     className={cn(
                       "h-10 w-full gap-2 rounded-xl font-bold text-xs shadow-xs transition-all mt-1",
-                      isOpenByOther
+                      isDrawerOpen
                         ? "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400 cursor-not-allowed"
                         : "bg-amber-500 text-navy-950 hover:bg-amber-400"
                     )}
                   >
                     <PlayCircle className="size-4 fill-current" />
-                    <span>{isOpeningThis ? 'Memproses…' : isOpenByOther ? `Dipakai oleh ${a.open_user_name}` : `Buka Sesi ${a.name}`}</span>
+                    <span>
+                      {isOpeningThis
+                        ? 'Memproses…'
+                        : isDrawerOpen
+                        ? `Terbuka oleh ${a.is_own_open ? 'Anda' : (a.open_user_name ?? 'Kasir')}`
+                        : `Buka Sesi ${a.name}`}
+                    </span>
                   </Button>
                 </div>
               )
