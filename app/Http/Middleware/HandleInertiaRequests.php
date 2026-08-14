@@ -68,6 +68,8 @@ class HandleInertiaRequests extends Middleware
                 'error' => fn () => $request->session()->get('error'),
                 'warning' => fn () => $request->session()->get('warning'),
                 'info' => fn () => $request->session()->get('info'),
+                'completed_sale_id' => fn () => $request->session()->get('completed_sale_id'),
+                'completed_sale_ref' => fn () => $request->session()->get('completed_sale_ref'),
             ],
             'status' => fn () => $request->session()->get('status'),
             // Audit Fase 1: sebelumnya membagikan approver->id MENTAH —

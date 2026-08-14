@@ -177,6 +177,19 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
     shortage: number
   } | null>(null)
 
+  const [txResultModal, setTxResultModal] = useState<{
+    open: boolean
+    type: 'success' | 'error'
+    title: string
+    message: string
+    saleId?: number | null
+    saleRef?: string | null
+    amount?: number
+    cashReceived?: number
+    changeAmount?: number
+    methodName?: string
+  } | null>(null)
+
 
   function scrollCarousel(direction: -1 | 1) {
     carouselRef.current?.scrollBy({ left: direction * 320, behavior: 'smooth' })
@@ -595,12 +608,30 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
       },
       {
         headers: { 'X-Idempotency-Key': idempotencyKeyRef.current },
-        onSuccess: () => {
+        onSuccess: (page) => {
+          const flash = page.props.flash as any
+          const saleId = flash?.completed_sale_id
+          const saleRef = flash?.completed_sale_ref
           const change = isCash && cashInput > subtotal ? cashInput - subtotal : 0
           const changeInfo = change > 0 ? `Kembalian: Rp ${change.toLocaleString('id-ID')}. ` : ''
+
           toast.success('Pembayaran Berhasil! Transaksi telah disimpan.', {
             description: `${changeInfo}Keranjang kasir telah dikosongkan.`,
           })
+
+          setTxResultModal({
+            open: true,
+            type: 'success',
+            title: 'Transaksi Berhasil!',
+            message: `Pembayaran senilai Rp ${subtotal.toLocaleString('id-ID')} berhasil dicatat ke sistem.`,
+            saleId: saleId ?? null,
+            saleRef: saleRef ?? null,
+            amount: subtotal,
+            cashReceived: isCash ? (cashInput > 0 ? cashInput : subtotal) : subtotal,
+            changeAmount: change,
+            methodName: activeMethod?.name ?? 'Tunai',
+          })
+
           setCart([])
           setMember(null)
           setCashInput(0)
@@ -613,6 +644,13 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
           setPaymentError(msg)
           setMethodDialogError(msg)
           toast.error(`Transaksi Gagal: ${msg}`)
+
+          setTxResultModal({
+            open: true,
+            type: 'error',
+            title: 'Transaksi Gagal',
+            message: msg,
+          })
         },
         onFinish: () => setSubmitting(false),
       },
@@ -1946,10 +1984,26 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                     },
                     {
                       headers: { 'X-Idempotency-Key': idempotencyKeyRef.current },
-                      onSuccess: () => {
+                      onSuccess: (page) => {
+                        const flash = page.props.flash as any
+                        const saleId = flash?.completed_sale_id
+                        const saleRef = flash?.completed_sale_ref
+
                         toast.success('Pembayaran Pakasir PG Berhasil!', {
                           description: 'Transaksi kasir telah sukses dicatat ke sistem.',
                         })
+
+                        setTxResultModal({
+                          open: true,
+                          type: 'success',
+                          title: 'Pembayaran Pakasir PG Berhasil!',
+                          message: `Pembayaran online QRIS / e-wallet senilai Rp ${subtotal.toLocaleString('id-ID')} sukses diverifikasi.`,
+                          saleId: saleId ?? null,
+                          saleRef: saleRef ?? null,
+                          amount: subtotal,
+                          methodName: 'Pakasir PG (QRIS)',
+                        })
+
                         setCart([])
                         setMember(null)
                         setCashInput(0)
@@ -1960,6 +2014,13 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                         const msg = Object.values(errors)[0] ?? 'Gagal menyelesaikan transaksi.'
                         setPaymentError(msg)
                         toast.error(`Transaksi Pakasir Gagal: ${msg}`)
+
+                        setTxResultModal({
+                          open: true,
+                          type: 'error',
+                          title: 'Transaksi Pakasir Gagal',
+                          message: msg,
+                        })
                       },
                     }
                   )
@@ -1976,6 +2037,136 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                 Tutup
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Center Aesthetic Transaction Result Modal (Success & Failure) ── */}
+      <Dialog open={txResultModal?.open ?? false} onOpenChange={(open) => !open && setTxResultModal(null)}>
+        <DialogContent className="sm:max-w-md w-[92vw] text-center p-6 sm:p-7 rounded-3xl backdrop-blur-md shadow-2xl border bg-white dark:bg-slate-900 overflow-hidden relative border-slate-200 dark:border-slate-800">
+          {/* Ambient Glow Effects */}
+          <div className={cn(
+            "absolute -top-16 -left-16 size-40 rounded-full blur-3xl pointer-events-none",
+            txResultModal?.type === 'success' ? "bg-emerald-500/20" : "bg-rose-500/20"
+          )} />
+          <div className={cn(
+            "absolute -bottom-16 -right-16 size-40 rounded-full blur-3xl pointer-events-none",
+            txResultModal?.type === 'success' ? "bg-amber-500/20" : "bg-rose-500/20"
+          )} />
+
+          <div className="relative flex flex-col items-center">
+            {/* Top Animated Icon */}
+            {txResultModal?.type === 'success' ? (
+              <div className="mb-4 flex size-20 items-center justify-center rounded-3xl bg-gradient-to-tr from-emerald-500/20 via-emerald-400/15 to-emerald-500/5 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shadow-inner">
+                <CheckCircle2 className="size-10 stroke-[2.2] animate-bounce" />
+              </div>
+            ) : (
+              <div className="mb-4 flex size-20 items-center justify-center rounded-3xl bg-gradient-to-tr from-rose-500/20 via-rose-400/15 to-rose-500/5 border border-rose-500/30 text-rose-600 dark:text-rose-400 shadow-inner">
+                <AlertCircle className="size-10 stroke-[2.2]" />
+              </div>
+            )}
+
+            {/* Status Pill */}
+            <div className={cn(
+              "mb-2 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-bold uppercase tracking-wider",
+              txResultModal?.type === 'success'
+                ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                : "border border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300"
+            )}>
+              <span className={cn("size-2 rounded-full", txResultModal?.type === 'success' ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
+              {txResultModal?.type === 'success' ? 'Transaksi Lunas' : 'Gagal Simpan'}
+            </div>
+
+            {/* Title */}
+            <h3 className="mb-1 text-xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
+              {txResultModal?.title}
+            </h3>
+            <p className="mb-5 text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm">
+              {txResultModal?.message}
+            </p>
+
+            {/* Details Card */}
+            {txResultModal?.type === 'success' && (
+              <div className="mb-6 w-full rounded-2xl border border-slate-200/90 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-800/60 p-4 text-left space-y-2.5 text-xs">
+                {txResultModal.saleRef && (
+                  <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-700/60 pb-2">
+                    <span className="text-slate-500 dark:text-slate-400 font-medium">No. Nota:</span>
+                    <span className="font-mono font-bold text-slate-900 dark:text-white bg-amber-500/15 px-2 py-0.5 rounded-md text-amber-700 dark:text-amber-300">
+                      {txResultModal.saleRef}
+                    </span>
+                  </div>
+                )}
+                {txResultModal.methodName && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500 dark:text-slate-400 font-medium">Metode Pembayaran:</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200">{txResultModal.methodName}</span>
+                  </div>
+                )}
+                {txResultModal.amount !== undefined && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500 dark:text-slate-400 font-medium">Total Belanja:</span>
+                    <strong className="font-bold text-slate-900 dark:text-white">Rp {txResultModal.amount.toLocaleString('id-ID')}</strong>
+                  </div>
+                )}
+                {txResultModal.changeAmount !== undefined && txResultModal.changeAmount > 0 && (
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">Uang Kembalian:</span>
+                    <strong className="text-emerald-600 dark:text-emerald-400 font-black text-sm">Rp {txResultModal.changeAmount.toLocaleString('id-ID')}</strong>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            {txResultModal?.type === 'success' ? (
+              <div className="flex flex-col gap-2.5 w-full">
+                <div className="grid grid-cols-2 gap-2.5 w-full">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      if (txResultModal.saleId) {
+                        window.open(route('pos.sales.receipt-pdf', txResultModal.saleId), '_blank')
+                      }
+                    }}
+                    className="gap-1.5 rounded-xl bg-navy-900 text-white dark:bg-amber-500 dark:text-navy-950 hover:bg-navy-800 dark:hover:bg-amber-400 font-bold text-xs py-5 shadow-sm"
+                  >
+                    <Printer className="size-4" />
+                    Cetak Nota PDF
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      if (txResultModal.saleId) {
+                        router.visit(route('pos.sales.receipt', txResultModal.saleId))
+                      }
+                    }}
+                    className="gap-1.5 rounded-xl border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs py-5"
+                  >
+                    <Receipt className="size-4" />
+                    Lihat Nota
+                  </Button>
+                </div>
+
+                <Button
+                  type="button"
+                  onClick={() => setTxResultModal(null)}
+                  className="w-full gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-5 shadow-md text-sm mt-1"
+                >
+                  <PlusCircle className="size-4.5" />
+                  Transaksi Baru
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                onClick={() => setTxResultModal(null)}
+                className="w-full gap-2 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold py-5 shadow-md text-sm"
+              >
+                Tutup &amp; Coba Lagi
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>

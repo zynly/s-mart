@@ -63,28 +63,52 @@ class PakasirWebhookController extends Controller
 
         $topupRequest = TopupRequest::where('reference', $orderId)->first();
 
-        if ($topupRequest === null) {
-            Log::info('Pakasir webhook: reference order_id not found', ['order_id' => $orderId]);
-            return response()->json(['status' => 'error', 'message' => 'Order ID tidak ditemukan'], 404);
-        }
+        if ($topupRequest !== null) {
+            $isSuccess = in_array($status, ['completed', 'paid', 'success', 'settlement', 'berhasil'], true);
 
-        $isSuccess = in_array($status, ['completed', 'paid', 'success', 'settlement', 'berhasil'], true);
+            if ($isSuccess) {
+                $wasPending = $topupRequest->status === 'pending';
+                $approved = $this->topupRequestService->approveViaGateway($topupRequest, $transactionId);
 
-        if ($isSuccess) {
-            $wasPending = $topupRequest->status === 'pending';
-
-            $approved = $this->topupRequestService->approveViaGateway($topupRequest, $transactionId);
-
-            if ($wasPending && $approved->guardian) {
-                $this->notificationService->topupVerified($approved->guardian, $approved->member, $approved->amount);
+                if ($wasPending && $approved->guardian) {
+                    $this->notificationService->topupVerified($approved->guardian, $approved->member, $approved->amount);
+                }
+            } elseif (in_array($status, ['deny', 'cancel', 'expire', 'failure', 'failed', 'batal'], true)) {
+                $this->topupRequestService->markGatewayFailed($topupRequest, $status);
             }
-        } elseif (in_array($status, ['deny', 'cancel', 'expire', 'failure', 'failed', 'batal'], true)) {
-            $this->topupRequestService->markGatewayFailed($topupRequest, $status);
+
+            return response()->json([
+                'status' => 'ok',
+                'type' => 'topup',
+                'message' => 'Pakasir topup webhook callback processed successfully',
+                'order_id' => $orderId,
+            ]);
         }
+
+        // Cek jika order_id terkait dengan transaksi Penjualan Kasir (POS)
+        $salePayment = \App\Models\SalePayment::where('reference_no', $orderId)->first();
+        $sale = $salePayment?->sale ?? \App\Models\Sale::where('reference', $orderId)->first();
+
+        if ($sale !== null) {
+            return response()->json([
+                'status' => 'ok',
+                'type' => 'pos_sale',
+                'message' => 'Pakasir POS sale payment webhook processed',
+                'order_id' => $orderId,
+                'sale_id' => $sale->id,
+                'sale_reference' => $sale->reference,
+                'receipt_url' => route('pos.sales.receipt', $sale->id),
+                'receipt_pdf_url' => route('pos.sales.receipt-pdf', $sale->id),
+            ]);
+        }
+
+        // Jika order_id merupakan transaksi POS (dimulai dari POS-) atau test callback dari Pakasir
+        Log::info('Pakasir webhook: valid callback received for order_id', ['order_id' => $orderId, 'status' => $status]);
 
         return response()->json([
             'status' => 'ok',
-            'message' => 'Pakasir webhook callback processed successfully',
+            'type' => str_starts_with($orderId, 'POS-') ? 'pos_pending' : 'general',
+            'message' => 'Pakasir webhook callback received and logged successfully',
             'order_id' => $orderId,
         ]);
     }

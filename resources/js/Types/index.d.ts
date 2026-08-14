@@ -49,6 +49,8 @@ export type PageProps<T extends Record<string, unknown> = Record<string, unknown
     error: string | null
     warning: string | null
     info: string | null
+    completed_sale_id: number | null
+    completed_sale_ref: string | null
   }
   navigation: NavigationGroup[]
   unreadNotificationsCount: number
