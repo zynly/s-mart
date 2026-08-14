@@ -177,7 +177,7 @@ export default function Show({ reportKey, title, filterDefs, columns, rows, summ
             {canExport && (
               <Button onClick={() => setExcelOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 font-bold text-white shadow-xs">
                 <FileSpreadsheet className="size-4 mr-1.5" />
-                <span>Ekspor Excel (.xlsx)</span>
+                <span>Pratinjau &amp; Ekspor Excel</span>
               </Button>
             )}
           </div>
@@ -551,44 +551,138 @@ export default function Show({ reportKey, title, filterDefs, columns, rows, summ
         </DialogContent>
       </Dialog>
 
-      {/* MODAL POP-UP 2: EKSPOR EXCEL (.XLSX) */}
+      {/* MODAL POP-UP 2: PRATINJAU & EKSPOR EXCEL (.XLSX) */}
       <Dialog open={excelOpen} onOpenChange={setExcelOpen}>
-        <DialogContent className="sm:max-w-md max-w-md p-6 rounded-2xl bg-white shadow-2xl border">
-          <DialogHeader className="pb-3 border-b">
-            <DialogTitle className="flex items-center gap-2 font-bold text-lg text-navy-950">
-              <FileSpreadsheet className="size-5 text-emerald-600" />
-              <span>Ekspor Berkas Excel (.xlsx)</span>
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="my-3 flex flex-col gap-4">
-            <div className="flex items-center gap-3.5 rounded-xl border border-emerald-200 bg-emerald-50/70 p-4">
-              <div className="flex size-12 items-center justify-center rounded-xl bg-emerald-600 text-white shrink-0 shadow-xs">
-                <FileSpreadsheet className="size-6" />
+        <DialogContent className="sm:max-w-6xl max-w-6xl w-full h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl bg-slate-900/60 backdrop-blur-md border-0 shadow-2xl">
+          {/* Header Bar Ribbon Excel */}
+          <div className="no-print bg-emerald-900 text-white p-4 px-6 flex flex-wrap items-center justify-between gap-3 border-b border-emerald-800 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-xs">
+                <FileSpreadsheet className="size-5" />
               </div>
               <div>
-                <p className="font-bold text-base text-navy-950">{title}</p>
-                <p className="text-xs text-emerald-800 mt-0.5 flex items-center gap-1.5 font-semibold">
-                  <CheckCircle2 className="size-3.5 text-emerald-600" />
-                  <span>Microsoft Excel Spreadsheet (.xlsx)</span>
+                <DialogTitle className="font-bold text-base text-white tracking-wide flex items-center gap-2">
+                  <span>Pratinjau Lembar Kerja Excel (.xlsx) — {title}</span>
+                </DialogTitle>
+                <p className="text-xs text-emerald-200">
+                  Total <strong className="text-amber-300 font-mono">{rows.total} Baris Data</strong> • Format Sel: <span className="font-mono">Standard XLSX (#,##0)</span>
                 </p>
               </div>
             </div>
 
-            <div className="space-y-1.5 rounded-xl border bg-slate-50 p-3.5 text-xs text-slate-700">
-              <p><strong className="text-navy-950">Total Baris:</strong> {rows.total} baris data tersedia</p>
-              <p><strong className="text-navy-950">Filter Tanggal:</strong> {form.date_from || form.date_to ? `${form.date_from || 'Awal'} s/d ${form.date_to || 'Hari Ini'}` : 'Semua Data'}</p>
+            <div className="flex items-center gap-3">
+              <Badge variant="outline" className="border-emerald-500/40 text-emerald-100 bg-emerald-950/60 font-mono text-xs px-3 py-1">
+                Microsoft Excel OpenXML (.xlsx)
+              </Badge>
+
+              <Button onClick={exportExcel} disabled={exporting} size="sm" className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black px-5 shadow-md">
+                <Download className="size-4 mr-1.5 fill-current" />
+                <span>{exporting ? 'Mengekspor…' : 'Unduh Berkas XLSX'}</span>
+              </Button>
             </div>
           </div>
 
-          <DialogFooter className="pt-3 border-t flex gap-2 justify-end">
-            <Button variant="outline" onClick={() => setExcelOpen(false)} className="font-bold border-slate-300">
-              Batal
-            </Button>
-            <Button onClick={exportExcel} disabled={exporting} className="bg-emerald-600 hover:bg-emerald-700 font-bold text-white shadow-xs">
-              <Download className="size-4 mr-1.5" />
-              <span>{exporting ? 'Mengekspor…' : 'Unduh Berkas XLSX'}</span>
-            </Button>
+          {/* Excel Preview Body Canvas */}
+          <div className="flex-1 overflow-auto bg-slate-100 dark:bg-slate-900 p-4 flex flex-col justify-between">
+            <div className="bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 shadow-xl rounded-lg overflow-hidden flex flex-col">
+              {/* Formula Bar Mockup */}
+              <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 font-mono">
+                <span className="font-bold text-slate-400 select-none">fx</span>
+                <span className="text-slate-300 dark:text-slate-700">|</span>
+                <span className="truncate select-none">{title} - {form.date_from || form.date_to ? `${form.date_from || 'Awal'} s.d. ${form.date_to || 'Hari Ini'}` : 'Semua Data'}</span>
+              </div>
+
+              {/* Excel Table Canvas */}
+              <div className="overflow-auto max-h-[62vh]">
+                <table className="w-full border-collapse text-xs select-none">
+                  <thead>
+                    {/* Column Alphabet Header Row (A, B, C, D...) */}
+                    <tr className="bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-mono text-[11px] font-bold">
+                      <th className="border border-slate-300 dark:border-slate-700 px-2 py-1 text-center w-10 bg-slate-300 dark:bg-slate-700">#</th>
+                      {columns.map((_, colIdx) => {
+                        const letter = String.fromCharCode(65 + (colIdx % 26))
+                        const prefix = colIdx >= 26 ? String.fromCharCode(65 + Math.floor(colIdx / 26) - 1) : ''
+                        return (
+                          <th key={colIdx} className="border border-slate-300 dark:border-slate-700 px-3 py-1 text-center min-w-[120px]">
+                            {prefix}{letter}
+                          </th>
+                        )
+                      })}
+                    </tr>
+
+                    {/* Data Heading Row (Styled Navy Blue - Matching ReportExport.php) */}
+                    <tr className="bg-navy-950 text-white font-extrabold border-b-2 border-navy-800">
+                      <td className="border border-navy-900 px-2 py-2.5 text-center font-mono text-amber-400">1</td>
+                      {columns.map((col) => (
+                        <td key={col.key} className="border border-navy-900 px-3 py-2.5 text-center uppercase tracking-wider text-[11px]">
+                          {col.label}
+                        </td>
+                      ))}
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-900 font-sans">
+                    {rows.data.length === 0 ? (
+                      <tr>
+                        <td colSpan={columns.length + 1} className="p-8 text-center text-slate-400 italic font-medium">
+                          Tidak ada data yang cocok dengan filter yang dipilih.
+                        </td>
+                      </tr>
+                    ) : (
+                      rows.data.map((row, idx) => (
+                        <tr key={idx} className="hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 transition-colors">
+                          {/* Row Number Column */}
+                          <td className="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-2 py-1.5 text-center font-mono font-bold text-slate-500 dark:text-slate-400 text-[10px]">
+                            {idx + 2}
+                          </td>
+                          {columns.map((col) => {
+                            const isMoney = col.type === 'money' || col.type === 'signed_money'
+                            const rawVal = row[col.key] ?? null
+                            return (
+                              <td
+                                key={col.key}
+                                className={cn(
+                                  "border border-slate-200 dark:border-slate-800 px-3 py-1.5 text-xs",
+                                  isMoney ? "text-right font-mono font-semibold text-slate-900 dark:text-white" : "text-center text-slate-700 dark:text-slate-300"
+                                )}
+                              >
+                                {formatValueRaw(rawVal, col.type)}
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Sheet Tabs Footer Mockup */}
+              <div className="flex items-center justify-between bg-slate-100 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400">
+                <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-3 py-1 rounded-t border-t-2 border-t-emerald-600 font-bold text-emerald-700 dark:text-emerald-400 shadow-2xs">
+                    <FileSpreadsheet className="size-3.5" />
+                    <span>Sheet1 (Laporan)</span>
+                  </div>
+                </div>
+                <span className="text-[11px] text-slate-500 font-medium">Siap diunduh sebagai berkas .xlsx</span>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="p-4 bg-slate-900 border-t border-slate-800 shrink-0 flex items-center justify-between">
+            <div className="text-xs text-slate-400">
+              Menampilkan pratinjau <strong className="text-white">{rows.data.length}</strong> dari <strong className="text-white">{rows.total}</strong> total baris.
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setExcelOpen(false)} className="border-slate-700 text-slate-300 hover:bg-slate-800">
+                Tutup
+              </Button>
+              <Button onClick={exportExcel} disabled={exporting} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5">
+                <Download className="size-4 mr-1.5" />
+                <span>{exporting ? 'Mengekspor…' : 'Unduh XLSX'}</span>
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
