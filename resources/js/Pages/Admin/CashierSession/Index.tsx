@@ -73,9 +73,18 @@ type ActiveSession = {
 type SessionRow = {
   id: number
   reference: string
+  user_name?: string
+  drawer_name?: string
   opened_at: string
   closed_at: string | null
   opening_cash: number
+  total_sales_cash?: number
+  total_sales_deposit?: number
+  total_sales_noncash?: number
+  total_topup_cash?: number
+  total_receivable_cash?: number
+  total_cash_in?: number
+  total_cash_out?: number
   expected_cash: number
   actual_cash: number | null
   difference: number | null
@@ -386,10 +395,21 @@ export default function Index({
         </button>
       ),
     },
-    { id: 'opened', header: 'Dibuka', cell: ({ row }) => new Date(row.original.opened_at).toLocaleString('id-ID') },
-    { id: 'expected', header: 'Expected', cell: ({ row }) => <Money amount={row.original.expected_cash} size="sm" /> },
-    { id: 'actual', header: 'Aktual', cell: ({ row }) => (row.original.actual_cash !== null ? <Money amount={row.original.actual_cash} size="sm" /> : '—') },
-    { id: 'diff', header: 'Selisih', cell: ({ row }) => (row.original.difference !== null ? <Money amount={row.original.difference} size="sm" showSign /> : '—') },
+    { id: 'kasir', header: 'Kasir', cell: ({ row }) => <span className="font-semibold text-slate-800 dark:text-slate-200">{row.original.user_name ?? 'Kasir'}</span> },
+    { id: 'laci', header: 'Laci', cell: ({ row }) => <span className="text-slate-600 dark:text-slate-400 text-xs">{row.original.drawer_name ?? 'Laci Kasir'}</span> },
+    { id: 'opened', header: 'Dibuka', cell: ({ row }) => new Date(row.original.opened_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) },
+    { id: 'closed', header: 'Ditutup', cell: ({ row }) => (row.original.closed_at ? new Date(row.original.closed_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '—') },
+    { id: 'opening', header: 'Kas Awal', cell: ({ row }) => <Money amount={row.original.opening_cash} size="sm" /> },
+    { id: 'omzet_tunai', header: 'Tunai', cell: ({ row }) => <Money amount={row.original.total_sales_cash ?? 0} size="sm" className="text-emerald-600 dark:text-emerald-400 font-semibold" /> },
+    { id: 'omzet_deposit', header: 'Deposit', cell: ({ row }) => <Money amount={row.original.total_sales_deposit ?? 0} size="sm" className="text-purple-600 dark:text-purple-400 font-semibold" /> },
+    { id: 'omzet_nontunai', header: 'Non-Tunai', cell: ({ row }) => <Money amount={row.original.total_sales_noncash ?? 0} size="sm" className="text-blue-600 dark:text-blue-400 font-semibold" /> },
+    { id: 'topup', header: 'Topup', cell: ({ row }) => <Money amount={row.original.total_topup_cash ?? 0} size="sm" className="text-cyan-600 dark:text-cyan-400" /> },
+    { id: 'piutang', header: 'Piutang', cell: ({ row }) => <Money amount={row.original.total_receivable_cash ?? 0} size="sm" className="text-indigo-600 dark:text-indigo-400" /> },
+    { id: 'kas_masuk', header: 'Kas Masuk', cell: ({ row }) => <Money amount={row.original.total_cash_in ?? 0} size="sm" className="text-teal-600 dark:text-teal-400" /> },
+    { id: 'kas_keluar', header: 'Kas Keluar', cell: ({ row }) => <Money amount={row.original.total_cash_out ?? 0} size="sm" className="text-rose-600 dark:text-rose-400" /> },
+    { id: 'expected', header: 'Expected', cell: ({ row }) => <Money amount={row.original.expected_cash} size="sm" className="font-bold text-amber-600 dark:text-amber-400" /> },
+    { id: 'actual', header: 'Aktual', cell: ({ row }) => (row.original.actual_cash !== null ? <Money amount={row.original.actual_cash} size="sm" className="font-bold text-emerald-600 dark:text-emerald-400" /> : '—') },
+    { id: 'diff', header: 'Selisih', cell: ({ row }) => (row.original.difference !== null ? <Money amount={row.original.difference} size="sm" showSign className="font-bold text-blue-600 dark:text-blue-400" /> : '—') },
     {
       id: 'status',
       header: 'Status',
@@ -406,7 +426,7 @@ export default function Index({
         <Button
           size="sm"
           variant="outline"
-          className="h-8 gap-1.5 border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-300 font-bold text-xs px-2.5 rounded-lg"
+          className="h-8 gap-1.5 border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-300 font-bold text-xs px-2.5 rounded-lg shrink-0"
           onClick={() => handleViewSessionDetail(row.original.id)}
         >
           <Receipt className="size-3.5 text-amber-500" />

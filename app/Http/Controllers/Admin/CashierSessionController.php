@@ -106,7 +106,8 @@ class CashierSessionController extends Controller
                     ->orderByDesc('id')
                     ->get(['id', 'reference', 'sale_date', 'grand_total', 'status', 'voided_at'])
                 : [],
-            'recentSessions' => CashierSession::where('status', '!=', 'open')
+            'recentSessions' => CashierSession::with(['user:id,name', 'cashAccount:id,name'])
+                ->where('status', '!=', 'open')
                 ->when(! $user->hasRole('owner'), function ($q) use ($user) {
                     $outletId = session('active_outlet_id') ?? $user->primaryOutletId();
                     if ($outletId) {
@@ -114,8 +115,28 @@ class CashierSessionController extends Controller
                     }
                 })
                 ->orderByDesc('closed_at')
-                ->limit(15)
-                ->get(['id', 'reference', 'opened_at', 'closed_at', 'opening_cash', 'expected_cash', 'actual_cash', 'difference', 'status']),
+                ->limit(50)
+                ->get()
+                ->map(fn ($s) => [
+                    'id' => $s->id,
+                    'reference' => $s->reference,
+                    'user_name' => $s->user?->name ?? 'Kasir',
+                    'drawer_name' => $s->cashAccount?->name ?? 'Laci Kasir',
+                    'opened_at' => $s->opened_at?->toIso8601String(),
+                    'closed_at' => $s->closed_at?->toIso8601String(),
+                    'opening_cash' => $s->opening_cash,
+                    'total_sales_cash' => $s->total_sales_cash ?? 0,
+                    'total_sales_deposit' => $s->total_sales_deposit ?? 0,
+                    'total_sales_noncash' => $s->total_sales_noncash ?? 0,
+                    'total_topup_cash' => $s->total_topup_cash ?? 0,
+                    'total_receivable_cash' => $s->total_receivable_cash ?? 0,
+                    'total_cash_in' => $s->total_cash_in ?? 0,
+                    'total_cash_out' => $s->total_cash_out ?? 0,
+                    'expected_cash' => $s->expected_cash,
+                    'actual_cash' => $s->actual_cash,
+                    'difference' => $s->difference,
+                    'status' => $s->status,
+                ]),
         ]);
     }
 
