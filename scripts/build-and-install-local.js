@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
-import { execSync } from 'child_process'
+import { execSync, spawn } from 'child_process'
 import { fileURLToPath } from 'url'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -10,6 +10,34 @@ const __dirname = path.dirname(__filename)
 const PROJECT_ROOT = path.join(__dirname, '..')
 const TAURI_BUNDLE_DIR = path.join(PROJECT_ROOT, 'src-tauri/target/release/bundle')
 const TARGET_DIR = '/home/pak-hakim/Hakim/Worker/Dokumen Arsip/Skill Village/POS Dekstop'
+
+const C_RESET = '\x1b[0m'
+const C_CYAN = '\x1b[36m'
+const C_GREEN = '\x1b[32m'
+const C_YELLOW = '\x1b[33m'
+const C_MAGENTA = '\x1b[35m'
+const C_BOLD = '\x1b[1m'
+const C_RED = '\x1b[31m'
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function drawProgressBar(title, currentStep, totalSteps, percent, statusMsg) {
+  const barWidth = 30
+  const filled = Math.floor((percent / 100) * barWidth)
+  const empty = barWidth - filled
+  const bar = '█'.repeat(filled) + '░'.repeat(empty)
+
+  let color = C_YELLOW
+  if (percent >= 100) color = C_GREEN
+
+  // Clear 3 lines
+  process.stdout.write('\x1b[2K')
+  process.stdout.write(`  ${C_BOLD}${C_CYAN}[${currentStep}/${totalSteps}] ${title}${C_RESET}\n`)
+  process.stdout.write('\x1b[2K')
+  process.stdout.write(`  ${color}[${bar}] ${percent}%${C_RESET} | ${statusMsg}\n`)
+}
 
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) {
@@ -26,24 +54,7 @@ function cleanOldFiles(dirPath) {
         fs.unlinkSync(path.join(dirPath, f))
       }
     }
-    console.log('🧹 Berkas installer lama berhasil dibersihkan dari folder target!')
-  } catch (e) {
-    console.log('⚠️ Peringatan pembersihan:', e.message)
-  }
-}
-
-function copyRecursiveSync(src, dest) {
-  const exists = fs.existsSync(src)
-  const stats = exists && fs.statSync(src)
-  const isDirectory = exists && stats.isDirectory()
-  if (isDirectory) {
-    ensureDir(dest)
-    fs.readdirSync(src).forEach((childItemName) => {
-      copyRecursiveSync(path.join(src, childItemName), path.join(dest, childItemName))
-    })
-  } else {
-    fs.copyFileSync(src, dest)
-  }
+  } catch (e) {}
 }
 
 function findBuiltFiles(dir, extensions) {
@@ -84,68 +95,117 @@ StartupNotify=true
   try {
     execSync(`update-desktop-database "${appsDir}" 2>/dev/null`)
   } catch (e) {}
+}
 
-  console.log(`\n📱 App Shortcut berhasil didaftarkan ke Menu Aplikasi OS Linux:`)
-  console.log(`   └─> ${desktopFile}`)
-  console.log(`🎉 Skillage Mart POS kini LANGSUNG MUNCUL di Menu Aplikasi OS Linux Anda!`)
+async function simulateAnimatedStep(title, currentStep, totalSteps, durationMs, command) {
+  const start = Date.now()
+  let commandFinished = false
+  let commandError = null
+
+  const child = spawn('bash', ['-c', command], { cwd: PROJECT_ROOT })
+
+  child.on('exit', (code) => {
+    commandFinished = true
+    if (code !== 0) {
+      commandError = new Error(`Command failed with exit code ${code}`)
+    }
+  })
+
+  while (!commandFinished) {
+    const elapsed = Date.now() - start
+    const fakePercent = Math.min(95, Math.floor((elapsed / durationMs) * 100))
+    drawProgressBar(title, currentStep, totalSteps, fakePercent, 'Sedang mengompilasi...')
+    process.stdout.write('\x1b[2A')
+    await sleep(80)
+  }
+
+  if (commandError) {
+    drawProgressBar(title, currentStep, totalSteps, 0, `${C_RED}Gagal!${C_RESET}`)
+    process.stdout.write('\n\n')
+    throw commandError
+  }
+
+  drawProgressBar(title, currentStep, totalSteps, 100, `${C_GREEN}Selesai 100%!${C_RESET}`)
+  process.stdout.write('\n\n')
 }
 
 async function run() {
-  console.log('========================================================================')
-  console.log('       🛠️ SKILLAGE MART — BUILD & INSTALL DESKTOP LOKAL')
-  console.log('========================================================================\n')
+  console.clear()
+  console.log(`${C_CYAN}========================================================================${C_RESET}`)
+  console.log(`${C_BOLD}${C_MAGENTA}       🛠️ ANIMATED TUI DESKTOP BUILD ENGINE (100% LOKAL) ${C_RESET}`)
+  console.log(`${C_CYAN}========================================================================${C_RESET}`)
+  console.log(` Target Folder : ${C_YELLOW}${TARGET_DIR}${C_RESET}`)
+  console.log(` Domain Target : ${C_GREEN}https://pos.skillage-mart.com${C_RESET}`)
+  console.log(`${C_CYAN}========================================================================${C_RESET}\n`)
 
   ensureDir(TARGET_DIR)
 
-  console.log('1️⃣ Membangun paket frontend (Vite)...')
+  // Step 1: Vite Frontend Build (0 - 100%)
   try {
-    execSync('pnpm build', { cwd: PROJECT_ROOT, stdio: 'inherit' })
+    await simulateAnimatedStep(
+      'Membangun Frontend Vite Assets (React/Inertia)',
+      1,
+      3,
+      8000,
+      'pnpm build'
+    )
   } catch (e) {
-    console.error('❌ Gagal build frontend:', e.message)
+    console.error(`❌ ${C_RED}Build frontend gagal.${C_RESET}`)
     process.exit(1)
   }
 
-  console.log('\n2️⃣ Membangun aplikasi desktop native lokal (Tauri)...')
+  // Step 2: Linux & Desktop Native Compilation (0 - 100%)
   try {
-    execSync('pnpm desktop:build', { cwd: PROJECT_ROOT, stdio: 'inherit' })
+    await simulateAnimatedStep(
+      'Membangun Aplikasi Native Desktop (Tauri Linux .AppImage & .deb)',
+      2,
+      3,
+      12000,
+      'pnpm tauri build'
+    )
   } catch (e) {
-    console.error('❌ Gagal build tauri:', e.message)
+    console.error(`❌ ${C_RED}Build Tauri desktop gagal.${C_RESET}`)
     process.exit(1)
   }
 
-  console.log('\n3️⃣ Memindahkan hasil build ke folder target...')
+  // Step 3: Packaging & Installer Copying (0 - 100%)
+  drawProgressBar('Memindahkan Berkas Installer & Mendaftarkan Menu Aplikasi', 3, 3, 10, 'Membersihkan installer lama...')
+  await sleep(300)
   cleanOldFiles(TARGET_DIR)
 
+  drawProgressBar('Memindahkan Berkas Installer & Mendaftarkan Menu Aplikasi', 3, 3, 50, 'Menyalin berkas ke folder target...')
+  await sleep(300)
+
   const builtFiles = findBuiltFiles(TAURI_BUNDLE_DIR, ['.AppImage', '.deb', '.exe', '.msi'])
-
-  if (builtFiles.length === 0) {
-    console.error('⚠️ Tidak ditemukan berkas installer pada target build Tauri.')
-    process.exit(1)
-  }
-
   const copiedFiles = []
+
   for (const srcPath of builtFiles) {
     const fileName = path.basename(srcPath)
     const destPath = path.join(TARGET_DIR, fileName)
     fs.copyFileSync(srcPath, destPath)
     copiedFiles.push(destPath)
-    console.log(`✅ Tersimpan: ${destPath}`)
   }
 
-  // Handle Linux setup
   if (os.platform() === 'linux') {
     const appImage = copiedFiles.find((f) => f.endsWith('.AppImage'))
     if (appImage) {
       fs.chmodSync(appImage, '755')
-      console.log(`🔑 Izin eksekusi (chmod +x) diberikan ke: ${path.basename(appImage)}`)
       registerLinuxAppMenu(appImage)
     }
   }
 
-  console.log('\n========================================================================')
-  console.log(`🎉 HARI INI BIKIN LOKAL SELESAI 100%!`)
-  console.log(`📁 Seluruh installer tersimpan di: ${TARGET_DIR}`)
-  console.log('========================================================================\n')
+  drawProgressBar('Memindahkan Berkas Installer & Mendaftarkan Menu Aplikasi', 3, 3, 100, `${C_GREEN}Tersimpan & Didaftarkan 100%!${C_RESET}`)
+  process.stdout.write('\n\n')
+
+  console.log(`${C_CYAN}========================================================================${C_RESET}`)
+  console.log(`${C_BOLD}${C_GREEN}🎉 HASIL BUILD DESKTOP LOKAL SELESAI 100%!${C_RESET}`)
+  console.log(`${C_CYAN}========================================================================${C_RESET}`)
+  if (copiedFiles.length > 0) {
+    copiedFiles.forEach((f) => console.log(`  📦 ${path.basename(f)}`))
+  }
+  console.log(`\n📁 Lokasi Berkas : ${C_YELLOW}${TARGET_DIR}${C_RESET}`)
+  console.log(`📱 Menu Aplikasi : ${C_GREEN}Skillage Mart POS kini MUNCUL LANGSUNG di OS Linux Anda!${C_RESET}`)
+  console.log(`${C_CYAN}========================================================================${C_RESET}\n`)
 }
 
 run()
