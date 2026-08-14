@@ -145,6 +145,7 @@ export default function Index({
   const [pinOpen, setPinOpen] = useState(false)
   const [openingCashMap, setOpeningCashMap] = useState<Record<number, number>>({})
   const [openingDrawerId, setOpeningDrawerId] = useState<number | null>(null)
+  const [showOpenNewSessionDialog, setShowOpenNewSessionDialog] = useState(false)
 
   function handleOpenSession(drawerId: number) {
     const cashAmount = openingCashMap[drawerId] ?? 0
@@ -537,6 +538,16 @@ export default function Index({
                     </button>
                   )
                 })}
+
+                {/* Tab button untuk membuka sesi kasir tambahan */}
+                <button
+                  type="button"
+                  onClick={() => setShowOpenNewSessionDialog(true)}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-dashed border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 text-xs font-bold transition-all shrink-0 cursor-pointer"
+                >
+                  <Plus className="size-4 text-amber-500" />
+                  <span>+ Buka Sesi Kasir Lain</span>
+                </button>
               </div>
             </div>
           )}
@@ -888,6 +899,94 @@ export default function Index({
           submitVoid(token)
         }}
       />
+
+      {/* Dialog Buka Sesi Kasir Baru (Untuk Membuka Multi Sesi di Laci Lain) */}
+      <Dialog open={showOpenNewSessionDialog} onOpenChange={setShowOpenNewSessionDialog}>
+        <DialogContent className="sm:max-w-[700px] border-slate-200 dark:border-slate-800 dark:bg-surface">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-white">
+              <Store className="size-5 text-amber-500" />
+              Buka Sesi Kasir Baru (Laci Kasir Lain)
+            </DialogTitle>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Pilih laci kasir yang belum aktif dan tentukan modal uang fisik awal untuk membuka sesi kasir tambahan.
+            </p>
+          </DialogHeader>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-2 max-h-[60vh] overflow-y-auto">
+            {safeAccounts.map((a) => {
+              const openingCash = openingCashMap[a.id] ?? 0
+              const isOpeningThis = openingDrawerId === a.id
+              const isOpenByOther = a.is_open && !a.is_own_open
+
+              return (
+                <div
+                  key={a.id}
+                  className={cn(
+                    "flex flex-col justify-between gap-3 rounded-2xl border p-4 shadow-xs transition-all",
+                    isOpenByOther
+                      ? "border-red-200 dark:border-red-900/40 bg-red-50/20 dark:bg-red-950/10"
+                      : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 hover:border-amber-500/40"
+                  )}
+                >
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                        {a.name}
+                      </h4>
+                      {isOpenByOther ? (
+                        <Badge className="bg-red-500/15 text-red-700 dark:text-red-300 border-red-500/30 text-[10px]">
+                          Terbuka: {a.open_user_name}
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 text-[10px]">
+                          Tersedia
+                        </Badge>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        Modal Fisik Awal (Rp)
+                      </Label>
+                      <MoneyInput
+                        value={openingCash}
+                        disabled={isOpenByOther}
+                        onChange={(v) => setOpeningCashMap((prev) => ({ ...prev, [a.id]: v }))}
+                        className="h-10 text-sm font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    type="button"
+                    disabled={isOpeningThis || isOpenByOther}
+                    onClick={() => {
+                      handleOpenSession(a.id)
+                      setShowOpenNewSessionDialog(false)
+                    }}
+                    className={cn(
+                      "h-10 w-full gap-2 rounded-xl font-bold text-xs shadow-xs transition-all mt-1",
+                      isOpenByOther
+                        ? "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400 cursor-not-allowed"
+                        : "bg-amber-500 text-navy-950 hover:bg-amber-400"
+                    )}
+                  >
+                    <PlayCircle className="size-4 fill-current" />
+                    <span>{isOpeningThis ? 'Memproses…' : isOpenByOther ? `Dipakai oleh ${a.open_user_name}` : `Buka Sesi ${a.name}`}</span>
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowOpenNewSessionDialog(false)}>
+              Tutup
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
