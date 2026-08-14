@@ -14,12 +14,12 @@ class AdjustSessionLifetime
      * @var array<string, int>
      */
     private const LIFETIME_MINUTES = [
-        'cashier' => 30,
-        'warehouse' => 60,
-        'treasurer' => 120,
-        'admin' => 120,
-        'supervisor' => 120,
-        'owner' => 480,
+        'cashier' => 480, // 8 jam (1 shift kasir penuh) agar tidak ter-logout saat tutup/buka browser
+        'warehouse' => 240,
+        'treasurer' => 240,
+        'admin' => 480,
+        'supervisor' => 480,
+        'owner' => 720,
     ];
 
     /**

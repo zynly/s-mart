@@ -65,7 +65,7 @@ class CashierSessionController extends Controller
             throw ValidationException::withMessages(['cash_account_id' => $e->getMessage()]);
         }
 
-        return back()->with('success', 'Sesi kasir dibuka.');
+        return to_route('pos.index')->with('success', 'Sesi kasir berhasil dibuka. Selamat bertugas!');
     }
 
     public function close(CloseCashierSessionRequest $request, CashierSession $cashierSession): RedirectResponse

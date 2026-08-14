@@ -31,7 +31,7 @@ export function PageTabs({ tabs, current }: PageTabsProps) {
               asChild
               className="flex-1 w-full justify-center text-center py-2.5 text-xs font-semibold uppercase tracking-wider transition-all duration-200"
             >
-              <Link href={tab.href} prefetch="hover" cacheFor="30s" preserveScroll>
+              <Link href={tab.href} prefetch="hover" preserveScroll>
                 {tab.label}
               </Link>
             </TabsTrigger>

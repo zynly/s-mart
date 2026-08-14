@@ -450,12 +450,21 @@ export default function Index({
                 </div>
               </div>
 
-              {/* Expected Cash Highlight Badge */}
-              <div className="flex flex-col items-start sm:items-end rounded-2xl border border-amber-400/50 bg-surface-alt dark:bg-surface px-5 py-3.5 shadow-md">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-300">
-                  Expected Cash (Uang Diharapkan)
-                </span>
-                <Money amount={expected ?? 0} size="xl" className="text-amber-400 font-black text-2xl mt-0.5" />
+              {/* Expected Cash Highlight Badge & POS Button */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                <div className="flex flex-col items-start sm:items-end rounded-2xl border border-amber-400/50 bg-surface-alt dark:bg-surface px-5 py-3.5 shadow-md">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-300">
+                    Expected Cash (Uang Diharapkan)
+                  </span>
+                  <Money amount={expected ?? 0} size="xl" className="text-amber-400 font-black text-2xl mt-0.5" />
+                </div>
+                <Button
+                  onClick={() => router.visit(route('pos.index'))}
+                  className="h-full py-4.5 px-5 gap-2 rounded-2xl bg-amber-500 hover:bg-amber-400 text-navy-950 font-black text-sm shadow-md transition-all active:scale-95"
+                >
+                  <ShoppingBag className="size-5" />
+                  <span>Buka Terminal POS</span>
+                </Button>
               </div>
             </div>
           </div>

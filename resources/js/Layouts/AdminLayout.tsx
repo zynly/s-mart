@@ -314,7 +314,6 @@ function NavLink({ item, collapsed }: { item: NavigationItem; collapsed: boolean
     <Link
       href={item.href}
       prefetch="hover"
-      cacheFor="30s"
       className={cn(
         'group relative flex items-center gap-3 py-2.5 text-xs transition-all duration-200 ease-in-out select-none',
         collapsed ? 'justify-center px-2 rounded-xl' : 'px-3 rounded-r-xl rounded-l-sm',
