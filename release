@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
 # ==============================================================================
-# SKILLAGE MART - DESKTOP RELEASE MANAGER TUI SCRIPT
-# Inspired by JBR Minpo ./release workflow
+# SKILLAGE MART - DESKTOP RELEASE MANAGER (100% LOKAL)
 # ==============================================================================
 
 # Colors & Formatting
@@ -15,123 +14,68 @@ MAGENTA='\033[0;35m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
 
-SHOW_MENU=true
+TARGET_DIR="/home/pak-hakim/Hakim/Worker/Dokumen Arsip/Skill Village/POS Dekstop"
 
 function print_banner() {
     clear
     echo -e "${CYAN}========================================================================${NC}"
-    echo -e "${BOLD}${MAGENTA}       🏪 SKILLAGE MART — DESKTOP RELEASE MANAGER (TUI) ${NC}"
+    echo -e "${BOLD}${MAGENTA}       🏪 SKILLAGE MART — LOKAL DESKTOP BUILDER (TUI) ${NC}"
     echo -e "${CYAN}========================================================================${NC}"
-    echo -e " Target Platform: ${GREEN}Windows (.exe / .msi)${NC} & ${BLUE}Linux (.AppImage / .deb)${NC}"
+    echo -e " Mode: ${GREEN}100% BUILD LOKAL (Tanpa GitHub Actions)${NC}"
+    echo -e " Target Penyimpanan: ${YELLOW}${TARGET_DIR}${NC}"
     echo -e "${CYAN}========================================================================${NC}"
     echo ""
 }
 
-function check_git_status() {
-    echo -e "${YELLOW}🔍 Memeriksa status Git repositori...${NC}"
-    if [ -n "$(git status --porcelain)" ]; then
-        echo -e "${RED}⚠️ Terdapat perubahan berkas yang belum di-commit!${NC}"
-        git status -s
-        echo ""
-        read -p "Masukkan pesan commit (atau tekan Enter untuk default): " COMMIT_MSG
-        if [ -z "$COMMIT_MSG" ]; then
-            COMMIT_MSG="build(release): release new desktop binaries via ./release TUI"
-        fi
-        git add .
-        git commit -m "$COMMIT_MSG"
-        echo -e "${GREEN}✅ Perubahan berhasil di-commit di lokal!${NC}"
-    else
-        echo -e "${GREEN}✅ Working tree bersih. Siap di-push!${NC}"
-    fi
-}
-
-function trigger_build() {
+function build_local() {
     print_banner
-    echo -e "${BOLD}${YELLOW}🚀 PILIHAN 1: PUSH & PICU BUILD GITHUB ACTIONS${NC}\n"
-    check_git_status
-
+    echo -e "${BOLD}${GREEN}🔨 MENJALANKAN BUILD DESKTOP LOKAL & PEMASANGAN OTOMATIS...${NC}\n"
+    node scripts/build-and-install-local.js
     echo ""
-    read -p "Apakah Anda yakin ingin PUSH ke origin main untuk memicu Build Desktop? [y/N]: " CONFIRM
-    if [[ "$CONFIRM" =~ ^[Yy]$ ]]; then
-        echo -e "\n${BLUE}⏳ Mengunggah kode ke GitHub main...${NC}"
-        git push origin main
-        if [ $? -eq 0 ]; then
-            echo -e "\n${GREEN}🎉 PUSH BERHASIL! GitHub Actions sedang mem-build berkas .exe & .AppImage.${NC}"
-            echo -e "${CYAN}💡 Anda dapat memantau build di GitHub Actions atau jalankan opsi [2] beberapa menit lagi.${NC}"
-        else
-            echo -e "\n${RED}❌ Gagal melakukan git push. Periksa koneksi internet Anda.${NC}"
-        fi
-    else
-        echo -e "${YELLOW}Proses push dibatalkan.${NC}"
-    fi
     read -p "Tekan [Enter] untuk kembali ke menu..."
-}
-
-function download_installers() {
-    print_banner
-    echo -e "${BOLD}${GREEN}📥 PILIHAN 2: UNDUH INSTALLER DESKTOP TERBARU${NC}\n"
-    node scripts/download-desktop-builds.js
-    echo ""
-    read -p "Tekan [Enter] me-refresh daftar installer..."
 }
 
 function list_installers() {
     print_banner
-    echo -e "${BOLD}${CYAN}📂 PILIHAN 3: DAFTAR BERKAS INSTALLER LOKAL (desktop-builds/)${NC}\n"
+    echo -e "${BOLD}${CYAN}📂 DAFTAR BERKAS INSTALLER DI FOLDER TARGET${NC}\n"
+    echo -e "Lokasi: ${YELLOW}${TARGET_DIR}${NC}\n"
     
-    if [ -d "desktop-builds" ] && [ "$(ls -A desktop-builds 2>/dev/null)" ]; then
-        echo -e "${GREEN}Tersedia berkas di folder desktop-builds/:${NC}\n"
-        ls -lh desktop-builds | awk 'NR>1 {print "  📦 " $9 " (" $5 ")"}'
+    if [ -d "$TARGET_DIR" ] && [ "$(ls -A "$TARGET_DIR" 2>/dev/null)" ]; then
+        ls -lh "$TARGET_DIR" | awk 'NR>1 {print "  📦 " $9 " (" $5 ")"}'
     else
-        echo -e "${YELLOW}⚠️ Folder desktop-builds/ masih kosong.${NC}"
-        echo -e "Gunakan opsi [2] untuk mengunduh installer dari GitHub Actions."
+        echo -e "${YELLOW}⚠️ Folder target masih kosong.${NC}"
+        echo -e "Jalankan opsi [1] untuk melakukan build lokal."
     fi
     echo ""
     read -p "Tekan [Enter] untuk kembali ke menu..."
 }
 
-function check_status() {
+function clean_local() {
     print_banner
-    echo -e "${BOLD}${BLUE}📊 PILIHAN 4: CEK STATUS RILIS GITHUB${NC}\n"
-    echo -e "${YELLOW}Mengambil data rilis publik dari GitHub REST API...${NC}"
-    curl -s "https://api.github.com/repos/zynly/s-mart/releases" | node -e '
-      let data = "";
-      process.stdin.on("data", c => data += c);
-      process.stdin.on("end", () => {
-        try {
-          let json = JSON.parse(data);
-          if (Array.isArray(json) && json.length > 0) {
-            console.log("\n✅ Rilis Terakhir: " + json[0].name + " (" + json[0].tag_name + ")");
-            console.log("   Dibuat pada: " + new Date(json[0].created_at).toLocaleString("id-ID"));
-            console.log("   Total Berkas: " + (json[0].assets ? json[0].assets.length : 0) + " installer");
-          } else {
-            console.log("\n⚠️ Belum ada rilis yang tersedia.");
-          }
-        } catch(e) {
-          console.log("❌ Gagal membaca API rilis.");
-        }
-      })
-    '
+    echo -e "${BOLD}${RED}🧹 BERSIHKAN INSTALLER LAMA DI FOLDER TARGET${NC}\n"
+    read -p "Apakah Anda yakin ingin menghapus installer lama di folder target? [y/N]: " CONFIRM
+    if [[ "$CONFIRM" =~ ^[Yy]$ ]]; then
+        rm -f "$TARGET_DIR"/*.exe "$TARGET_DIR"/*.msi "$TARGET_DIR"/*.AppImage "$TARGET_DIR"/*.deb
+        echo -e "\n${GREEN}✅ Berkas installer lama berhasil dibersihkan!${NC}"
+    fi
     echo ""
     read -p "Tekan [Enter] untuk kembali ke menu..."
 }
 
 while true; do
     print_banner
-    echo -e " ${BOLD}MENU OPSI UTAMA:${NC}"
-    echo -e "  ${GREEN}[1]${NC} 🚀 Push & Picu Build GitHub Actions (Windows .exe & Linux)"
-    echo -e "  ${GREEN}[2]${NC} 📥 Unduh Installer Terbaru ke Lokal (desktop-builds/)"
-    echo -e "  ${GREEN}[3]${NC} 📂 Lihat Daftar Berkas Installer di Folder Lokal"
-    echo -e "  ${GREEN}[4]${NC} 📊 Cek Status Rilis GitHub API"
+    echo -e " ${BOLD}MENU OPSI UTAMA LOKAL:${NC}"
+    echo -e "  ${GREEN}[1]${NC} 🔨 Build Desktop Lokal & Pasang ke Menu Aplikasi"
+    echo -e "  ${GREEN}[2]${NC} 📂 Lihat Berkas Installer di Folder Target"
+    echo -e "  ${GREEN}[3]${NC} 🧹 Bersihkan Installer Lama di Folder Target"
     echo -e "  ${RED}[0]${NC} 🚪 Keluar"
     echo -e "${CYAN}========================================================================${NC}"
-    read -p "Pilih opsi [0-4]: " CHOICE
+    read -p "Pilih opsi [0-3]: " CHOICE
 
     case $CHOICE in
-        1) trigger_build ;;
-        2) download_installers ;;
-        3) list_installers ;;
-        4) check_status ;;
+        1) build_local ;;
+        2) list_installers ;;
+        3) clean_local ;;
         0) echo -e "\n${GREEN}Terima kasih! Sampai jumpa.${NC}\n"; exit 0 ;;
         *) echo -e "${RED}Pilihan tidak valid!${NC}"; sleep 1 ;;
     esac
