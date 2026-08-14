@@ -260,13 +260,24 @@ export default function Index({
     },
     {
       id: 'actions',
-      header: '',
+      header: 'Aksi',
       cell: ({ row }) => (
-        row.original.status === 'completed' ? (
-          <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-950/50" onClick={() => { setVoidTarget(row.original); setVoidReason('') }}>
-            Void
+        <div className="flex items-center gap-1.5">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1 border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-200 font-medium text-xs px-2.5 rounded-lg"
+            onClick={() => window.open(route('pos.sales.receipt-pdf', row.original.id), '_blank')}
+          >
+            <Receipt className="size-3.5 text-slate-500" />
+            Lihat Nota
           </Button>
-        ) : null
+          {row.original.status === 'completed' && (
+            <Button size="sm" variant="outline" className="h-8 text-red-600 border-red-200 hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-950/50 font-medium text-xs px-2.5 rounded-lg" onClick={() => { setVoidTarget(row.original); setVoidReason('') }}>
+              Void
+            </Button>
+          )}
+        </div>
       ),
     },
   ]
