@@ -71,4 +71,9 @@ class CashierSession extends Model
     {
         return $this->hasMany(CashTransaction::class);
     }
+
+    public function sales(): HasMany
+    {
+        return $this->hasMany(Sale::class);
+    }
 }
