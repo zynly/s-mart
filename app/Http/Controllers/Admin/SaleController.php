@@ -96,6 +96,9 @@ class SaleController extends Controller
         $data = $request->validate([
             'amount' => ['required', 'integer', 'min:1'],
             'type' => ['required', 'string', 'in:qris,ewallet,transfer'],
+            'items' => ['sometimes', 'array'],
+            'member_id' => ['nullable', 'integer'],
+            'coupon_code' => ['nullable', 'string'],
         ]);
 
         $session = $this->sessionService->getActive($request->user());
@@ -106,19 +109,30 @@ class SaleController extends Controller
 
         $orderId = 'POS-'.$session->id.'-'.Str::random(10);
 
-        // Batasi channel Snap sesuai metode yang dipilih kasir — tanpa
-        // ini Snap menampilkan SEMUA metode aktif di akun (QRIS, VA,
-        // kartu sekaligus), padahal kasir sudah pilih spesifik salah
-        // satu tipe di dialog pembayaran.
+        // Cache pending POS cart payload (valid for 2 hours) so Webhook callback can auto-complete the sale if needed
+        if (! empty($data['items'])) {
+            $pendingCart = [
+                'outlet_id' => $session->outlet_id,
+                'cashier_session_id' => $session->id,
+                'member_id' => $data['member_id'] ?? null,
+                'coupon_code' => $data['coupon_code'] ?? null,
+                'items' => $data['items'],
+                'idempotency_key' => $orderId,
+                'user_id' => $session->user_id,
+                'payments' => [
+                    [
+                        'payment_method_id' => 1,
+                        'amount' => $data['amount'],
+                        'received_amount' => $data['amount'],
+                        'reference_no' => $orderId,
+                        'gateway_status' => 'settlement',
+                    ],
+                ],
+            ];
+            \Illuminate\Support\Facades\Cache::put("pos_pending_sale:{$orderId}", $pendingCart, now()->addHours(2));
+        }
+
         $enabledPayments = match ($data['type']) {
-            // Hanya 1 channel — kalau ada 2+ (mis. gopay + other_qris),
-            // Snap tetap menampilkan LAYAR PILIH dulu (GoPay QRIS vs
-            // QRIS biasa) sebelum QR muncul, karena keduanya dianggap
-            // opsi berbeda oleh Snap walau sama-sama scan QR. Kasir
-            // sudah pilih "QRIS" secara eksplisit di POS — channel
-            // generik `other_qris` (nampilkan QR langsung, bisa
-            // dipindai GoPay/OVO/Dana/ShopeePay apa pun) yang paling
-            // cocok, bukan channel `gopay` yang spesifik ke akun GoPay.
             'qris' => ['other_qris'],
             'ewallet' => ['gopay', 'shopeepay'],
             'transfer' => ['bca_va', 'bni_va', 'bri_va', 'permata_va', 'other_va', 'echannel'],

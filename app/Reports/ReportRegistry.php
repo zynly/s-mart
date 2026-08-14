@@ -18,6 +18,7 @@ class ReportRegistry
         'sales-by-product' => SalesByProductReport::class,
         'sales-by-cashier' => SalesByCashierReport::class,
         'sales-by-payment-method' => SalesByPaymentMethodReport::class,
+        'cashier-sessions' => CashierSessionReport::class,
         'stock-summary' => StockSummaryReport::class,
         'stock-card' => StockCardReport::class,
         'stock-critical-expiry' => StockCriticalExpiryReport::class,

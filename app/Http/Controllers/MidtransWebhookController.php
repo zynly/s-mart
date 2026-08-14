@@ -46,11 +46,48 @@ class MidtransWebhookController extends Controller
             $salePayment = \App\Models\SalePayment::where('reference_no', $orderId)->first();
             $sale = $salePayment?->sale ?? \App\Models\Sale::where('reference', $orderId)->first();
 
-            if ($sale !== null || str_starts_with($orderId, 'POS-')) {
+            if ($sale !== null) {
+                if ($salePayment && $salePayment->gateway_status !== 'settlement') {
+                    $salePayment->update(['gateway_status' => 'settlement']);
+                }
+
                 return response()->json([
                     'status' => 'ok',
                     'type' => 'pos_sale',
                     'message' => 'Midtrans POS transaction webhook callback processed successfully',
+                    'order_id' => $orderId,
+                ]);
+            }
+
+            // Cek jika ada transaksi POS tertunda di Cache
+            $pendingPayload = \Illuminate\Support\Facades\Cache::get("pos_pending_sale:{$orderId}");
+            if ($pendingPayload !== null) {
+                try {
+                    if (isset($pendingPayload['user_id'])) {
+                        auth()->setUser(\App\Models\User::find($pendingPayload['user_id']));
+                    }
+
+                    $completedSale = app(\App\Services\SaleService::class)->complete($pendingPayload);
+                    \Illuminate\Support\Facades\Cache::forget("pos_pending_sale:{$orderId}");
+
+                    return response()->json([
+                        'status' => 'ok',
+                        'type' => 'pos_sale_auto_completed',
+                        'message' => 'Midtrans POS sale auto completed via webhook callback',
+                        'order_id' => $orderId,
+                        'sale_id' => $completedSale->id,
+                        'sale_reference' => $completedSale->reference,
+                    ]);
+                } catch (\Throwable $e) {
+                    Log::error('Midtrans webhook: failed auto completing POS sale', ['order_id' => $orderId, 'error' => $e->getMessage()]);
+                }
+            }
+
+            if (str_starts_with($orderId, 'POS-')) {
+                return response()->json([
+                    'status' => 'ok',
+                    'type' => 'pos_pending',
+                    'message' => 'Midtrans POS transaction webhook received and logged',
                     'order_id' => $orderId,
                 ]);
             }

@@ -90,6 +90,10 @@ class PakasirWebhookController extends Controller
         $sale = $salePayment?->sale ?? \App\Models\Sale::where('reference', $orderId)->first();
 
         if ($sale !== null) {
+            if ($salePayment && $salePayment->gateway_status !== 'settlement') {
+                $salePayment->update(['gateway_status' => 'settlement']);
+            }
+
             return response()->json([
                 'status' => 'ok',
                 'type' => 'pos_sale',
@@ -100,6 +104,32 @@ class PakasirWebhookController extends Controller
                 'receipt_url' => route('pos.sales.receipt', $sale->id),
                 'receipt_pdf_url' => route('pos.sales.receipt-pdf', $sale->id),
             ]);
+        }
+
+        // Cek jika ada transaksi POS tertunda di Cache
+        $pendingPayload = \Illuminate\Support\Facades\Cache::get("pos_pending_sale:{$orderId}");
+        if ($pendingPayload !== null) {
+            try {
+                if (isset($pendingPayload['user_id'])) {
+                    auth()->setUser(\App\Models\User::find($pendingPayload['user_id']));
+                }
+
+                $completedSale = app(\App\Services\SaleService::class)->complete($pendingPayload);
+                \Illuminate\Support\Facades\Cache::forget("pos_pending_sale:{$orderId}");
+
+                return response()->json([
+                    'status' => 'ok',
+                    'type' => 'pos_sale_auto_completed',
+                    'message' => 'Pakasir POS sale auto completed via webhook callback',
+                    'order_id' => $orderId,
+                    'sale_id' => $completedSale->id,
+                    'sale_reference' => $completedSale->reference,
+                    'receipt_url' => route('pos.sales.receipt', $completedSale->id),
+                    'receipt_pdf_url' => route('pos.sales.receipt-pdf', $completedSale->id),
+                ]);
+            } catch (\Throwable $e) {
+                Log::error('Pakasir webhook: failed auto completing POS sale', ['order_id' => $orderId, 'error' => $e->getMessage()]);
+            }
         }
 
         // Jika order_id merupakan transaksi POS (dimulai dari POS-) atau test callback dari Pakasir
