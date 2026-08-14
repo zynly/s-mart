@@ -46,16 +46,38 @@ function ensureDir(dir) {
   }
 }
 
-function cleanOldFiles(dirPath) {
+function autoUninstallOldVersion() {
+  console.log(`  🗑️  ${C_YELLOW}AUTO-UNINSTALL VERSI LAMA: Memeriksa dan mencabut instalasi lama...${C_RESET}`)
+  
+  // 1. Uninstall old desktop menu launcher shortcut
+  const appsDir = path.join(os.homedir(), '.local/share/applications')
+  const desktopFile = path.join(appsDir, 'skillage-mart-pos.desktop')
+  if (fs.existsSync(desktopFile)) {
+    try {
+      fs.unlinkSync(desktopFile)
+      console.log(`     └─> ✅ Shortcut versi lama (${desktopFile}) berhasil dicabut/dihapus!`)
+    } catch (e) {}
+  }
+
+  // 2. Clean old installer binaries from target directory
   try {
-    if (!fs.existsSync(dirPath)) return
-    const files = fs.readdirSync(dirPath)
-    for (const f of files) {
-      if (f.endsWith('.exe') || f.endsWith('.msi') || f.endsWith('.AppImage') || f.endsWith('.deb') || f.endsWith('.zip')) {
-        fs.unlinkSync(path.join(dirPath, f))
+    if (fs.existsSync(TARGET_DIR)) {
+      const files = fs.readdirSync(TARGET_DIR)
+      let deletedCount = 0
+      for (const f of files) {
+        if (f.endsWith('.exe') || f.endsWith('.msi') || f.endsWith('.AppImage') || f.endsWith('.deb') || f.endsWith('.zip')) {
+          fs.unlinkSync(path.join(TARGET_DIR, f))
+          deletedCount++
+        }
       }
+      console.log(`     └─> ✅ ${deletedCount} berkas installer lama di folder target berhasil dibersihkan bersih!`)
     }
   } catch (e) {}
+
+  try {
+    execSync(`update-desktop-database "${appsDir}" 2>/dev/null`)
+  } catch (e) {}
+  console.log('')
 }
 
 function findBuiltFiles(dir, extensions) {
@@ -184,12 +206,14 @@ async function run() {
     process.stdout.write('\n\n')
   }
 
-  // Step 4: Final Assembly & App Menu Registration (0 - 100%)
-  drawProgressBar('🚚 Memindahkan Installer & Registrasi Shortcut Menu Aplikasi', 4, 4, 10, 'Membersihkan installer lama...')
+  // Step 4: Auto-Uninstall Old & Final Assembly (0 - 100%)
+  drawProgressBar('🚚 Auto-Uninstall Lama, Salin Installer Baru & Registrasi Menu', 4, 4, 10, 'Mencabut & menghapus versi lama...')
   await sleep(300)
-  cleanOldFiles(TARGET_DIR)
 
-  drawProgressBar('🚚 Memindahkan Installer & Registrasi Shortcut Menu Aplikasi', 4, 4, 50, 'Menyalin berkas installer Linux & Windows...')
+  // EXECUTE AUTO-UNINSTALL OF OLD VERSION
+  autoUninstallOldVersion()
+
+  drawProgressBar('🚚 Auto-Uninstall Lama, Salin Installer Baru & Registrasi Menu', 4, 4, 50, 'Menyalin berkas installer versi baru...')
   await sleep(300)
 
   const builtFiles = findBuiltFiles(TAURI_BUNDLE_DIR, ['.AppImage', '.deb', '.exe', '.msi'])
@@ -202,11 +226,11 @@ async function run() {
     copiedFiles.push(destPath)
   }
 
-  drawProgressBar('🚚 Memindahkan Installer & Registrasi Shortcut Menu Aplikasi', 4, 4, 100, `${C_GREEN}Disimpan & Didaftarkan 100%!${C_RESET}`)
+  drawProgressBar('🚚 Auto-Uninstall Lama, Salin Installer Baru & Registrasi Menu', 4, 4, 100, `${C_GREEN}Instalasi Baru Terpasang 100%!${C_RESET}`)
   process.stdout.write('\n\n')
 
   console.log(`${C_CYAN}========================================================================${C_RESET}`)
-  console.log(`${C_BOLD}${C_GREEN}🎉 DUAL-OS BUILD (LINUX & WINDOWS) SELESAI 100%!${C_RESET}`)
+  console.log(`${C_BOLD}${C_GREEN}🎉 DUAL-OS BUILD & INSTALL BARU SELESAI 100%!${C_RESET}`)
   console.log(`${C_CYAN}========================================================================${C_RESET}`)
   if (copiedFiles.length > 0) {
     copiedFiles.forEach((f) => console.log(`  📦 ${path.basename(f)}`))
@@ -216,7 +240,7 @@ async function run() {
   // AUTO-DETEKSI OS & AUTO-INSTALL SHOWCASE BLOCK
   const currentPlatform = os.platform()
   console.log(`${C_CYAN}========================================================================${C_RESET}`)
-  console.log(`${C_BOLD}${C_GREEN}🔍 AUTO-DETEKSI OS & AUTO-INSTALL SISTEM:${C_RESET}`)
+  console.log(`${C_BOLD}${C_GREEN}🔍 AUTO-UNINSTALL LAMA & AUTO-INSTALL BARU STATUS:${C_RESET}`)
   console.log(`${C_CYAN}========================================================================${C_RESET}`)
 
   if (currentPlatform === 'linux') {
@@ -224,16 +248,18 @@ async function run() {
     if (appImage) {
       fs.chmodSync(appImage, '755')
       registerLinuxAppMenu(appImage)
+      console.log(`  🗑️ ${C_YELLOW}Auto-Uninstall     : VERSI LAMA BERHASIL DICABUT DARI SISTEM!${C_RESET}`)
       console.log(`  🐧 ${C_GREEN}OS Terdeteksi       : LINUX (${os.arch()})${C_RESET}`)
-      console.log(`  ✅ ${C_GREEN}Status Auto-Install : SUKSES DIDAFTARKAN!${C_RESET}`)
+      console.log(`  ✅ ${C_GREEN}Status Auto-Install : VERSI BARU SUKSES DIDAFTARKAN!${C_RESET}`)
       console.log(`  📱 ${C_YELLOW}Menu Aplikasi OS   : Skillage Mart POS MUNCUL LANGSUNG di OS Menu Linux Anda!${C_RESET}`)
       console.log(`  🚀 ${C_CYAN}Buka Langsung       : Cari "Skillage Mart POS" di Application Launcher / Start Menu Linux.${C_RESET}`)
     }
   } else if (currentPlatform === 'win32') {
     const exeFile = copiedFiles.find((f) => f.endsWith('.exe'))
     if (exeFile) {
+      console.log(`  🗑️ ${C_YELLOW}Auto-Uninstall     : VERSI LAMA BERHASIL DIBERSIHKAN!${C_RESET}`)
       console.log(`  🪟 ${C_GREEN}OS Terdeteksi       : WINDOWS (${os.arch()})${C_RESET}`)
-      console.log(`  ✅ ${C_GREEN}Status Auto-Install : BERKAS SETUP SIAP!${C_RESET}`)
+      console.log(`  ✅ ${C_GREEN}Status Auto-Install : VERSI BARU BERKAS SETUP SIAP!${C_RESET}`)
       console.log(`  🚀 ${C_CYAN}Auto-Launch Setup  : Membuka Installer ${path.basename(exeFile)}...${C_RESET}`)
       try {
         execSync(`start "" "${exeFile}"`, { stdio: 'ignore' })
