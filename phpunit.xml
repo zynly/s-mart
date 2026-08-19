@@ -30,7 +30,7 @@
              (`s_mart_test`) dari dev (`s_mart_dev`) — RefreshDatabase
              reset isinya tiap run, jangan pernah dipakai untuk data asli. -->
         <env name="DB_CONNECTION" value="pgsql"/>
-        <env name="DB_DATABASE" value="db-smart"/>
+        <env name="DB_DATABASE" value="db-smart-testing"/>
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <!-- Integrasi Midtrans — .env pengembang lokal BOLEH mengisi
