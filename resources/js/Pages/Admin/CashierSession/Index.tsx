@@ -150,6 +150,15 @@ type SessionDetailData = {
     difference_reason: string | null
     notes: string | null
   }
+  cash_transactions?: Array<{
+    id: number
+    reference: string
+    type: 'in' | 'out'
+    amount: number
+    category_name: string
+    description: string
+    created_at: string
+  }>
   sales: DetailSale[]
 }
 
@@ -1281,8 +1290,38 @@ export default function Index({
                 )}
               </div>
 
+              {/* Rincian Mutasi Kas (Masuk & Keluar / Tarik Tunai) */}
+              {sessionDetail.cash_transactions && sessionDetail.cash_transactions.length > 0 && (
+                <div className="space-y-2 mt-4">
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
+                      <Wallet className="size-4 text-emerald-500" />
+                      <span>Rincian Mutasi Kas Operasional ({sessionDetail.cash_transactions.length} Transaksi Kas)</span>
+                    </h4>
+                  </div>
+                  <div className="space-y-1.5">
+                    {sessionDetail.cash_transactions.map((trx) => (
+                      <div key={trx.id} className="flex items-center justify-between p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 text-xs">
+                        <div className="flex items-center gap-2.5">
+                          <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] uppercase ${trx.type === 'in' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'}`}>
+                            {trx.type === 'in' ? 'Kas Masuk' : 'Kas Keluar'}
+                          </span>
+                          <div>
+                            <p className="font-semibold text-slate-900 dark:text-white">{trx.description}</p>
+                            <p className="text-[10px] text-slate-400 font-mono">{trx.category_name} • {trx.reference}</p>
+                          </div>
+                        </div>
+                        <span className={`font-mono font-black ${trx.type === 'in' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                          {trx.type === 'in' ? '+' : '-'}Rp {trx.amount.toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Daftar Nota Penjualan */}
-              <div className="space-y-3 mt-1">
+              <div className="space-y-3 mt-4">
                 <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
                   <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
                     <Receipt className="size-4 text-amber-500" />

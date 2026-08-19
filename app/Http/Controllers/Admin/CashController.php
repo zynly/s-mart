@@ -122,8 +122,14 @@ class CashController extends Controller
 
     public function storeIn(StoreCashTransactionRequest $request): RedirectResponse
     {
-        $account = CashAccount::findOrFail($request->validated('cash_account_id'));
         $session = $this->sessionService->getActive($request->user());
+        if (! $session) {
+            throw ValidationException::withMessages([
+                'cash_account_id' => 'Sesi kasir aktif tidak ditemukan. Buka sesi kasir terlebih dahulu untuk mencatat kas masuk.',
+            ]);
+        }
+
+        $account = CashAccount::findOrFail($request->validated('cash_account_id'));
 
         $this->cashService->recordIn(
             $account,
@@ -138,8 +144,14 @@ class CashController extends Controller
 
     public function storeOut(StoreCashTransactionRequest $request): RedirectResponse
     {
-        $account = CashAccount::findOrFail($request->validated('cash_account_id'));
         $session = $this->sessionService->getActive($request->user());
+        if (! $session) {
+            throw ValidationException::withMessages([
+                'cash_account_id' => 'Sesi kasir aktif tidak ditemukan. Buka sesi kasir terlebih dahulu untuk mencatat kas keluar.',
+            ]);
+        }
+
+        $account = CashAccount::findOrFail($request->validated('cash_account_id'));
 
         try {
             $this->cashService->recordOut(

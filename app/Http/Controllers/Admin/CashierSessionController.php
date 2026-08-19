@@ -219,6 +219,7 @@ class CashierSessionController extends Controller
             'user:id,name,username',
             'cashAccount:id,name,code',
             'outlet:id,name',
+            'cashTransactions' => fn ($q) => $q->with('cashCategory:id,name')->orderByDesc('id'),
             'sales' => function ($query) {
                 $query->with([
                     'items.product:id,name,code,sku,unit',
@@ -251,6 +252,15 @@ class CashierSessionController extends Controller
                 'difference_reason' => $session->difference_reason ?? $session->note,
                 'notes' => $session->note,
             ],
+            'cash_transactions' => $session->cashTransactions->map(fn ($trx) => [
+                'id' => $trx->id,
+                'reference' => $trx->reference,
+                'type' => $trx->type,
+                'amount' => $trx->amount,
+                'category_name' => $trx->cashCategory?->name ?? ($trx->type === 'in' ? 'Kas Masuk' : 'Kas Keluar'),
+                'description' => $trx->description,
+                'created_at' => $trx->created_at?->toIso8601String(),
+            ]),
             'sales' => $session->sales->map(fn ($sale) => [
                 'id' => $sale->id,
                 'reference' => $sale->reference,
