@@ -118,6 +118,15 @@ StartupNotify=true
   } catch (e) {}
 }
 
+function isToolchainAvailable(tool) {
+  try {
+    execSync(`which ${tool}`, { stdio: 'ignore' })
+    return true
+  } catch (e) {
+    return false
+  }
+}
+
 async function simulateAnimatedStep(title, currentStep, totalSteps, durationMs, command) {
   const start = Date.now()
   let commandFinished = false
@@ -148,19 +157,12 @@ async function simulateAnimatedStep(title, currentStep, totalSteps, durationMs, 
     drawProgressBar(title, currentStep, totalSteps, 0, `${C_RED}GAGAL!${C_RESET}`)
     process.stdout.write('\n\n')
     
-    // Write output log to desktop-build.log
     fs.writeFileSync(LOG_FILE, outputBuffer, 'utf8')
 
     console.log(`${C_RED}========================================================================${C_RESET}`)
     console.log(`${C_BOLD}${C_RED}❌ TERJADI KESALAHAN PADA PROSES: ${title}${C_RESET}`)
     console.log(`${C_RED}========================================================================${C_RESET}`)
     console.log(`📄 Log Rincian Error Disimpan Ke: ${C_YELLOW}${LOG_FILE}${C_RESET}\n`)
-    console.log(`${C_BOLD}Rincian Baris Error Terakhir:${C_RESET}`)
-    
-    const lines = outputBuffer.split('\n').filter(Boolean)
-    const lastLines = lines.slice(-25).join('\n')
-    console.log(`${C_RED}${lastLines}${C_RESET}`)
-    console.log(`${C_RED}========================================================================${C_RESET}\n`)
     
     throw commandError
   }
@@ -174,7 +176,7 @@ async function run() {
   console.log(`${C_CYAN}========================================================================${C_RESET}`)
   console.log(`${C_BOLD}${C_MAGENTA}       🏪 SKILLAGE MART — DUAL-OS (LINUX & WINDOWS) BUILD ENGINE ${C_RESET}`)
   console.log(`${C_CYAN}========================================================================${C_RESET}`)
-  console.log(` Target OS     : ${C_GREEN}🐧 Linux (.AppImage & .deb)${C_RESET} + ${C_BLUE}🪟 Windows (.exe & .msi)${C_RESET}`)
+  console.log(` Target OS     : ${C_GREEN}🐧 Linux (.deb & App Package)${C_RESET} + ${C_BLUE}🪟 Windows (.exe & .msi)${C_RESET}`)
   console.log(` Target Folder : ${C_YELLOW}${TARGET_DIR}${C_RESET}`)
   console.log(` Target Domain : ${C_GREEN}https://pos.skillage-mart.com${C_RESET}`)
   console.log(`${C_CYAN}========================================================================${C_RESET}\n`)
@@ -208,16 +210,22 @@ async function run() {
   }
 
   // Step 3: Windows Native Cross-Compilation (0 - 100%)
-  try {
-    await simulateAnimatedStep(
-      '🪟 Membangun Installer Windows (.exe & .msi)',
-      3,
-      4,
-      15000,
-      'pnpm tauri build --target x86_64-pc-windows-gnu'
-    )
-  } catch (e) {
-    console.log(`⚠️ ${C_YELLOW}Cross-compile Windows dilewati (memerlukan toolchain Windows complete).${C_RESET}`)
+  const hasMingw = isToolchainAvailable('x86_64-w64-mingw32-dlltool') || isToolchainAvailable('x86_64-w64-mingw32-gcc')
+  
+  if (hasMingw) {
+    try {
+      await simulateAnimatedStep(
+        '🪟 Membangun Installer Windows (.exe & .msi)',
+        3,
+        4,
+        15000,
+        'pnpm tauri build --target x86_64-pc-windows-gnu'
+      )
+    } catch (e) {
+      console.log(`⚠️  ${C_YELLOW}Cross-compile Windows dilewati. Membangun installer Linux saja.${C_RESET}\n`)
+    }
+  } else {
+    drawProgressBar('🪟 Membangun Installer Windows (.exe & .msi)', 3, 4, 100, `${C_YELLOW}Dilewati (memerlukan mingw-w64-gcc pada CachyOS)${C_RESET}`)
     process.stdout.write('\n\n')
   }
 
@@ -257,20 +265,21 @@ async function run() {
   console.log(`${C_CYAN}========================================================================${C_RESET}`)
 
   if (currentPlatform === 'linux') {
-    const appImage = copiedFiles.find((f) => f.endsWith('.AppImage'))
-    if (appImage) {
-      fs.chmodSync(appImage, '755')
-      registerLinuxAppMenu(appImage)
-      console.log(`  🗑️ ${C_YELLOW}Auto-Uninstall     : VERSI LAMA BERHASIL DICABUT DARI SISTEM!${C_RESET}`)
-      console.log(`  🐧 ${C_GREEN}OS Terdeteksi       : LINUX (${os.arch()})${C_RESET}`)
-      console.log(`  ✅ ${C_GREEN}Status Auto-Install : VERSI BARU SUKSES DIDAFTARKAN!${C_RESET}`)
-      console.log(`  📱 ${C_YELLOW}Menu Aplikasi OS   : Skillage Mart POS MUNCUL LANGSUNG di OS Menu Linux Anda!${C_RESET}`)
+    const debFile = copiedFiles.find((f) => f.endsWith('.deb'))
+    const appBinary = path.join(PROJECT_ROOT, 'src-tauri/target/release/skillage-mart-pos')
+    if (appBinary && fs.existsSync(appBinary)) {
+      fs.chmodSync(appBinary, '755')
+      registerLinuxAppMenu(appBinary)
+      console.log(`  🗑️  ${C_YELLOW}Auto-Uninstall     : VERSI LAMA BERHASIL DICABUT DARI SISTEM!${C_RESET}`)
+      console.log(`  🐧 ${C_GREEN}OS Terdeteksi       : CACHYOS LINUX (${os.arch()})${C_RESET}`)
+      console.log(`  ✅ ${C_GREEN}Status Auto-Install : VERSI BARU SUKSES DIDAFTARKAN DENGAN SEMPURNA!${C_RESET}`)
+      console.log(`  📱 ${C_YELLOW}Menu Aplikasi OS   : Skillage Mart POS MUNCUL LANGSUNG di OS Menu CachyOS Linux Anda!${C_RESET}`)
       console.log(`  🚀 ${C_CYAN}Buka Langsung       : Cari "Skillage Mart POS" di Application Launcher / Start Menu Linux.${C_RESET}`)
     }
   } else if (currentPlatform === 'win32') {
     const exeFile = copiedFiles.find((f) => f.endsWith('.exe'))
     if (exeFile) {
-      console.log(`  🗑️ ${C_YELLOW}Auto-Uninstall     : VERSI LAMA BERHASIL DIBERSIHKAN!${C_RESET}`)
+      console.log(`  🗑️  ${C_YELLOW}Auto-Uninstall     : VERSI LAMA BERHASIL DIBERSIHKAN!${C_RESET}`)
       console.log(`  🪟 ${C_GREEN}OS Terdeteksi       : WINDOWS (${os.arch()})${C_RESET}`)
       console.log(`  ✅ ${C_GREEN}Status Auto-Install : VERSI BARU BERKAS SETUP SIAP!${C_RESET}`)
       console.log(`  🚀 ${C_CYAN}Auto-Launch Setup  : Membuka Installer ${path.basename(exeFile)}...${C_RESET}`)
