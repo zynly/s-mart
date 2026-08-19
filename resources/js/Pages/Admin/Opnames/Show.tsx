@@ -168,11 +168,18 @@ export default function Show({ opname, canApproveVariance, tolerancePercent }: O
             <div className="overflow-x-auto rounded-md border border-border">
               <table className="w-full text-sm">
                 <thead className="bg-surface text-left text-content-muted">
-                  <tr><th className="p-2">Produk</th><th className="p-2">SKU</th><th className="p-2">Qty Fisik</th><th className="p-2">Status</th></tr>
+                  <tr>
+                    <th className="p-2 w-12 text-center">No</th>
+                    <th className="p-2">Produk</th>
+                    <th className="p-2">SKU</th>
+                    <th className="p-2">Qty Fisik</th>
+                    <th className="p-2">Status</th>
+                  </tr>
                 </thead>
                 <tbody>
-                  {opname.items.map((item) => (
+                  {opname.items.map((item, index) => (
                     <tr key={item.id} className="border-t border-border">
+                      <td className="p-2 text-center text-content-muted font-medium">{index + 1}</td>
                       <td className="p-2">{item.product.name}</td>
                       <td className="p-2 text-content-muted">{item.product.sku}</td>
                       <td className="p-2">
@@ -221,18 +228,24 @@ export default function Show({ opname, canApproveVariance, tolerancePercent }: O
               <table className="w-full text-sm">
                 <thead className="bg-surface text-left text-content-muted">
                   <tr>
-                    <th className="p-2">Produk</th><th className="p-2">Sistem</th><th className="p-2">Fisik</th>
-                    <th className="p-2">Selisih</th><th className="p-2">Nilai</th><th className="p-2">Alasan</th>
+                    <th className="p-2 w-12 text-center">No</th>
+                    <th className="p-2">Produk</th>
+                    <th className="p-2">Sistem</th>
+                    <th className="p-2">Fisik</th>
+                    <th className="p-2">Selisih</th>
+                    <th className="p-2">Nilai</th>
+                    <th className="p-2">Alasan</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {opname.items.map((item) => {
+                  {opname.items.map((item, index) => {
                     const variance = Number(item.variance_qty)
                     const itemPercent = Number(item.system_qty) > 0 ? Math.abs(variance) / Number(item.system_qty) * 100 : (variance !== 0 ? 100 : 0)
                     const needsReason = itemPercent > tolerancePercent && variance !== 0
 
                     return (
                       <tr key={item.id} className="border-t border-border">
+                        <td className="p-2 text-center text-content-muted font-medium">{index + 1}</td>
                         <td className="p-2">{item.product.name}</td>
                         <td className="p-2 tabular-nums">{item.system_qty}</td>
                         <td className="p-2 tabular-nums">{item.physical_qty}</td>
