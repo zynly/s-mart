@@ -25,12 +25,28 @@ type CreateProps = {
   midtransClientKey: string | null
   midtransIsProduction: boolean
   minTopup: number
+  allowAutoTopup?: boolean
+  allowManualTopup?: boolean
+  manualBankName?: string
+  manualBankAccountNumber?: string
+  manualBankAccountName?: string
 }
 
 const QUICK_AMOUNTS = [20000, 50000, 100000, 200000, 500000]
 
-export default function Create({ members, midtransClientKey, midtransIsProduction, minTopup }: CreateProps) {
-  const [mode, setMode] = useState<'midtrans' | 'manual'>('midtrans')
+export default function Create({
+  members,
+  midtransClientKey,
+  midtransIsProduction,
+  minTopup,
+  allowAutoTopup = true,
+  allowManualTopup = true,
+  manualBankName = 'BSI (Bank Syariah Indonesia)',
+  manualBankAccountNumber = '7123456789',
+  manualBankAccountName = 'SMK Skill Village Islamic School',
+}: CreateProps) {
+  const defaultMode = allowAutoTopup ? 'midtrans' : allowManualTopup ? 'manual' : 'none'
+  const [mode, setMode] = useState<'midtrans' | 'manual' | 'none'>(defaultMode)
   const [gatewayMemberId, setGatewayMemberId] = useState(members[0] ? String(members[0].id) : '')
   const [gatewayAmount, setGatewayAmount] = useState(100000)
   const [gatewaySubmitting, setGatewaySubmitting] = useState(false)
@@ -109,35 +125,37 @@ export default function Create({ members, midtransClientKey, midtransIsProductio
       </div>
 
       {/* Mode Switcher Tabs */}
-      <div className="grid grid-cols-2 gap-2 rounded-2xl border border-slate-200/80 bg-slate-100/70 p-1.5 dark:border-slate-800 dark:bg-slate-900/80">
-        <button
-          type="button"
-          onClick={() => setMode('midtrans')}
-          className={cn(
-            'flex items-center justify-center gap-2 rounded-xl py-3 px-3 text-xs sm:text-sm font-bold transition-all duration-200 shadow-2xs',
-            mode === 'midtrans'
-              ? 'bg-white text-navy-950 shadow-md dark:bg-amber-500 dark:text-navy-950'
-              : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white',
-          )}
-        >
-          <Zap className={cn('size-4', mode === 'midtrans' ? 'text-amber-500 fill-amber-500 dark:text-navy-950 dark:fill-navy-950' : '')} />
-          <span>Bayar Otomatis</span>
-        </button>
+      {allowAutoTopup && allowManualTopup && (
+        <div className="grid grid-cols-2 gap-2 rounded-2xl border border-slate-200/80 bg-slate-100/70 p-1.5 dark:border-slate-800 dark:bg-slate-900/80">
+          <button
+            type="button"
+            onClick={() => setMode('midtrans')}
+            className={cn(
+              'flex items-center justify-center gap-2 rounded-xl py-3 px-3 text-xs sm:text-sm font-bold transition-all duration-200 shadow-2xs',
+              mode === 'midtrans'
+                ? 'bg-white text-navy-950 shadow-md dark:bg-amber-500 dark:text-navy-950'
+                : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white',
+            )}
+          >
+            <Zap className={cn('size-4', mode === 'midtrans' ? 'text-amber-500 fill-amber-500 dark:text-navy-950 dark:fill-navy-950' : '')} />
+            <span>Bayar Otomatis</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setMode('manual')}
-          className={cn(
-            'flex items-center justify-center gap-2 rounded-xl py-3 px-3 text-xs sm:text-sm font-bold transition-all duration-200 shadow-2xs',
-            mode === 'manual'
-              ? 'bg-white text-navy-950 shadow-md dark:bg-amber-500 dark:text-navy-950'
-              : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white',
-          )}
-        >
-          <Building2 className="size-4" />
-          <span>Transfer Manual</span>
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={() => setMode('manual')}
+            className={cn(
+              'flex items-center justify-center gap-2 rounded-xl py-3 px-3 text-xs sm:text-sm font-bold transition-all duration-200 shadow-2xs',
+              mode === 'manual'
+                ? 'bg-white text-navy-950 shadow-md dark:bg-amber-500 dark:text-navy-950'
+                : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white',
+            )}
+          >
+            <Building2 className="size-4" />
+            <span>Transfer Manual</span>
+          </button>
+        </div>
+      )}
 
       {/* Bayar Otomatis View */}
       {mode === 'midtrans' ? (
@@ -261,9 +279,9 @@ export default function Create({ members, midtransClientKey, midtransIsProductio
                 <span className="text-xs font-bold uppercase tracking-wider">Rekening Tujuan Transfer Sekolah</span>
               </div>
               <div className="flex flex-col gap-1 text-xs text-slate-600 dark:text-slate-300">
-                <p className="font-semibold">Bank: <strong className="text-slate-900 dark:text-white">Bank Central Asia (BCA)</strong></p>
-                <p className="font-semibold">No. Rekening: <strong className="text-slate-900 dark:text-white font-mono text-sm">8800-1234-5678</strong></p>
-                <p className="font-semibold">Atas Nama: <strong className="text-slate-900 dark:text-white">Yayasan Skillage Mart</strong></p>
+                <p className="font-semibold">Bank: <strong className="text-slate-900 dark:text-white">{manualBankName}</strong></p>
+                <p className="font-semibold">No. Rekening: <strong className="text-slate-900 dark:text-white font-mono text-sm">{manualBankAccountNumber}</strong></p>
+                <p className="font-semibold">Atas Nama: <strong className="text-slate-900 dark:text-white">{manualBankAccountName}</strong></p>
               </div>
               <p className="mt-3 text-[11px] text-amber-700 dark:text-amber-400 italic">
                 *Transfer tepat sesuai nominal, lalu simpan &amp; unggah foto bukti transfer di bawah ini.

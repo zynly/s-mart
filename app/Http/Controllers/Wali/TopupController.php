@@ -29,6 +29,11 @@ class TopupController extends Controller
             'midtransIsProduction' => (bool) config('services.midtrans.is_production'),
             'activeGateway' => $this->paymentGatewayService->getActiveProvider(),
             'minTopup' => (int) config('pos.deposit_min_topup'),
+            'allowAutoTopup' => (bool) config('pos.allow_auto_topup', true),
+            'allowManualTopup' => (bool) config('pos.allow_manual_topup', true),
+            'manualBankName' => (string) config('pos.manual_bank_name', 'BSI (Bank Syariah Indonesia)'),
+            'manualBankAccountNumber' => (string) config('pos.manual_bank_account_number', '7123456789'),
+            'manualBankAccountName' => (string) config('pos.manual_bank_account_name', 'SMK Skill Village Islamic School'),
         ]);
     }
 

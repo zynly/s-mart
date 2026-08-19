@@ -52,6 +52,11 @@ class SettingController extends Controller
                 'group' => 'pos',
                 'fields' => [
                     'deposit_min_topup' => ['label' => 'Minimal Top-Up (Rp)', 'type' => 'integer', 'rules' => ['nullable', 'integer', 'min:0', 'max:10000000']],
+                    'allow_auto_topup' => ['label' => 'Izinkan Top-Up Otomatis (Midtrans/Pakasir)', 'type' => 'boolean', 'rules' => ['nullable', 'boolean']],
+                    'allow_manual_topup' => ['label' => 'Izinkan Top-Up Transfer Manual (Upload Bukti)', 'type' => 'boolean', 'rules' => ['nullable', 'boolean']],
+                    'manual_bank_name' => ['label' => 'Nama Bank Transfer Manual', 'type' => 'string', 'rules' => ['nullable', 'string', 'max:100']],
+                    'manual_bank_account_number' => ['label' => 'Nomor Rekening Tujuan', 'type' => 'string', 'rules' => ['nullable', 'string', 'max:100']],
+                    'manual_bank_account_name' => ['label' => 'Atas Nama Rekening', 'type' => 'string', 'rules' => ['nullable', 'string', 'max:100']],
                     'pin_length' => ['label' => 'Panjang PIN', 'type' => 'integer', 'rules' => ['nullable', Rule::in([4, 5, 6])]],
                     'pin_max_attempts' => ['label' => 'Maks. Percobaan PIN', 'type' => 'integer', 'rules' => ['nullable', 'integer', 'min:1', 'max:10']],
                     'pin_lockout_minutes' => ['label' => 'Lama Kunci PIN (menit)', 'type' => 'integer', 'rules' => ['nullable', 'integer', 'min:1', 'max:1440']],

@@ -347,6 +347,7 @@ export default function Index({
         }
       />
 
+      <form onSubmit={(e) => e.preventDefault()} className="flex flex-col gap-6">
       {/* ── Active Gateway Provider Switcher Card ── */}
       <Card className="rounded-2xl border border-navy-800 bg-navy-950 text-white shadow-md">
         <CardHeader className="pb-3 border-b border-navy-800">
@@ -562,6 +563,7 @@ export default function Index({
           </p>
         </CardContent>
       </Card>
+      </form>
     </div>
   )
 }

@@ -36,4 +36,9 @@ return [
     'birthday_bonus_mode' => 'deposit', // deposit|coupon
     'birthday_coupon_discount_percent' => 10,
     'birthday_coupon_valid_days' => 7,
+    'allow_auto_topup' => true,
+    'allow_manual_topup' => true,
+    'manual_bank_name' => 'BSI (Bank Syariah Indonesia)',
+    'manual_bank_account_number' => '7123456789',
+    'manual_bank_account_name' => 'SMK Skill Village Islamic School',
 ];
