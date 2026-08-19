@@ -1062,11 +1062,11 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                   <div>
                     <div className="relative mb-1.5 aspect-square w-full overflow-hidden rounded-lg bg-gray-50 dark:bg-surface-alt border border-gray-100 dark:border-border">
                       <img
-                        src={p.image_url ?? '/images/default-product.webp'}
+                        src={p.image_url ?? '/logo/logo2.png'}
                         alt={p.name}
                         className="size-full object-contain p-1 transition-transform group-hover:scale-105"
                         loading="lazy"
-                        onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/default-product.webp' }}
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/logo/logo2.png' }}
                       />
                       {p.has_promo && (
                         <Badge className="absolute right-1 top-1 bg-amber-500 px-1.5 py-0 text-[9px] font-bold text-white shadow-sm">PROMO</Badge>

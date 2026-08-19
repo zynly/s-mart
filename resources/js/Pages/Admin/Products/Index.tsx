@@ -546,10 +546,10 @@ export default function Index({ tab, products, categories, brands, units, outlet
         <Link href={route('admin.products.show', row.original.id)} className="flex items-center justify-center">
           <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface border border-border shadow-2xs transition-transform hover:scale-105">
             <img
-              src={row.original.image_url ?? '/images/default-product.webp'}
+              src={row.original.image_url ?? '/logo/logo2.png'}
               alt={row.original.name}
-              className="size-full object-cover"
-              onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/default-product.webp' }}
+              className="size-full object-contain p-0.5"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/logo/logo2.png' }}
             />
           </div>
         </Link>
