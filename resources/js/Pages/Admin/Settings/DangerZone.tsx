@@ -140,32 +140,34 @@ export default function DangerZone({ storeName, backups }: DangerZoneProps) {
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Konfirmasi Reset Data Transaksi</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="confirm_name">Ketik nama toko persis: <span className="font-semibold">{storeName}</span></Label>
-              <Input id="confirm_name" value={form.data.confirm_name} onChange={(e) => form.setData('confirm_name', e.target.value)} />
-              {form.errors.confirm_name && <p className="text-xs text-destructive">{form.errors.confirm_name}</p>}
+          <form onSubmit={(e) => { e.preventDefault(); if (canSubmit && !form.processing) submit(); }}>
+            <DialogHeader>
+              <DialogTitle>Konfirmasi Reset Data Transaksi</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-3 py-4">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="confirm_name">Ketik nama toko persis: <span className="font-semibold">{storeName}</span></Label>
+                <Input id="confirm_name" value={form.data.confirm_name} onChange={(e) => form.setData('confirm_name', e.target.value)} />
+                {form.errors.confirm_name && <p className="text-xs text-destructive">{form.errors.confirm_name}</p>}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="password">Password Anda</Label>
+                <Input id="password" type="password" value={form.data.password} onChange={(e) => form.setData('password', e.target.value)} />
+                {form.errors.password && <p className="text-xs text-destructive">{form.errors.password}</p>}
+              </div>
+              <div className="flex items-start gap-2">
+                <Checkbox id="understood" checked={understood} onCheckedChange={(v) => setUnderstood(v === true)} className="mt-0.5" />
+                <Label htmlFor="understood" className="font-normal text-content-muted">
+                  Saya paham seluruh riwayat transaksi akan terhapus permanen dan tidak bisa dikembalikan lewat aplikasi.
+                </Label>
+              </div>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="password">Password Anda</Label>
-              <Input id="password" type="password" value={form.data.password} onChange={(e) => form.setData('password', e.target.value)} />
-              {form.errors.password && <p className="text-xs text-destructive">{form.errors.password}</p>}
-            </div>
-            <div className="flex items-start gap-2">
-              <Checkbox id="understood" checked={understood} onCheckedChange={(v) => setUnderstood(v === true)} className="mt-0.5" />
-              <Label htmlFor="understood" className="font-normal text-content-muted">
-                Saya paham seluruh riwayat transaksi akan terhapus permanen dan tidak bisa dikembalikan lewat aplikasi.
-              </Label>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="destructive" onClick={submit} disabled={!canSubmit || form.processing}>
-              {secondsLeft > 0 ? `Tunggu ${secondsLeft}d…` : 'Ya, Reset Sekarang'}
-            </Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button type="submit" variant="destructive" disabled={!canSubmit || form.processing}>
+                {secondsLeft > 0 ? `Tunggu ${secondsLeft}d…` : 'Ya, Reset Sekarang'}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </AdminLayout>

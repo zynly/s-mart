@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -96,13 +97,13 @@ class SystemResetController extends Controller
             ->withProperties(['ip' => $request->ip(), 'tables' => self::TRANSACTION_TABLES])
             ->log('Reset data transaksi dimulai');
 
-        // TRUNCATE MySQL auto-commit (bukan transaksional) — backup di
+        // TRUNCATE database-agnostic (MySQL, PostgreSQL, SQLite) — backup di
         // atas adalah jaring pengaman sungguhan, bukan DB::transaction().
-        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        Schema::disableForeignKeyConstraints();
         foreach (self::TRANSACTION_TABLES as $table) {
             DB::table($table)->truncate();
         }
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        Schema::enableForeignKeyConstraints();
 
         activity('system')
             ->causedBy($actor)
