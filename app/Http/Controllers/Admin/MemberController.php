@@ -142,4 +142,38 @@ class MemberController extends Controller
             'Content-Disposition' => 'inline; filename="pratinjau-kartu-'.$member->member_number.'.pdf"',
         ]);
     }
+
+    public function transactions(Request $request, Member $member): \Illuminate\Http\JsonResponse
+    {
+        $transactions = \App\Models\DepositTransaction::query()
+            ->where('member_id', $member->id)
+            ->with([
+                'paymentMethod:id,name',
+                'user:id,name',
+                'approver:id,name',
+                'sourceable',
+            ])
+            ->when($request->string('type')->toString(), function ($q, $type) {
+                if ($type === 'topup') {
+                    $q->whereIn('type', ['topup', 'bonus', 'refund']);
+                } elseif ($type === 'purchase') {
+                    $q->where('type', 'purchase');
+                } elseif ($type === 'withdrawal') {
+                    $q->whereIn('type', ['withdrawal', 'closing']);
+                }
+            })
+            ->orderByDesc('created_at')
+            ->paginate(15);
+
+        return response()->json([
+            'member' => [
+                'id' => $member->id,
+                'name' => $member->name,
+                'member_number' => $member->member_number,
+                'nis' => $member->nis,
+                'balance_cache' => $member->balance_cache,
+            ],
+            'transactions' => $transactions,
+        ]);
+    }
 }

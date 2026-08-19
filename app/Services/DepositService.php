@@ -109,12 +109,14 @@ class DepositService
         ]);
     }
 
-    public function withdraw(Member $member, int $amount, User $approver, string $idempotencyKey, ?string $note = null): DepositTransaction
+    public function withdraw(Member $member, int $amount, User $approver, string $idempotencyKey, ?string $note = null, ?int $outletId = null, ?int $cashierSessionId = null): DepositTransaction
     {
         return $this->record($member, 'withdrawal', -abs($amount), null, [
             'idempotency_key' => $idempotencyKey,
             'approved_by' => $approver->id,
             'note' => $note,
+            'outlet_id' => $outletId,
+            'cashier_session_id' => $cashierSessionId,
         ]);
     }
 

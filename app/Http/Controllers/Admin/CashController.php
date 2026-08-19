@@ -11,11 +11,15 @@ use App\Models\CashAccount;
 use App\Models\CashCategory;
 use App\Models\CashierSession;
 use App\Models\CashTransaction;
-use App\Models\Outlet;
+use App\Models\Member;
 use App\Services\CashierSessionService;
 use App\Services\CashService;
+use App\Services\DepositService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -25,6 +29,7 @@ class CashController extends Controller
     public function __construct(
         private readonly CashService $cashService,
         private readonly CashierSessionService $sessionService,
+        private readonly DepositService $depositService,
     ) {}
 
     public function index(Request $request): Response
@@ -168,5 +173,81 @@ class CashController extends Controller
         }
 
         return back()->with('success', 'Transfer kas berhasil.');
+    }
+
+    public function storeMemberWithdrawal(Request $request): RedirectResponse|JsonResponse
+    {
+        $validated = $request->validate([
+            'member_id' => ['required', 'integer', 'exists:members,id'],
+            'amount' => ['required', 'integer', 'min:1000'],
+            'note' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $member = Member::findOrFail($validated['member_id']);
+        $amount = (int) $validated['amount'];
+        $user = $request->user();
+
+        // Cek sesi kasir aktif
+        $session = $this->sessionService->getActive($user);
+        if (! $session) {
+            throw ValidationException::withMessages([
+                'member_id' => 'Sesi kasir aktif tidak ditemukan. Silakan buka sesi kasir terlebih dahulu.',
+            ]);
+        }
+
+        // Cek saldo deposit anggota
+        if ($member->balance_cache < $amount) {
+            throw ValidationException::withMessages([
+                'amount' => "Saldo deposit {$member->name} (Rp " . number_format($member->balance_cache, 0, ',', '.') . ") tidak mencukupi untuk tarik tunai Rp " . number_format($amount, 0, ',', '.') . ".",
+            ]);
+        }
+
+        // Cek saldo laci kasir
+        $drawer = $session->cashAccount;
+        if ($drawer->current_balance < $amount) {
+            throw ValidationException::withMessages([
+                'amount' => "Saldo laci kasir (Rp " . number_format($drawer->current_balance, 0, ',', '.') . ") tidak mencukupi untuk mengeluarkan tunai Rp " . number_format($amount, 0, ',', '.') . ".",
+            ]);
+        }
+
+        $idempotencyKey = (string) ($request->header('X-Idempotency-Key') ?? Str::uuid());
+
+        // Kategori kas keluar
+        $category = CashCategory::firstOrCreate(
+            ['name' => 'Tarik Tunai Deposit Anggota', 'type' => 'expense'],
+            ['is_active' => true]
+        );
+
+        DB::transaction(function () use ($member, $amount, $user, $session, $drawer, $category, $idempotencyKey, $validated) {
+            // 1. Potong saldo deposit anggota
+            $this->depositService->withdraw(
+                $member,
+                $amount,
+                $user,
+                $idempotencyKey,
+                $validated['note'] ?? "Tarik tunai deposit di kasir oleh {$member->name}",
+                $session->outlet_id,
+                $session->id
+            );
+
+            // 2. Catat kas keluar dari laci kasir
+            $this->cashService->recordOut(
+                $drawer,
+                $amount,
+                $category->id,
+                "Tarik tunai deposit: {$member->name} ({$member->member_number})",
+                $session
+            );
+        });
+
+        if ($request->wantsJson() || $request->header('X-Inertia')) {
+            return back()->with('success', "Tarik tunai Rp " . number_format($amount, 0, ',', '.') . " berhasil untuk {$member->name}.");
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Tarik tunai Rp " . number_format($amount, 0, ',', '.') . " berhasil untuk {$member->name}.",
+            'new_balance' => $member->fresh()->balance_cache,
+        ]);
     }
 }

@@ -151,6 +151,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::post('/members/{member}/reissue-card', [MemberController::class, 'reissueCard'])->name('members.reissue-card')->middleware('can:card.create');
     Route::get('/members/print-cards', [MemberController::class, 'printCards'])->name('members.print-cards')->middleware('can:member.print');
     Route::get('/members/{member}/preview-card', [MemberController::class, 'previewCard'])->name('members.preview-card')->middleware('can:member.print');
+    Route::get('/members/{member}/transactions', [MemberController::class, 'transactions'])->name('members.transactions')->middleware('can:member.view');
 
     // Portal Wali — kelola akun wali (Fase 16, T-095/T-096). Gap yang
     // tidak ditulis eksplisit di spec: tanpa ini tidak ada cara admin
@@ -225,6 +226,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     });
     Route::post('/cash/in', [CashController::class, 'storeIn'])->name('cash.in')->middleware('can:cash.create');
     Route::post('/cash/out', [CashController::class, 'storeOut'])->name('cash.out')->middleware('can:cash.create');
+    Route::post('/cash/member-withdraw', [CashController::class, 'storeMemberWithdrawal'])->name('cash.member-withdraw')->middleware('can:pos.create');
     Route::post('/cash/transfer', [CashController::class, 'transfer'])->name('cash.transfer')->middleware('can:cash.create');
     // REVISI-R1-v2.md §1.7 — Kelola Laci.
     Route::post('/cash-accounts', [CashController::class, 'storeAccount'])->name('cash-accounts.store')->middleware('can:cash.create');

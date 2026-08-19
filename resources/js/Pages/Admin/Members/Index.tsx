@@ -1,7 +1,7 @@
 import { useState, type FormEventHandler, type ReactElement } from 'react'
 import { router, useForm } from '@inertiajs/react'
 import type { ColumnDef } from '@tanstack/react-table'
-import { MoreHorizontal, Printer, CreditCard, Pencil, RefreshCw, KeyRound, Lock, UserX } from 'lucide-react'
+import { MoreHorizontal, Printer, CreditCard, Pencil, RefreshCw, KeyRound, Lock, UserX, Wallet } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
 import { PageTabs } from '@/Components/common/PageTabs'
@@ -20,6 +20,7 @@ import { AppSheet } from '@/Components/common/AppSheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/Components/ui/dropdown-menu'
+import { MemberTransactionsSheet } from '@/Components/members/MemberTransactionsSheet'
 import type { Paginated } from '@/Types'
 
 type Ref = { id: number; name: string }
@@ -127,6 +128,7 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
   const [reissueReason, setReissueReason] = useState('')
   const [newGuardian, setNewGuardian] = useState({ name: '', phone: '', relation: '', is_primary: false })
   const [pdfModal, setPdfModal] = useState<{ open: boolean; title: string; url: string }>({ open: false, title: '', url: '' })
+  const [historyTarget, setHistoryTarget] = useState<MemberRow | null>(null)
   const form = useForm(emptyForm)
 
   function applyFilter() {
@@ -289,6 +291,17 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
       meta: { align: 'center' },
       cell: ({ row }) => (
         <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
+          <Button
+            variant="outline"
+            size="xs"
+            onClick={() => setHistoryTarget(row.original)}
+            className="h-7 text-xs px-2 gap-1 text-emerald-800 bg-emerald-100/80 hover:bg-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 font-bold border-emerald-300"
+            title="Riwayat Mutasi Transaksi (Deposit, Belanja, Tarik Tunai)"
+          >
+            <Wallet className="size-3.5 text-emerald-700" />
+            Riwayat
+          </Button>
+
           <Button
             variant="outline"
             size="xs"
@@ -882,6 +895,12 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
           </div>
         </DialogContent>
       </Dialog>
+
+      <MemberTransactionsSheet
+        member={historyTarget}
+        open={historyTarget !== null}
+        onOpenChange={(open) => !open && setHistoryTarget(null)}
+      />
     </div>
   )
 }

@@ -321,6 +321,8 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
     setCashAmount(0)
     setCashDescription('')
     setCashError(null)
+    setCashOutMode('operational')
+    setWithdrawMember(member ?? null)
     setCashDialog(type)
   }
 
@@ -330,6 +332,43 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
       setCashError('Nominal harus lebih dari 0.')
       return
     }
+
+    if (cashDialog === 'out' && cashOutMode === 'member_withdraw') {
+      if (!withdrawMember) {
+        setCashError('Pilih anggota terlebih dahulu.')
+        return
+      }
+      if (cashAmount > withdrawMember.balance_cache) {
+        setCashError(`Saldo deposit anggota (Rp ${withdrawMember.balance_cache.toLocaleString('id-ID')}) tidak mencukupi.`)
+        return
+      }
+
+      setCashSubmitting(true)
+      setCashError(null)
+
+      router.post(
+        route('admin.cash.member-withdraw'),
+        {
+          member_id: withdrawMember.id,
+          amount: cashAmount,
+          note: cashDescription || `Tarik tunai deposit di kasir oleh ${withdrawMember.name}`,
+        },
+        {
+          preserveScroll: true,
+          onSuccess: () => {
+            setCashDialog(null)
+            toast.success(`Tarik tunai Rp ${cashAmount.toLocaleString('id-ID')} berhasil untuk ${withdrawMember.name}.`)
+            if (member?.id === withdrawMember.id) {
+              setMember((prev) => (prev ? { ...prev, balance_cache: prev.balance_cache - cashAmount } : null))
+            }
+          },
+          onError: (errors) => setCashError(Object.values(errors)[0] ?? 'Gagal memproses tarik tunai.'),
+          onFinish: () => setCashSubmitting(false),
+        },
+      )
+      return
+    }
+
     if (!cashDescription.trim()) {
       setCashError('Keterangan wajib diisi.')
       return
@@ -1653,23 +1692,116 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
       </Dialog>
 
       <Dialog open={cashDialog !== null} onOpenChange={(open) => !open && setCashDialog(null)}>
-        <DialogContent className="bg-white dark:bg-surface text-gray-900 dark:text-content border border-gray-200 dark:border-border">
+        <DialogContent className="bg-white dark:bg-surface text-gray-900 dark:text-content border border-gray-200 dark:border-border max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-gray-900">{cashDialog === 'in' ? 'Cash Masuk' : 'Cash Keluar'}</DialogTitle>
+            <DialogTitle className="text-gray-900 font-extrabold text-base flex items-center gap-2">
+              {cashDialog === 'in' ? (
+                <span>Kas Masuk Laci</span>
+              ) : (
+                <span>Pengeluaran Kas Laci</span>
+              )}
+            </DialogTitle>
           </DialogHeader>
-          <div className="flex flex-col gap-3">
-            <div>
-              <Label className="text-gray-600">Nominal</Label>
-              <MoneyInput value={cashAmount} onChange={setCashAmount} className={posFieldClass} />
+
+          {/* Mode switch for Kas Keluar */}
+          {cashDialog === 'out' && (
+            <div className="grid grid-cols-2 gap-1.5 rounded-xl border border-gray-200 bg-gray-100 p-1 text-xs dark:border-border dark:bg-navy-950">
+              <button
+                type="button"
+                onClick={() => setCashOutMode('operational')}
+                className={`rounded-lg py-2 font-bold transition-all ${
+                  cashOutMode === 'operational'
+                    ? 'bg-white text-navy-950 shadow-sm dark:bg-amber-500 dark:text-navy-950'
+                    : 'text-gray-500 hover:text-gray-900 dark:text-gray-400'
+                }`}
+              >
+                Kas Keluar Rutin
+              </button>
+              <button
+                type="button"
+                onClick={() => setCashOutMode('member_withdraw')}
+                className={`rounded-lg py-2 font-bold transition-all ${
+                  cashOutMode === 'member_withdraw'
+                    ? 'bg-white text-navy-950 shadow-sm dark:bg-amber-500 dark:text-navy-950'
+                    : 'text-gray-500 hover:text-gray-900 dark:text-gray-400'
+                }`}
+              >
+                Tarik Tunai Deposit
+              </button>
             </div>
-            <div>
-              <Label className="text-gray-600">Keterangan</Label>
-              <Input value={cashDescription} onChange={(e) => setCashDescription(e.target.value)} placeholder="Contoh: Setoran modal awal" className={posFieldClass} />
-            </div>
-            {cashError && <p className="text-sm text-danger">{cashError}</p>}
+          )}
+
+          <div className="flex flex-col gap-3 py-1">
+            {cashDialog === 'out' && cashOutMode === 'member_withdraw' ? (
+              <>
+                <div className="rounded-xl border border-amber-500/20 bg-amber-50/60 p-3 dark:bg-amber-950/30 text-xs space-y-1">
+                  {withdrawMember ? (
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-extrabold text-slate-900 dark:text-white text-sm">{withdrawMember.name}</p>
+                        <p className="text-gray-500 font-mono text-[11px]">No: {withdrawMember.member_number}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] text-gray-400 font-semibold block">Saldo Tersedia</span>
+                        <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm font-mono">
+                          Rp {withdrawMember.balance_cache.toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-amber-800 dark:text-amber-300 font-semibold">
+                      Scan kartu member atau pilih anggota di POS untuk tarik tunai.
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <Label className="text-gray-600 text-xs font-bold uppercase tracking-wider">Nominal Tarik Tunai</Label>
+                  <MoneyInput value={cashAmount} onChange={setCashAmount} className={posFieldClass} />
+                  {withdrawMember && cashAmount > withdrawMember.balance_cache && (
+                    <p className="mt-1 text-xs font-semibold text-danger">Nominal melebihi saldo deposit anggota!</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label className="text-gray-600 text-xs font-bold uppercase tracking-wider">Catatan / Keterangan (Opsional)</Label>
+                  <Input
+                    value={cashDescription}
+                    onChange={(e) => setCashDescription(e.target.value)}
+                    placeholder="Contoh: Tarik tunai uang saku pekanan"
+                    className={posFieldClass}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <Label className="text-gray-600 text-xs font-bold uppercase tracking-wider">Nominal Kas</Label>
+                  <MoneyInput value={cashAmount} onChange={setCashAmount} className={posFieldClass} />
+                </div>
+                <div>
+                  <Label className="text-gray-600 text-xs font-bold uppercase tracking-wider">Keterangan</Label>
+                  <Input
+                    value={cashDescription}
+                    onChange={(e) => setCashDescription(e.target.value)}
+                    placeholder={cashDialog === 'in' ? 'Contoh: Setoran modal awal' : 'Contoh: Beli ATK kasir'}
+                    className={posFieldClass}
+                  />
+                </div>
+              </>
+            )}
+
+            {cashError && <p className="text-xs font-bold text-danger bg-red-50 p-2 rounded-lg">{cashError}</p>}
           </div>
-          <DialogFooter className="bg-gray-50">
-            <Button onClick={submitCash} disabled={cashSubmitting}>Simpan</Button>
+
+          <DialogFooter className="bg-gray-50 border-t border-gray-100 dark:bg-navy-950 dark:border-border pt-3">
+            <Button
+              onClick={submitCash}
+              disabled={cashSubmitting || (cashDialog === 'out' && cashOutMode === 'member_withdraw' && !withdrawMember)}
+              className="bg-navy-900 text-white font-bold hover:bg-navy-950 dark:bg-amber-500 dark:text-navy-950 w-full sm:w-auto"
+            >
+              {cashSubmitting ? 'Memproses…' : cashDialog === 'out' && cashOutMode === 'member_withdraw' ? 'Proses Tarik Tunai' : 'Simpan Transaksi Kas'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
