@@ -6,9 +6,10 @@
  * Dipusatkan di sini supaya perbaikan berikutnya cukup satu tempat.
  */
 function getCsrfToken(): string {
+  const xsrfCookie = typeof document !== 'undefined' ? document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] : null
+  if (xsrfCookie) return decodeURIComponent(xsrfCookie)
   const metaToken = typeof document !== 'undefined' ? document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') : null
-  if (metaToken) return metaToken
-  return typeof document !== 'undefined' ? decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '') : ''
+  return metaToken ?? ''
 }
 
 type JsonInit = Omit<RequestInit, 'body' | 'headers'> & { headers?: Record<string, string> }
@@ -27,6 +28,14 @@ async function request<T>(method: string, url: string, body?: unknown, init?: Js
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
+
+  // Jika sesi CSRF habis (419 Token Mismatch), lakukan auto-refresh manis
+  if (res.status === 419) {
+    if (typeof window !== 'undefined') {
+      window.location.reload()
+    }
+    return new Promise<T>(() => {}) // navigasi sedang berjalan, jangan resolve
+  }
 
   // Beberapa route (mis. aksi 2FA) dijaga middleware `password.confirm`
   // Laravel — untuk request yang expectsJson() (kita selalu kirim
