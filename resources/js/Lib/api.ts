@@ -5,19 +5,23 @@
  * (CSRF meta tag Fase 11, crypto.randomUUID Fase 16, lihat Lib/idempotency.ts).
  * Dipusatkan di sini supaya perbaikan berikutnya cukup satu tempat.
  */
-function xsrfToken(): string {
-  return decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '')
+function getCsrfToken(): string {
+  const metaToken = typeof document !== 'undefined' ? document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') : null
+  if (metaToken) return metaToken
+  return typeof document !== 'undefined' ? decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '') : ''
 }
 
 type JsonInit = Omit<RequestInit, 'body' | 'headers'> & { headers?: Record<string, string> }
 
 async function request<T>(method: string, url: string, body?: unknown, init?: JsonInit): Promise<T> {
+  const token = getCsrfToken()
   const res = await fetch(url, {
     ...init,
     method,
     headers: {
       Accept: 'application/json',
-      'X-XSRF-TOKEN': xsrfToken(),
+      'X-CSRF-TOKEN': token,
+      'X-XSRF-TOKEN': token,
       ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
       ...init?.headers,
     },

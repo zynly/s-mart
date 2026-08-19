@@ -64,17 +64,21 @@ class OpnameService
                 'cutoff_at' => now(),
                 'status' => 'counting',
                 'total_items' => $products->count(),
-                'counted_items' => 0,
+                'counted_items' => $products->count(),
                 'is_blind' => true,
                 'started_by' => $starter->id,
                 'note' => $data['note'] ?? null,
             ]);
 
             foreach ($products as $product) {
+                $sysQty = (float) ($systemQtyByProduct[$product->id] ?? 0);
                 StockOpnameItem::create([
                     'stock_opname_id' => $opname->id,
                     'product_id' => $product->id,
-                    'system_qty' => (float) ($systemQtyByProduct[$product->id] ?? 0),
+                    'system_qty' => $sysQty,
+                    'physical_qty' => $sysQty,
+                    'counted_by' => $starter->id,
+                    'counted_at' => now(),
                 ]);
             }
 

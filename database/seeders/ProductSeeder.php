@@ -6,10 +6,12 @@ use App\Models\Category;
 use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\ProductBarcode;
+use App\Models\ProductImage;
 use App\Models\ProductPrice;
 use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Storage;
 
 class ProductSeeder extends Seeder
 {
@@ -93,6 +95,19 @@ class ProductSeeder extends Seeder
                     'effective_from' => now()->toDateString(),
                     'created_by' => $admin->id,
                 ]);
+            }
+
+            if (! ProductImage::where('product_id', $product->id)->exists()) {
+                $files = Storage::disk('public')->files('products');
+                if (isset($files[$index])) {
+                    ProductImage::create([
+                        'product_id' => $product->id,
+                        'path' => $files[$index],
+                        'alt' => $product->name,
+                        'sort_order' => 0,
+                        'is_primary' => true,
+                    ]);
+                }
             }
         }
     }

@@ -9,6 +9,7 @@ import { Input } from '@/Components/ui/input'
 import { Badge } from '@/Components/ui/badge'
 import { Card, CardContent } from '@/Components/ui/card'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/Components/ui/alert-dialog'
+import { apiPost } from '@/Lib/api'
 import { formatDate } from '@/Lib/date'
 
 type Ref = { id: number; name: string } | null
@@ -75,22 +76,14 @@ export default function Show({ opname, canApproveVariance, tolerancePercent }: O
     setScanError(null)
 
     try {
-      const res = await fetch(route('admin.opnames.scan', opname.id), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '') },
-        body: JSON.stringify({ barcode: code }),
-      })
-      const data = await res.json()
-
-      if (!res.ok) {
-        setScanError(data.message ?? 'Barcode tidak dikenali.')
-        return
-      }
-
-      const currentQty = localQty[data.item.id] ?? Number(data.item.physical_qty ?? 0)
-      void submitCount(data.item.product_id, currentQty + 1)
-    } catch {
-      setScanError('Gagal memeriksa barcode.')
+      const res = await apiPost<{ item: { id: number; product_id: number; physical_qty: string | null } }>(
+        route('admin.opnames.scan', opname.id),
+        { barcode: code }
+      )
+      const currentQty = localQty[res.item.product_id] ?? Number(res.item.physical_qty ?? 0)
+      void submitCount(res.item.product_id, currentQty + 1)
+    } catch (err: any) {
+      setScanError(err.message ?? 'Barcode tidak dikenali.')
     } finally {
       setBarcode('')
     }
@@ -98,22 +91,11 @@ export default function Show({ opname, canApproveVariance, tolerancePercent }: O
 
   async function submitCount(productId: number, physicalQty: number) {
     try {
-      const res = await fetch(route('admin.opnames.count', opname.id), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '') },
-        body: JSON.stringify({ product_id: productId, physical_qty: physicalQty }),
-      })
-      const data = await res.json()
-
-      if (!res.ok) {
-        toast.error(data.message ?? 'Gagal mencatat hitungan.')
-        return
-      }
-
+      await apiPost(route('admin.opnames.count', opname.id), { product_id: productId, physical_qty: physicalQty })
       setLocalQty((prev) => ({ ...prev, [productId]: physicalQty }))
       router.reload({ only: ['opname'] })
-    } catch {
-      toast.error('Gagal mencatat hitungan.')
+    } catch (err: any) {
+      toast.error(err.message ?? 'Gagal mencatat hitungan.')
     }
   }
 
@@ -199,9 +181,9 @@ export default function Show({ opname, canApproveVariance, tolerancePercent }: O
                           min={0}
                           step="0.001"
                           className="w-24"
-                          value={localQty[item.product.id] ?? item.physical_qty ?? ''}
+                          value={localQty[item.product.id] ?? item.physical_qty ?? item.system_qty}
                           onChange={(e) => setLocalQty((prev) => ({ ...prev, [item.product.id]: Number(e.target.value) || 0 }))}
-                          onBlur={(e) => { const v = Number(e.target.value) || 0; submitCount(item.product.id, v) }}
+                          onBlur={(e) => { const v = localQty[item.product.id] ?? (e.target.value !== '' ? Number(e.target.value) : Number(item.system_qty)); submitCount(item.product.id, v) }}
                         />
                       </td>
                       <td className="p-2">
