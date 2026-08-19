@@ -11,25 +11,8 @@ type ProductCardPublicProps = {
 
 export function ProductCardPublic({ product }: ProductCardPublicProps) {
   const hasPromo = product.promoPrice !== null && product.promoPrice < product.price
-  
-  const getFallbackImage = () => {
-    const term = (product.name + ' ' + (product.category || '')).toLowerCase()
-    if (term.includes('minuman') || term.includes('kopi') || term.includes('teh') || term.includes('susu') || term.includes('jus')) {
-      return 'https://images.unsplash.com/photo-1527661591475-527312dd65f5?w=500&auto=format&fit=crop'
-    }
-    if (term.includes('snack') || term.includes('makanan') || term.includes('biskuit') || term.includes('keripik') || term.includes('roti')) {
-      return 'https://images.unsplash.com/photo-1621939514649-280e2ee25f60?w=500&auto=format&fit=crop'
-    }
-    if (term.includes('sembako') || term.includes('beras') || term.includes('minyak') || term.includes('gula') || term.includes('mie')) {
-      return 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&auto=format&fit=crop'
-    }
-    if (term.includes('atk') || term.includes('tulis') || term.includes('buku') || term.includes('pensil')) {
-      return 'https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?w=500&auto=format&fit=crop'
-    }
-    return 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=500&auto=format&fit=crop'
-  }
-
-  const image = product.images?.[0] || getFallbackImage()
+  const isDefaultLogo = !product.images?.[0]
+  const image = product.images?.[0] || '/logo/logo2.png'
 
   return (
     <Link
@@ -41,7 +24,9 @@ export function ProductCardPublic({ product }: ProductCardPublicProps) {
           src={image}
           alt={product.name}
           loading="lazy"
-          className="size-full object-cover rounded-xl transition-transform duration-500 group-hover:scale-105"
+          className={`size-full rounded-xl transition-transform duration-500 group-hover:scale-105 ${
+            isDefaultLogo ? 'object-contain p-4 bg-white/80 dark:bg-zinc-900/80' : 'object-cover'
+          }`}
         />
 
 

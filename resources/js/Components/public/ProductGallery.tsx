@@ -12,8 +12,8 @@ export function ProductGallery({ images, alt }: ProductGalleryProps) {
 
   if (images.length === 0) {
     return (
-      <div className="flex aspect-square items-center justify-center rounded-lg border border-border bg-secondary text-content-muted">
-        <Package className="size-16" />
+      <div className="flex aspect-square items-center justify-center rounded-lg border border-border bg-surface p-8">
+        <img src="/logo/logo2.png" alt={alt} className="max-h-full max-w-full object-contain" />
       </div>
     )
   }
