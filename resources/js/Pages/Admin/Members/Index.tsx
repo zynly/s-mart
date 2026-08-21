@@ -279,8 +279,9 @@ export default function Index({ tab, members, stats, levels, categories, filters
     {
       accessorKey: 'member_number',
       header: 'No. Anggota',
+      meta: { align: 'center' },
       cell: ({ row }) => (
-        <div className="flex flex-col">
+        <div className="flex flex-col items-center justify-center text-center">
           <span className="font-mono text-xs font-semibold text-content">{row.original.member_number}</span>
           {row.original.active_card ? (
             <span className="text-[10px] text-content-muted">Kartu: {row.original.active_card.card_number}</span>
@@ -293,8 +294,9 @@ export default function Index({ tab, members, stats, levels, categories, filters
     {
       accessorKey: 'name',
       header: 'Nama',
+      meta: { align: 'left' },
       cell: ({ row }) => (
-        <div className="flex flex-col">
+        <div className="flex flex-col items-start justify-start text-left">
           <span className="font-medium text-content">{row.original.name}</span>
           {row.original.nis && <span className="text-xs text-content-muted">NIS: {row.original.nis}</span>}
           {row.original.phone && <span className="text-xs text-content-muted">{row.original.phone}</span>}
@@ -304,52 +306,63 @@ export default function Index({ tab, members, stats, levels, categories, filters
     {
       accessorKey: 'type',
       header: 'Tipe',
+      meta: { align: 'center' },
       cell: ({ row }) => {
         const type = row.original.type
         if (type === 'fasilitator') {
           return (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-300 bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-700 shadow-xs dark:border-blue-700 dark:bg-blue-950/80 dark:text-blue-300">
-              <GraduationCap className="size-3.5 text-blue-600 dark:text-blue-400" />
-              Fasilitator
-            </span>
+            <div className="flex items-center justify-center">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-300 bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-700 shadow-xs dark:border-blue-700 dark:bg-blue-950/80 dark:text-blue-300">
+                <GraduationCap className="size-3.5 text-blue-600 dark:text-blue-400" />
+                Fasilitator
+              </span>
+            </div>
           )
         }
         if (type === 'santri') {
           return (
-            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
-              Santri
-            </span>
+            <div className="flex items-center justify-center">
+              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+                Santri
+              </span>
+            </div>
           )
         }
         if (type === 'staff') {
           return (
-            <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
-              Staf
-            </span>
+            <div className="flex items-center justify-center">
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+                Staf
+              </span>
+            </div>
           )
         }
         return (
-          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-            {TYPE_LABELS[type] ?? type}
-          </span>
+          <div className="flex items-center justify-center">
+            <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+              {TYPE_LABELS[type] ?? type}
+            </span>
+          </div>
         )
       },
     },
     {
       accessorKey: 'class_name',
       header: 'Kelas',
+      meta: { align: 'center' },
       cell: ({ row }) => {
         const m = row.original
-        if (m.type !== 'santri' || !m.class_name) return <span className="text-content-muted">—</span>
-        return <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{m.class_name}</span>
+        if (m.type !== 'santri' || !m.class_name) return <div className="text-center text-content-muted">—</div>
+        return <div className="text-center"><span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{m.class_name}</span></div>
       },
     },
     {
       accessorKey: 'major',
       header: 'Jurusan',
+      meta: { align: 'center' },
       cell: ({ row }) => {
         const m = row.original
-        if (m.type !== 'santri' || !m.major) return <span className="text-content-muted">—</span>
+        if (m.type !== 'santri' || !m.major) return <div className="text-center text-content-muted">—</div>
 
         const colorMap: Record<string, string> = {
           PPLG: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800',
@@ -361,22 +374,30 @@ export default function Index({ tab, members, stats, levels, categories, filters
         const badgeClass = colorMap[m.major] || 'bg-slate-100 text-slate-800 border-slate-200'
 
         return (
-          <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-bold ${badgeClass}`}>
-            {m.major}
-          </span>
+          <div className="flex items-center justify-center">
+            <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-bold ${badgeClass}`}>
+              {m.major}
+            </span>
+          </div>
         )
       },
     },
     {
       accessorKey: 'level',
       header: 'Level',
-      cell: ({ row }) => row.original.level?.name ?? <span className="text-content-muted">—</span>,
+      meta: { align: 'center' },
+      cell: ({ row }) => (
+        <div className="text-center">
+          {row.original.level?.name ?? <span className="text-content-muted">—</span>}
+        </div>
+      ),
     },
     {
       accessorKey: 'balance_cache',
       header: 'Saldo',
+      meta: { align: 'center' },
       cell: ({ row }) => (
-        <div className="flex items-center gap-1 font-bold text-emerald-800 dark:text-emerald-300">
+        <div className="flex items-center justify-center gap-1 font-bold text-emerald-800 dark:text-emerald-300">
           <Money amount={row.original.balance_cache} />
         </div>
       ),
@@ -384,17 +405,21 @@ export default function Index({ tab, members, stats, levels, categories, filters
     {
       accessorKey: 'status',
       header: 'Status',
+      meta: { align: 'center' },
       cell: ({ row }) => (
-        <Badge className={STATUS_BADGE[row.original.status] ?? 'bg-slate-500'}>
-          {STATUS_LABELS[row.original.status] ?? row.original.status}
-        </Badge>
+        <div className="flex items-center justify-center">
+          <Badge className={STATUS_BADGE[row.original.status] ?? 'bg-slate-500'}>
+            {STATUS_LABELS[row.original.status] ?? row.original.status}
+          </Badge>
+        </div>
       ),
     },
     {
       id: 'actions',
       header: 'Aksi',
+      meta: { align: 'center' },
       cell: ({ row }) => (
-        <div className="flex flex-wrap items-center gap-1.5 py-1">
+        <div className="flex flex-wrap items-center justify-center gap-1.5 py-1">
           <Button
             type="button"
             variant="outline"
