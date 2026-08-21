@@ -163,14 +163,14 @@ export function MemberTransactionsSheet({ member, open, onOpenChange }: MemberTr
             <RefreshCw className="size-5 animate-spin text-amber-500" />
             Memuat riwayat transaksi...
           </div>
-        ) : !data || data.transactions.data.length === 0 ? (
+        ) : !data || (data.transactions?.data ? data.transactions.data.length === 0 : !Array.isArray(data.transactions) || data.transactions.length === 0) ? (
           <div className="py-12 text-center text-xs text-slate-400">
-            Belum ada data transaksi deposit.
+            Belum ada data transaksi.
           </div>
         ) : (
           <div className="space-y-3">
-            {data.transactions.data.map((item) => {
-              const isPositive = item.amount > 0
+            {(data.transactions?.data || (Array.isArray(data.transactions) ? (data.transactions as any) : [])).map((item: any) => {
+              const isPositive = (item.amount ?? 0) > 0
               const isPurchase = item.type === 'purchase'
               const isWithdrawal = item.type === 'withdrawal'
               const isTopup = item.type === 'topup'
@@ -208,6 +208,7 @@ export function MemberTransactionsSheet({ member, open, onOpenChange }: MemberTr
                             {item.type === 'bonus' && 'Bonus Saldo'}
                             {item.type === 'refund' && 'Refund Retur'}
                             {item.type === 'adjustment' && 'Penyesuaian Saldo'}
+                            {item.type === 'void' && 'Void Pembelian'}
                           </span>
                           <Badge
                             className={`text-[9px] px-1.5 py-0 font-bold ${
@@ -222,10 +223,10 @@ export function MemberTransactionsSheet({ member, open, onOpenChange }: MemberTr
                           </Badge>
                         </div>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                          {new Date(item.created_at).toLocaleString('id-ID', {
+                          {item.created_at ? new Date(item.created_at).toLocaleString('id-ID', {
                             dateStyle: 'medium',
                             timeStyle: 'short',
-                          })}
+                          }) : '—'}
                         </p>
                       </div>
                     </div>
@@ -238,23 +239,29 @@ export function MemberTransactionsSheet({ member, open, onOpenChange }: MemberTr
                             : 'text-slate-900 dark:text-white'
                         }`}
                       >
-                        {isPositive ? '+' : ''}Rp {item.amount.toLocaleString('id-ID')}
+                        {isPositive ? '+' : ''}Rp {Math.abs(item.amount ?? 0).toLocaleString('id-ID')}
                       </p>
                     </div>
                   </div>
 
-                  {/* Audit Trail: Balance Before & After */}
-                  <div className="mt-3 flex items-center justify-between rounded-xl bg-slate-50 px-3 py-1.5 text-[11px] border border-slate-100 dark:bg-slate-800/50 dark:border-slate-800">
-                    <span className="text-slate-500 dark:text-slate-400">
-                      Saldo Awal: <strong className="text-slate-700 dark:text-slate-200">Rp {item.balance_before.toLocaleString('id-ID')}</strong>
-                    </span>
-                    <span className="text-slate-500 dark:text-slate-400">
-                      Saldo Akhir: <strong className="text-emerald-700 dark:text-emerald-400">Rp {item.balance_after.toLocaleString('id-ID')}</strong>
-                    </span>
-                  </div>
+                  {/* Audit Trail: Balance Before & After (jika ada mutasi saldo deposit) */}
+                  {(item.balance_before != null || item.balance_after != null) && (
+                    <div className="mt-3 flex items-center justify-between rounded-xl bg-slate-50 px-3 py-1.5 text-[11px] border border-slate-100 dark:bg-slate-800/50 dark:border-slate-800">
+                      <span className="text-slate-500 dark:text-slate-400">
+                        Saldo Awal: <strong className="text-slate-700 dark:text-slate-200">
+                          {item.balance_before != null ? `Rp ${item.balance_before.toLocaleString('id-ID')}` : '—'}
+                        </strong>
+                      </span>
+                      <span className="text-slate-500 dark:text-slate-400">
+                        Saldo Akhir: <strong className="text-emerald-700 dark:text-emerald-400">
+                          {item.balance_after != null ? `Rp ${item.balance_after.toLocaleString('id-ID')}` : '—'}
+                        </strong>
+                      </span>
+                    </div>
+                  )}
 
                   {/* Notes & User */}
-                  {(item.note || item.user || item.sourceable?.invoice_number) && (
+                  {(item.note || item.user || item.kasir || item.sourceable?.invoice_number) && (
                     <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 space-y-0.5">
                       {item.sourceable?.invoice_number && (
                         <p className="font-semibold text-blue-600 dark:text-blue-400">
@@ -262,7 +269,9 @@ export function MemberTransactionsSheet({ member, open, onOpenChange }: MemberTr
                         </p>
                       )}
                       {item.note && <p className="italic">"{item.note}"</p>}
-                      {item.user && <p className="text-[10px] text-slate-400">Operator: {item.user.name}</p>}
+                      {(item.user?.name || item.kasir) && (
+                        <p className="text-[10px] text-slate-400">Operator: {item.user?.name ?? item.kasir}</p>
+                      )}
                     </div>
                   )}
                 </div>

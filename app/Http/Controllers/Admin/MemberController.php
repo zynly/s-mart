@@ -201,10 +201,12 @@ class MemberController extends Controller
                 'balance_before'  => $d->balance_before,
                 'balance_after'   => $d->balance_after,
                 'reference'       => $d->reference,
+                'note'            => $d->note,
                 'description'     => $d->note,
-                'payment_method'  => $d->paymentMethod?->name,
+                'payment_method'  => $d->paymentMethod ? ['id' => $d->paymentMethod->id, 'name' => $d->paymentMethod->name] : null,
+                'user'            => $d->user ? ['id' => $d->user->id, 'name' => $d->user->name] : null,
+                'approver'        => $d->approver ? ['id' => $d->approver->id, 'name' => $d->approver->name] : null,
                 'kasir'           => $d->user?->name,
-                'approver'        => $d->approver?->name,
                 'session_ref'     => $d->cashierSession?->reference,
                 'created_at'      => $d->created_at?->toIso8601String(),
             ]);
@@ -232,10 +234,12 @@ class MemberController extends Controller
                     'balance_before'  => null,
                     'balance_after'   => null,
                     'reference'       => $s->reference,
-                    'description'     => 'Pembelian ' . ($s->items_count ?? '') . ' item',
+                    'note'            => 'Pembelian Faktur #' . $s->reference,
+                    'description'     => 'Pembelian Faktur #' . $s->reference,
                     'grand_total'     => $s->grand_total,
                     'status'          => $s->status,
                     'payment_methods' => $s->payments->map(fn ($p) => $p->paymentMethod?->name ?? 'Tunai')->unique()->values(),
+                    'user'            => $s->user ? ['id' => $s->user->id, 'name' => $s->user->name] : null,
                     'kasir'           => $s->user?->name,
                     'session_ref'     => $s->cashierSession?->reference,
                     'created_at'      => $s->created_at?->toIso8601String(),
@@ -259,7 +263,12 @@ class MemberController extends Controller
                 'balance_cache' => $member->balance_cache,
                 'point_balance' => $member->point_balance,
             ],
-            'transactions' => $merged,
+            'transactions' => [
+                'data'         => $merged,
+                'current_page' => 1,
+                'last_page'    => 1,
+                'total'        => $merged->count(),
+            ],
         ]);
     }
 }
