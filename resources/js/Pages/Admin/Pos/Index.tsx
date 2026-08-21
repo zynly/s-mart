@@ -2412,33 +2412,38 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
         </DialogContent>
       </Dialog>
 
-      {/* Sub-Dialog Kategori POS (Grid 4 Kolom Rapi dengan Multi-Select Checkbox) */}
+      {/* Sub-Dialog Kategori POS (Grid 4 Kolom Rapi dengan Multi-Select Checkbox & Tinggi Optimal) */}
       <Dialog open={posCatModalOpen} onOpenChange={setPosCatModalOpen}>
-        <DialogContent className="flex flex-col h-[80vh] max-h-[80vh] w-[92vw] sm:max-w-3xl md:max-w-4xl lg:max-w-5xl overflow-hidden p-0 rounded-2xl shadow-2xl border-border bg-card">
+        <DialogContent className="flex flex-col h-[92vh] max-h-[92vh] w-[95vw] sm:max-w-4xl md:max-w-5xl lg:max-w-6xl overflow-hidden p-0 rounded-2xl shadow-2xl border-border bg-card">
           <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20 shrink-0">
-            <DialogTitle className="flex items-center gap-2 text-base font-bold">
-              <Folder className="size-4.5 text-primary" />
-              Pilih Filter Kategori Produk Kasir
-            </DialogTitle>
+            <div className="flex items-center justify-between gap-3">
+              <DialogTitle className="flex items-center gap-2 text-base font-bold">
+                <Folder className="size-5 text-primary" />
+                Pilih Filter Kategori Produk Kasir
+              </DialogTitle>
+              <Badge variant="outline" className="text-xs font-semibold px-2.5 py-0.5 bg-primary/10 text-primary border-primary/30">
+                {modalSelectedCats.length === 0 ? 'Semua Kategori' : `${modalSelectedCats.length} Terpilih`}
+              </Badge>
+            </div>
           </DialogHeader>
 
-          <div className="p-6 space-y-4 flex-1 overflow-y-auto min-h-0">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="p-6 space-y-4 flex-1 overflow-hidden min-h-0 flex flex-col">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
               <div className="relative flex-1">
-                <Search className="size-3.5 absolute left-3 top-3 text-content-muted" />
+                <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-content-muted" />
                 <Input
                   placeholder="Cari nama kategori…"
                   value={posCatModalSearch}
                   onChange={(e) => setPosCatModalSearch(e.target.value)}
-                  className="pl-9 text-xs bg-background h-9"
+                  className="pl-9.5 text-xs bg-background h-9.5 w-full"
                 />
                 {posCatModalSearch && (
                   <button
                     type="button"
                     onClick={() => setPosCatModalSearch('')}
-                    className="absolute right-3 top-2.5 text-content-muted hover:text-content"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-content-muted hover:text-content"
                   >
-                    <X className="size-3.5" />
+                    <X className="size-4" />
                   </button>
                 )}
               </div>
@@ -2447,16 +2452,16 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="h-8 text-xs gap-1"
+                  className="h-9 text-xs gap-1.5 px-3 hover:border-primary/50"
                   onClick={() => setModalSelectedCats(categories.map((c) => c.id))}
                 >
-                  <CheckSquare className="size-3.5" /> Pilih Semua
+                  <CheckSquare className="size-3.5 text-primary" /> Pilih Semua ({categories.length})
                 </Button>
                 <Button
                   type="button"
                   size="sm"
                   variant="ghost"
-                  className="h-8 text-xs text-danger hover:text-danger hover:bg-danger/10 gap-1"
+                  className="h-9 text-xs text-danger hover:text-danger hover:bg-danger/10 gap-1.5 px-3"
                   onClick={() => setModalSelectedCats([])}
                 >
                   <RotateCcw className="size-3.5" /> Reset (Semua)
@@ -2464,55 +2469,60 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
               </div>
             </div>
 
-            {/* Grid 4 Kolom Kategori dengan Checkbox */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 max-h-[440px] overflow-y-auto p-1">
+            {/* Grid 4 Kolom Kategori dengan Checkbox (Mengisi Seluruh Sisa Tinggi Modal) */}
+            <div className="flex-1 min-h-0 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 p-1 custom-scrollbar">
               {filteredModalCategories.length === 0 ? (
-                <div className="col-span-full py-12 text-center text-xs text-content-muted">
-                  Tidak ada kategori yang sesuai kata kunci pencarian.
+                <div className="col-span-full py-16 text-center text-xs text-content-muted">
+                  Tidak ada kategori yang cocok dengan pencarian "{posCatModalSearch}".
                 </div>
               ) : (
                 filteredModalCategories.map((cat) => {
                   const isChecked = modalSelectedCats.includes(cat.id)
                   return (
-                    <label
+                    <div
                       key={cat.id}
-                      className={`flex items-center justify-between gap-2 p-3 rounded-xl border cursor-pointer transition select-none ${
+                      onClick={() =>
+                        setModalSelectedCats((prev) =>
+                          isChecked ? prev.filter((id) => id !== cat.id) : [...prev, cat.id]
+                        )
+                      }
+                      className={`flex items-center justify-between gap-3 p-3.5 rounded-xl border cursor-pointer transition select-none ${
                         isChecked
-                          ? 'border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40 font-bold'
+                          ? 'border-primary bg-primary/10 shadow-xs ring-2 ring-primary/40 font-bold'
                           : 'border-border/80 bg-card hover:bg-muted/40 hover:border-border font-medium'
                       }`}
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex items-center gap-3 min-w-0">
                         <Checkbox
                           checked={isChecked}
-                          onCheckedChange={(checked) =>
-                            setModalSelectedCats((prev) =>
-                              checked ? [...prev, cat.id] : prev.filter((id) => id !== cat.id)
-                            )
-                          }
+                          onCheckedChange={(checked) => {
+                            // Handled by parent div onClick
+                          }}
+                          className="size-4 shrink-0 pointer-events-none"
                         />
                         <span className="text-xs text-content truncate">{cat.name}</span>
                       </div>
-                    </label>
+                      {isChecked && <CheckCircle2 className="size-4 text-primary shrink-0" />}
+                    </div>
                   )
                 })
               )}
             </div>
           </div>
 
-          <div className="px-6 py-3.5 border-t border-border bg-muted/20 flex items-center justify-between gap-2 shrink-0">
-            <span className="text-xs text-content-muted">
+          <div className="px-6 py-4 border-t border-border bg-muted/20 flex items-center justify-between gap-2 shrink-0">
+            <span className="text-xs text-content-muted font-medium">
               {modalSelectedCats.length === 0
-                ? 'Semua kategori aktif (tanpa filter khusus)'
+                ? 'Semua kategori aktif (tanpa batasan filter)'
                 : `${modalSelectedCats.length} dari ${categories.length} kategori dipilih`}
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
                 onClick={() => setPosCatModalOpen(false)}
-                className="text-xs px-4"
+                className="text-xs px-5 h-9"
               >
                 Batal
               </Button>
@@ -2524,7 +2534,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                   reloadCatalog({ category_ids: modalSelectedCats.join(','), page: 1 })
                   setPosCatModalOpen(false)
                 }}
-                className="font-semibold text-xs px-5"
+                className="font-semibold text-xs px-6 h-9"
               >
                 Terapkan Filter
               </Button>
