@@ -44,7 +44,8 @@ class SecurityHeaders
         // dipakai untuk uji CSP di dev TANPA ikut memicu efek
         // SESSION_SECURE_COOKIE/APP_DEBUG production (yang butuh HTTPS
         // sungguhan, akan mematahkan login di http://s-mart.test).
-        if (filter_var(env('CSP_ENFORCE', app()->environment('production')), FILTER_VALIDATE_BOOL)) {
+        $enforceCsp = config('app.csp_enforce');
+        if ($enforceCsp === null ? app()->environment('production') : $enforceCsp) {
             $response->headers->set('Content-Security-Policy', $this->buildCsp($nonce));
         }
 

@@ -28,6 +28,8 @@ return [
 
     'env' => env('APP_ENV', 'production'),
 
+    'csp_enforce' => env('CSP_ENFORCE') !== null ? filter_var(env('CSP_ENFORCE'), FILTER_VALIDATE_BOOL) : null,
+
     /*
     |--------------------------------------------------------------------------
     | Application Debug Mode

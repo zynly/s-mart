@@ -16,6 +16,7 @@ use App\Services\ProductService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -68,20 +69,35 @@ class ProductController extends Controller
             return $product;
         });
 
+        $stats = Product::query()
+            ->selectRaw("
+                COUNT(*) as total,
+                COUNT(*) FILTER (WHERE is_active = true) as active,
+                COUNT(*) FILTER (WHERE is_active = false) as inactive,
+                COUNT(*) FILTER (WHERE is_favorite = true) as favorite
+            ")
+            ->first()
+            ?->toArray() ?? [
+                'total' => 0,
+                'active' => 0,
+                'inactive' => 0,
+                'favorite' => 0,
+            ];
+
         return Inertia::render('Admin/Products/Index', [
             'tab' => 'products',
             'products' => $products,
-            'categories' => Category::orderBy('name')->get(['id', 'name']),
-            'brands' => Brand::orderBy('name')->get(['id', 'name']),
-            'units' => Unit::where('is_active', true)->orderBy('name')->get(['id', 'code', 'name']),
-            'outlets' => Outlet::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'categories' => Cache::remember('dropdown_categories', 3600, fn () => Category::orderBy('name')->get(['id', 'name'])),
+            'brands' => Cache::remember('dropdown_brands', 3600, fn () => Brand::orderBy('name')->get(['id', 'name'])),
+            'units' => Cache::remember('dropdown_units', 3600, fn () => Unit::where('is_active', true)->orderBy('name')->get(['id', 'code', 'name'])),
+            'outlets' => Cache::remember('dropdown_outlets', 3600, fn () => Outlet::where('is_active', true)->orderBy('name')->get(['id', 'name'])),
             'filters' => $request->only('search', 'category_id', 'brand_id', 'status', 'is_favorite'),
             'canViewCost' => $canViewCost,
             'stats' => [
-                'total' => Product::count(),
-                'active' => Product::where('is_active', true)->count(),
-                'inactive' => Product::where('is_active', false)->count(),
-                'favorite' => Product::where('is_favorite', true)->count(),
+                'total' => (int) ($stats['total'] ?? 0),
+                'active' => (int) ($stats['active'] ?? 0),
+                'inactive' => (int) ($stats['inactive'] ?? 0),
+                'favorite' => (int) ($stats['favorite'] ?? 0),
             ],
         ]);
     }

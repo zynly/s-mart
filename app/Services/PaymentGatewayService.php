@@ -46,9 +46,9 @@ class PaymentGatewayService
         $provider = $this->getActiveProvider();
 
         if ($provider === 'pakasir') {
-            $baseUrl = rtrim((string) (config('services.pakasir.base_url') ?: env('PAKASIR_BASE_URL', 'https://app.pakasir.com')), '/');
-            $slug    = (string) (config('services.pakasir.slug') ?: env('PAKASIR_SLUG', 'pos-mentai'));
-            $apiKey  = (string) (config('services.pakasir.api_key') ?: env('PAKASIR_API_KEY', ''));
+            $baseUrl = rtrim((string) config('services.pakasir.base_url', 'https://app.pakasir.com'), '/');
+            $slug    = (string) config('services.pakasir.slug', 'pos-mentai');
+            $apiKey  = (string) config('services.pakasir.api_key', '');
 
             // Pakasir PG URL Format: https://app.pakasir.com/pay/{slug}/{amount}?order_id={orderId}
             // Using path parameter for amount prevents "Nominal transaksi tidak valid" JS alert from Pakasir frontend

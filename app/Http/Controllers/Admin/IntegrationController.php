@@ -19,12 +19,12 @@ class IntegrationController extends Controller
     public function index(MidtransGatewayInterface $midtransGateway): Response
     {
         $storageDisk = config('filesystems.default', 'local');
-        $s3Bucket    = config('filesystems.disks.s3.bucket') ?: env('DO_SPACE', '-');
-        $s3Endpoint  = config('filesystems.disks.s3.endpoint') ?: env('DO_ENDPOINT', '-');
+        $s3Bucket    = (string) config('filesystems.disks.s3.bucket', '-');
+        $s3Endpoint  = (string) config('filesystems.disks.s3.endpoint', '-');
 
-        $smtpHost   = (string) (config('mail.mailers.smtp.host') ?: env('SMTP_HOST', '127.0.0.1'));
-        $smtpPort   = (int)    (config('mail.mailers.smtp.port') ?: env('SMTP_PORT', 465));
-        $smtpEnable = filter_var(env('SMTP_ENABLE', false), FILTER_VALIDATE_BOOLEAN);
+        $smtpHost   = (string) config('mail.mailers.smtp.host', '127.0.0.1');
+        $smtpPort   = (int)    config('mail.mailers.smtp.port', 465);
+        $smtpEnable = (bool)   config('mail.mailers.smtp.username');
 
         $midtransGatewayClass = config('services.midtrans.gateway');
 
@@ -37,18 +37,14 @@ class IntegrationController extends Controller
             if ($row !== null) {
                 $isProduction = filter_var($row->value, FILTER_VALIDATE_BOOLEAN);
             } else {
-                $isProduction = filter_var(env('MIDTRANS_IS_PRODUCTION', false), FILTER_VALIDATE_BOOLEAN);
+                $isProduction = (bool) config('services.midtrans.is_production', false);
             }
         } catch (Throwable) {
-            $isProduction = filter_var(env('MIDTRANS_IS_PRODUCTION', false), FILTER_VALIDATE_BOOLEAN);
+            $isProduction = (bool) config('services.midtrans.is_production', false);
         }
 
-        $serverKey = $isProduction
-            ? (env('MIDTRANS_PRODUCTION_SERVER_KEY') ?: env('MIDTRANS_SERVER_KEY', '-'))
-            : (env('MIDTRANS_SANDBOX_SERVER_KEY') ?: env('MIDTRANS_SERVER_KEY', '-'));
-        $clientKey = $isProduction
-            ? (env('MIDTRANS_PRODUCTION_CLIENT_KEY') ?: env('MIDTRANS_CLIENT_KEY', '-'))
-            : (env('MIDTRANS_SANDBOX_CLIENT_KEY') ?: env('MIDTRANS_CLIENT_KEY', '-'));
+        $serverKey = config('services.midtrans.server_key', '-');
+        $clientKey = config('services.midtrans.client_key', '-');
 
         // Sync runtime config for active session
         config([
@@ -113,10 +109,10 @@ class IntegrationController extends Controller
                 'midtransGatewayClass' => class_basename((string) $midtransGatewayClass),
                 'midtransServerKey'    => (string) $serverKey,
                 'midtransClientKey'    => (string) $clientKey,
-                'pakasirSlug'          => (string) (config('services.pakasir.slug') ?: env('PAKASIR_SLUG', '-')),
-                'pakasirBaseUrl'       => (string) (config('services.pakasir.base_url') ?: env('PAKASIR_BASE_URL', '-')),
-                'pakasirCallbackUrl'   => (string) (config('services.pakasir.callback_url') ?: env('PAKASIR_CALLBACK_URL', '-')),
-                'pakasirApiKey'        => (string) (config('services.pakasir.api_key') ?: env('PAKASIR_API_KEY', '-')),
+                'pakasirSlug'          => (string) config('services.pakasir.slug', '-'),
+                'pakasirBaseUrl'       => (string) config('services.pakasir.base_url', '-'),
+                'pakasirCallbackUrl'   => (string) config('services.pakasir.callback_url', '-'),
+                'pakasirApiKey'        => (string) config('services.pakasir.api_key', '-'),
             ],
             'activeGateway'        => $activeGateway,
             'paymentMethods'       => $paymentMethods,
@@ -206,8 +202,8 @@ class IntegrationController extends Controller
     public function testPakasir(): JsonResponse
     {
         $startTime = microtime(true);
-        $baseUrl   = config('services.pakasir.base_url') ?: env('PAKASIR_BASE_URL', 'https://app.pakasir.com');
-        $slug      = config('services.pakasir.slug') ?: env('PAKASIR_SLUG', 'pos-mentai');
+        $baseUrl   = config('services.pakasir.base_url', 'https://app.pakasir.com');
+        $slug      = config('services.pakasir.slug', 'pos-mentai');
 
         try {
             $response = \Illuminate\Support\Facades\Http::timeout(5)
@@ -256,8 +252,8 @@ class IntegrationController extends Controller
                     'success'    => true,
                     'message'    => 'Storage S3 (RustFS) Berhasil! Write, Read & Delete sukses.',
                     'latency_ms' => $latency,
-                    'bucket'     => config('filesystems.disks.s3.bucket') ?: env('DO_SPACE'),
-                    'endpoint'   => config('filesystems.disks.s3.endpoint') ?: env('DO_ENDPOINT'),
+                    'bucket'     => config('filesystems.disks.s3.bucket'),
+                    'endpoint'   => config('filesystems.disks.s3.endpoint'),
                 ]);
             }
 
