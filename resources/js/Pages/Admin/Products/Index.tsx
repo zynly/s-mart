@@ -3,7 +3,8 @@ import { Link, router, useForm } from '@inertiajs/react'
 import type { ColumnDef } from '@tanstack/react-table'
 import {
   MoreHorizontal, Plus, Trash2, Star, Eye, Sparkles, Pencil, DollarSign, Upload, ImageIcon,
-  Package, QrCode, Tag, Boxes, Store, CheckCircle2, AlertCircle, Info, Ruler, Award, FileText, Check, Layers, ShieldCheck
+  Package, QrCode, Tag, Boxes, Store, CheckCircle2, AlertCircle, Info, Ruler, Award, FileText, Check, Layers, ShieldCheck,
+  Search, Filter, RotateCcw
 } from 'lucide-react'
 import { toast } from 'sonner'
 import axios from 'axios'
@@ -683,36 +684,76 @@ export default function Index({ tab, products, categories, brands, units, outlet
         <StatCard label="Produk Nonaktif" value={String(stats.inactive)} />
       </div>
 
-      <div className="flex flex-wrap gap-2 items-center">
-        <Input
-          placeholder="Cari nama/SKU/barcode…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && applyFilter()}
-          className="max-w-xs"
-        />
-        <Select value={categoryFilter || 'all'} onValueChange={(v) => setCategoryFilter(v === 'all' ? '' : v)}>
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="Semua kategori" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Semua kategori</SelectItem>
-            {categories.map((c) => (
-              <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={favoriteFilter || 'all'} onValueChange={(v) => setFavoriteFilter(v === 'all' ? '' : v)}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Semua favorit" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Semua Tag</SelectItem>
-            <SelectItem value="1">⭐ Favorit Saja</SelectItem>
-            <SelectItem value="0">Bukan Favorit</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button variant="outline" onClick={applyFilter}>Terapkan</Button>
+      {/* Full-width Balanced Filter Toolbar (Rata Kiri-Kanan) */}
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900 w-full">
+        <div className="flex flex-1 flex-col gap-2.5 sm:flex-row sm:items-center">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+            <Input
+              placeholder="Cari nama produk, SKU, atau barcode…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && applyFilter()}
+              className="pl-9 h-9 text-sm bg-slate-50/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700"
+            />
+          </div>
+
+          <div className="w-full sm:w-48 shrink-0">
+            <Select value={categoryFilter || 'all'} onValueChange={(v) => setCategoryFilter(v === 'all' ? '' : v)}>
+              <SelectTrigger className="h-9 text-sm bg-slate-50/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
+                <SelectValue placeholder="Semua kategori" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Kategori</SelectItem>
+                {categories.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="w-full sm:w-40 shrink-0">
+            <Select value={favoriteFilter || 'all'} onValueChange={(v) => setFavoriteFilter(v === 'all' ? '' : v)}>
+              <SelectTrigger className="h-9 text-sm bg-slate-50/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
+                <SelectValue placeholder="Semua favorit" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Tag</SelectItem>
+                <SelectItem value="1">⭐ Favorit Saja</SelectItem>
+                <SelectItem value="0">Bukan Favorit</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0 justify-end">
+          {Boolean(search || (categoryFilter && categoryFilter !== 'all') || (favoriteFilter && favoriteFilter !== 'all')) && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSearch('')
+                setCategoryFilter('')
+                setFavoriteFilter('')
+                router.get(route('admin.products.index'), {}, { preserveState: true })
+              }}
+              className="h-9 px-2.5 text-xs text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+              title="Reset Filter"
+            >
+              <RotateCcw className="size-3.5 mr-1 text-slate-400" />
+              Reset
+            </Button>
+          )}
+          <Button
+            onClick={applyFilter}
+            size="sm"
+            className="h-9 px-4 text-xs font-semibold gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
+          >
+            <Filter className="size-3.5" />
+            Terapkan Filter
+          </Button>
+        </div>
       </div>
 
       <DataTable

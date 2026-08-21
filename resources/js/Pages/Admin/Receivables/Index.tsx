@@ -18,6 +18,8 @@ import {
   ShieldCheck,
   ArrowRight,
   Wallet,
+  Filter,
+  RotateCcw,
 } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
@@ -394,59 +396,93 @@ export default function Index({
         ))}
       </div>
 
-      <div className="flex flex-wrap gap-2 items-center justify-between">
-        <div className="flex flex-wrap gap-2 items-center">
-          <div className="relative">
+      {/* Full-width Balanced Filter Toolbar (Rata Kiri-Kanan) */}
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900 w-full">
+        <div className="flex flex-1 flex-col gap-2.5 sm:flex-row sm:items-center">
+          <div className="relative flex-1 min-w-[220px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
             <Input
-              placeholder="Cari nama / NIS..."
+              placeholder="Cari nama anggota atau NIS…"
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') applyFilters({ search: searchFilter })
               }}
-              className="pl-9 w-60 text-xs h-9"
+              className="pl-9 h-9 text-sm bg-slate-50/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700"
             />
           </div>
 
-          <Select
-            value={typeFilter || 'all'}
-            onValueChange={(v) => {
-              const next = v === 'all' ? '' : v
-              setTypeFilter(next)
-              applyFilters({ type: next })
-            }}
-          >
-            <SelectTrigger className="w-36 text-xs h-9">
-              <SelectValue placeholder="Semua Tipe" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Semua Tipe</SelectItem>
-              <SelectItem value="fasilitator">Fasilitator</SelectItem>
-              <SelectItem value="staff">Staf</SelectItem>
-              <SelectItem value="public">Umum</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="w-full sm:w-44 shrink-0">
+            <Select
+              value={typeFilter || 'all'}
+              onValueChange={(v) => {
+                const next = v === 'all' ? '' : v
+                setTypeFilter(next)
+                applyFilters({ type: next })
+              }}
+            >
+              <SelectTrigger className="h-9 text-sm bg-slate-50/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
+                <SelectValue placeholder="Semua Tipe" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Tipe</SelectItem>
+                <SelectItem value="fasilitator">Fasilitator</SelectItem>
+                <SelectItem value="staff">Staf</SelectItem>
+                <SelectItem value="public">Umum</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Select
-            value={statusFilter || 'all'}
-            onValueChange={(v) => {
-              const next = v === 'all' ? '' : v
-              setStatusFilter(next)
-              applyFilters({ status: next })
-            }}
+          <div className="w-full sm:w-44 shrink-0">
+            <Select
+              value={statusFilter || 'all'}
+              onValueChange={(v) => {
+                const next = v === 'all' ? '' : v
+                setStatusFilter(next)
+                applyFilters({ status: next })
+              }}
+            >
+              <SelectTrigger className="h-9 text-sm bg-slate-50/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
+                <SelectValue placeholder="Semua status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Status</SelectItem>
+                <SelectItem value="overdue">Lewat Jatuh Tempo</SelectItem>
+                <SelectItem value="partial">Sebagian</SelectItem>
+                <SelectItem value="unpaid">Belum Bayar</SelectItem>
+                <SelectItem value="paid">Lunas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0 justify-end">
+          {Boolean(searchFilter || (typeFilter && typeFilter !== 'all') || (statusFilter && statusFilter !== 'all')) && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSearchFilter('')
+                setTypeFilter('')
+                setStatusFilter('')
+                router.get(route('admin.receivables.index'), {}, { preserveState: true })
+              }}
+              className="h-9 px-2.5 text-xs text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+              title="Reset Filter"
+            >
+              <RotateCcw className="size-3.5 mr-1 text-slate-400" />
+              Reset
+            </Button>
+          )}
+          <Button
+            onClick={() => applyFilters({})}
+            size="sm"
+            className="h-9 px-4 text-xs font-semibold gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
           >
-            <SelectTrigger className="w-40 text-xs h-9">
-              <SelectValue placeholder="Semua status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Semua status</SelectItem>
-              <SelectItem value="overdue">Lewat Jatuh Tempo</SelectItem>
-              <SelectItem value="partial">Sebagian</SelectItem>
-              <SelectItem value="unpaid">Belum Bayar</SelectItem>
-              <SelectItem value="paid">Lunas</SelectItem>
-            </SelectContent>
-          </Select>
+            <Filter className="size-3.5" />
+            Terapkan Filter
+          </Button>
         </div>
       </div>
 

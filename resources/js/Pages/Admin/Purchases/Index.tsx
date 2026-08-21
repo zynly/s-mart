@@ -1,7 +1,7 @@
 import { useState, type FormEventHandler, type ReactElement } from 'react'
 import { Link, router, useForm } from '@inertiajs/react'
 import type { ColumnDef } from '@tanstack/react-table'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Search, Filter, RotateCcw } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
 import { PageTabs } from '@/Components/common/PageTabs'
@@ -162,15 +162,47 @@ export default function Index({ tab, purchases, suppliers, outlets, products, un
         { key: 'consignment', label: 'Konsinyasi', href: route('admin.consignment.index'), permission: 'consignment.view' },
       ]} />
 
-      <div className="flex flex-wrap gap-2">
-        <Input
-          placeholder="Cari referensi/no. faktur…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && applyFilter()}
-          className="max-w-xs"
-        />
-        <Button variant="outline" onClick={applyFilter}>Terapkan</Button>
+      {/* Full-width Balanced Filter Toolbar (Rata Kiri-Kanan) */}
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900 w-full">
+        <div className="flex flex-1 flex-col gap-2.5 sm:flex-row sm:items-center">
+          <div className="relative flex-1 min-w-[240px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+            <Input
+              placeholder="Cari referensi atau nomor faktur pembelian…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && applyFilter()}
+              className="pl-9 h-9 text-sm bg-slate-50/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0 justify-end">
+          {Boolean(search) && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSearch('')
+                router.get(route('admin.purchases.index'), {}, { preserveState: true })
+              }}
+              className="h-9 px-2.5 text-xs text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+              title="Reset Filter"
+            >
+              <RotateCcw className="size-3.5 mr-1 text-slate-400" />
+              Reset
+            </Button>
+          )}
+          <Button
+            onClick={applyFilter}
+            size="sm"
+            className="h-9 px-4 text-xs font-semibold gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
+          >
+            <Filter className="size-3.5" />
+            Terapkan Filter
+          </Button>
+        </div>
       </div>
 
       <DataTable

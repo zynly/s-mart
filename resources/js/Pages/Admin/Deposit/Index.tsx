@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, type FormEventHandler, type ReactElement } from 'react'
 import { router, useForm } from '@inertiajs/react'
 import type { ColumnDef } from '@tanstack/react-table'
+import { Filter, RotateCcw } from 'lucide-react'
 import type { DateRange } from 'react-day-picker'
 import { format } from 'date-fns'
 import { formatDateTime } from '@/Lib/date'
@@ -445,23 +446,35 @@ export default function Index({ tab, transactions, adjustments, members, payment
         </TabsContent>
 
         <TabsContent value="riwayat" className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Select value={typeFilter || 'all'} onValueChange={(v) => setTypeFilter(v === 'all' ? '' : v)}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Semua tipe" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua tipe</SelectItem>
-                {Object.entries(TYPE_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <DateRangePicker value={dateRange} onChange={setDateRange} />
-            <Button variant="outline" onClick={applyFilter}>Terapkan</Button>
-            <div className="ml-auto flex gap-2">
-              {canWithdraw && <Button variant="outline" onClick={() => setWithdrawOpen(true)}>Tarik Saldo</Button>}
-              {canAdjust && <Button variant="outline" onClick={() => setAdjustOpen(true)}>Sesuaikan Saldo</Button>}
+          {/* Full-width Balanced Filter Toolbar (Rata Kiri-Kanan) */}
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900 w-full">
+            <div className="flex flex-1 flex-wrap items-center gap-2.5">
+              <div className="w-full sm:w-48 shrink-0">
+                <Select value={typeFilter || 'all'} onValueChange={(v) => setTypeFilter(v === 'all' ? '' : v)}>
+                  <SelectTrigger className="h-9 text-sm bg-slate-50/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
+                    <SelectValue placeholder="Semua tipe" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Tipe</SelectItem>
+                    {Object.entries(TYPE_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <DateRangePicker value={dateRange} onChange={setDateRange} />
+              <Button
+                onClick={applyFilter}
+                size="sm"
+                className="h-9 px-4 text-xs font-semibold gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
+              >
+                <Filter className="size-3.5" />
+                Terapkan
+              </Button>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 justify-end">
+              {canWithdraw && <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => setWithdrawOpen(true)}>Tarik Saldo</Button>}
+              {canAdjust && <Button variant="outline" size="sm" className="h-9 text-xs" onClick={() => setAdjustOpen(true)}>Sesuaikan Saldo</Button>}
             </div>
           </div>
 

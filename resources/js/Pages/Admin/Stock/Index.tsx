@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactElement } from 'react'
 import { router } from '@inertiajs/react'
 import type { ColumnDef } from '@tanstack/react-table'
-import { AlertTriangle, PackageX } from 'lucide-react'
+import { AlertTriangle, PackageX, Search, Filter, RotateCcw } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
 import { PageTabs } from '@/Components/common/PageTabs'
@@ -176,48 +176,91 @@ export default function Index({ tab, stocks, categories, outlets, currentOutletI
         </TabsList>
 
         <TabsContent value="ringkasan" className="flex flex-col gap-3">
-          <div className="flex flex-wrap gap-2">
-            <Input
-              placeholder="Cari nama/SKU produk…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && applyFilter()}
-              className="max-w-xs"
-            />
-            <Select value={categoryFilter || 'all'} onValueChange={(v) => setCategoryFilter(v === 'all' ? '' : v)}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Semua kategori" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua kategori</SelectItem>
-                {categories.map((c) => (
-                  <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter || 'all'} onValueChange={(v) => setStatusFilter(v === 'all' ? '' : v)}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Semua status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua status</SelectItem>
-                <SelectItem value="low">Stok Rendah</SelectItem>
-                <SelectItem value="out">Stok Habis</SelectItem>
-              </SelectContent>
-            </Select>
-            {outlets.length > 1 && (
-              <Select value={outletId} onValueChange={(v) => { setOutletId(v); applyFilter(v) }}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Outlet" />
-                </SelectTrigger>
-                <SelectContent>
-                  {outlets.map((o) => (
-                    <SelectItem key={o.id} value={String(o.id)}>{o.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            <Button variant="outline" onClick={() => applyFilter()}>Terapkan</Button>
+          {/* Full-width Balanced Filter Toolbar (Rata Kiri-Kanan) */}
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900 w-full">
+            <div className="flex flex-1 flex-col gap-2.5 sm:flex-row sm:items-center">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+                <Input
+                  placeholder="Cari nama atau SKU produk…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && applyFilter()}
+                  className="pl-9 h-9 text-sm bg-slate-50/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700"
+                />
+              </div>
+
+              <div className="w-full sm:w-44 shrink-0">
+                <Select value={categoryFilter || 'all'} onValueChange={(v) => setCategoryFilter(v === 'all' ? '' : v)}>
+                  <SelectTrigger className="h-9 text-sm bg-slate-50/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
+                    <SelectValue placeholder="Semua kategori" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Kategori</SelectItem>
+                    {categories.map((c) => (
+                      <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="w-full sm:w-36 shrink-0">
+                <Select value={statusFilter || 'all'} onValueChange={(v) => setStatusFilter(v === 'all' ? '' : v)}>
+                  <SelectTrigger className="h-9 text-sm bg-slate-50/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
+                    <SelectValue placeholder="Semua status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Status</SelectItem>
+                    <SelectItem value="low">Stok Rendah</SelectItem>
+                    <SelectItem value="out">Stok Habis</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {outlets.length > 1 && (
+                <div className="w-full sm:w-36 shrink-0">
+                  <Select value={outletId} onValueChange={(v) => { setOutletId(v); applyFilter(v) }}>
+                    <SelectTrigger className="h-9 text-sm bg-slate-50/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
+                      <SelectValue placeholder="Outlet" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {outlets.map((o) => (
+                        <SelectItem key={o.id} value={String(o.id)}>{o.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 justify-end">
+              {Boolean(search || (categoryFilter && categoryFilter !== 'all') || (statusFilter && statusFilter !== 'all')) && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSearch('')
+                    setCategoryFilter('')
+                    setStatusFilter('')
+                    router.get(route('admin.stock.index'), { outlet_id: outletId }, { preserveState: true })
+                  }}
+                  className="h-9 px-2.5 text-xs text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                  title="Reset Filter"
+                >
+                  <RotateCcw className="size-3.5 mr-1 text-slate-400" />
+                  Reset
+                </Button>
+              )}
+              <Button
+                onClick={() => applyFilter()}
+                size="sm"
+                className="h-9 px-4 text-xs font-semibold gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
+              >
+                <Filter className="size-3.5" />
+                Terapkan Filter
+              </Button>
+            </div>
           </div>
 
           <DataTable

@@ -132,10 +132,10 @@ export function DataTable<TData>({
   const totalPages = pagination ? Math.max(1, Math.ceil(pagination.total / pagination.perPage)) : 1
 
   return (
-    <div className="flex flex-col gap-3 flex-1 min-h-[450px]">
-      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3 dark:border-border dark:bg-surface-alt/60 text-xs">
-        <span className="font-extrabold uppercase tracking-wider text-slate-500 dark:text-content-muted mr-1 flex items-center gap-1.5 shrink-0">
-          <SlidersHorizontal className="size-3.5 text-amber-500" />
+    <div className="flex flex-col gap-3 flex-1 min-h-[450px] w-full">
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-xs dark:border-slate-800 dark:bg-slate-900 w-full text-xs">
+        <span className="font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mr-1 flex items-center gap-1.5 shrink-0">
+          <SlidersHorizontal className="size-3.5 text-blue-600 dark:text-blue-400" />
           <span>Tampilkan Kolom:</span>
         </span>
         {table
@@ -143,27 +143,33 @@ export function DataTable<TData>({
           .filter((column) => column.getCanHide())
           .map((column) => {
             const isVisible = column.getIsVisible()
+            const headerLabel =
+              typeof column.columnDef.header === 'string'
+                ? column.columnDef.header
+                : getLabel(column.id)
+
             return (
               <label
                 key={column.id}
                 className={cn(
-                  'flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-bold transition-all cursor-pointer select-none',
+                  'flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer select-none',
                   isVisible
-                    ? 'border-slate-300 bg-white text-slate-900 dark:border-border dark:bg-surface dark:text-content shadow-2xs'
-                    : 'border-slate-200/60 bg-slate-100/60 text-slate-400 dark:border-border dark:bg-surface-alt/40 opacity-50',
+                    ? 'border-blue-200 bg-blue-50/50 text-blue-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200 shadow-2xs'
+                    : 'border-slate-200/60 bg-slate-100/60 text-slate-400 dark:border-slate-800 dark:bg-slate-800/40 opacity-50',
                 )}
               >
                 <Checkbox
                   checked={isVisible}
                   onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                  className="size-3.5 rounded data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                 />
-                <span className={cn(!isVisible && 'line-through')}>{getLabel(column.id)}</span>
+                <span className={cn(!isVisible && 'line-through')}>{headerLabel}</span>
               </label>
             )
           })}
       </div>
 
-      <div className="relative flex-1 min-h-[380px] overflow-x-auto rounded-lg border border-border">
+      <div className="relative flex-1 min-h-[380px] w-full overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
         <Table className="w-full text-xs">
           <TableHeader className="sticky top-0 z-10 bg-surface-muted border-b-2 border-border">
             {table.getHeaderGroups().map((headerGroup) => (
