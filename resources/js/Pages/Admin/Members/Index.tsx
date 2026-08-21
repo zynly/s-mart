@@ -307,23 +307,35 @@ export default function Index({ tab, members, stats, levels, categories, filters
       cell: ({ row }) => <Badge variant="outline">{TYPE_LABELS[row.original.type] ?? row.original.type}</Badge>,
     },
     {
-      id: 'class',
-      header: 'Kelas / Jurusan',
+      accessorKey: 'class_name',
+      header: 'Kelas',
       cell: ({ row }) => {
         const m = row.original
-        if (m.type !== 'santri') return <span className="text-content-muted">—</span>
+        if (m.type !== 'santri' || !m.class_name) return <span className="text-content-muted">—</span>
+        return <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{m.class_name}</span>
+      },
+    },
+    {
+      accessorKey: 'major',
+      header: 'Jurusan',
+      cell: ({ row }) => {
+        const m = row.original
+        if (m.type !== 'santri' || !m.major) return <span className="text-content-muted">—</span>
 
-        const cls = m.class_name?.trim()
-        const mjr = m.major?.trim()
+        const colorMap: Record<string, string> = {
+          PPLG: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800',
+          TKP: 'bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-950/60 dark:text-cyan-300 dark:border-cyan-800',
+          UPT: 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800',
+          BD: 'bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800',
+        }
 
-        if (!cls && !mjr) return <span className="text-content-muted">—</span>
-        if (cls && mjr && cls.toUpperCase().includes(mjr.toUpperCase())) {
-          return <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{cls}</span>
-        }
-        if (cls && mjr) {
-          return <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{cls} · {mjr}</span>
-        }
-        return <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{cls || mjr}</span>
+        const badgeClass = colorMap[m.major] || 'bg-slate-100 text-slate-800 border-slate-200'
+
+        return (
+          <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-bold ${badgeClass}`}>
+            {m.major}
+          </span>
+        )
       },
     },
     {
