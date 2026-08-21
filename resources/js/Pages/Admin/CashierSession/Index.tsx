@@ -35,6 +35,12 @@ type DrawerAccount = {
   current_balance: number
   is_default: boolean
   outlet_id: number
+  /** true jika laci sedang dipakai sesi kasir yang terbuka */
+  is_open: boolean
+  /** true jika sesi terbuka adalah milik user yang sedang login */
+  is_own_open: boolean
+  /** nama user yang membuka sesi (null jika belum ada sesi terbuka) */
+  open_user_name: string | null
 }
 
 type Ref = { id: number; name: string }

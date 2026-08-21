@@ -3,7 +3,7 @@ import { router, usePage } from '@inertiajs/react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { toast } from 'sonner'
 import {
-  AlertCircle, ArrowDownCircle, ArrowUpCircle, Check, CheckCircle2, ChevronLeft, ChevronRight, Coins, CreditCard, Lock, Pause, Phone, PlusCircle, Printer,
+  AlertCircle, ArrowDownCircle, ArrowUpCircle, Check, CheckCircle2, ChevronLeft, ChevronRight, Coins, CreditCard, Lock, Pause, Phone, PlusCircle, Printer, Receipt,
   QrCode, ScanLine, Search, ShoppingCart, Store, Trash2, UserCircle, Wallet, X,
 } from 'lucide-react'
 import PosLayout from '@/Layouts/PosLayout'
@@ -152,7 +152,12 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
   const [cashDescription, setCashDescription] = useState('')
   const [cashError, setCashError] = useState<string | null>(null)
   const [cashSubmitting, setCashSubmitting] = useState(false)
+  /** 'operational' = pengeluaran rutin, 'member_withdraw' = tarik tunai deposit anggota */
+  const [cashOutMode, setCashOutMode] = useState<'operational' | 'member_withdraw'>('operational')
+  /** anggota yang dipilih untuk tarik tunai (pre-filled dari member aktif di POS) */
+  const [withdrawMember, setWithdrawMember] = useState<MemberResult | null>(null)
   const pageProps = usePage<PageProps & { flash?: { completed_sale_id?: number; completed_sale_ref?: string } }>().props
+
   const [completedSale, setCompletedSale] = useState<{ id: number; ref: string } | null>(null)
 
   useEffect(() => {

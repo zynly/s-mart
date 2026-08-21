@@ -143,37 +143,106 @@ class MemberController extends Controller
         ]);
     }
 
+    /**
+     * Riwayat transaksi gabungan per anggota:
+     * deposit (topup/bonus/refund), pembelian (sale/purchase),
+     * dan tarik tunai/penarikan (withdrawal/closing).
+     * Diurut berdasarkan waktu terbaru.
+     */
     public function transactions(Request $request, Member $member): \Illuminate\Http\JsonResponse
     {
-        $transactions = \App\Models\DepositTransaction::query()
+        $type = $request->string('type')->toString();
+
+        // ───────────────────────────────────────────────
+        // 1. Riwayat Deposit (DepositTransaction)
+        // ───────────────────────────────────────────────
+        $depositQuery = \App\Models\DepositTransaction::query()
             ->where('member_id', $member->id)
             ->with([
                 'paymentMethod:id,name',
                 'user:id,name',
                 'approver:id,name',
-                'sourceable',
+                'cashierSession:id,reference',
             ])
-            ->when($request->string('type')->toString(), function ($q, $type) {
-                if ($type === 'topup') {
-                    $q->whereIn('type', ['topup', 'bonus', 'refund']);
-                } elseif ($type === 'purchase') {
+            ->when($type, function ($q, $t) {
+                if ($t === 'topup') {
+                    $q->whereIn('type', ['topup', 'bonus', 'refund', 'adjustment']);
+                } elseif ($t === 'purchase') {
                     $q->where('type', 'purchase');
-                } elseif ($type === 'withdrawal') {
+                } elseif ($t === 'withdrawal') {
                     $q->whereIn('type', ['withdrawal', 'closing']);
                 }
-            })
-            ->orderByDesc('created_at')
-            ->paginate(15);
+            });
+
+        $depositRows = $depositQuery->orderByDesc('created_at')->limit(100)->get()
+            ->map(fn ($d) => [
+                'id'              => "dep-{$d->id}",
+                'kind'            => 'deposit',
+                'type'            => $d->type,
+                'amount'          => $d->amount,
+                'balance_before'  => $d->balance_before,
+                'balance_after'   => $d->balance_after,
+                'reference'       => $d->reference,
+                'description'     => $d->note,
+                'payment_method'  => $d->paymentMethod?->name,
+                'kasir'           => $d->user?->name,
+                'approver'        => $d->approver?->name,
+                'session_ref'     => $d->cashierSession?->reference,
+                'created_at'      => $d->created_at?->toIso8601String(),
+            ]);
+
+        // ───────────────────────────────────────────────
+        // 2. Riwayat Pembelian (Sale) — hanya jika filter = '' atau 'purchase'
+        // ───────────────────────────────────────────────
+        $saleRows = collect();
+        if ($type === '' || $type === 'purchase') {
+            $saleRows = \App\Models\Sale::query()
+                ->where('member_id', $member->id)
+                ->with([
+                    'payments.paymentMethod:id,name,type',
+                    'cashierSession:id,reference',
+                    'user:id,name',
+                ])
+                ->orderByDesc('created_at')
+                ->limit(100)
+                ->get()
+                ->map(fn ($s) => [
+                    'id'              => "sale-{$s->id}",
+                    'kind'            => 'sale',
+                    'type'            => $s->status === 'void' ? 'void' : 'purchase',
+                    'amount'          => -abs($s->grand_total), // kas keluar dari saldo member (jika deposit)
+                    'balance_before'  => null,
+                    'balance_after'   => null,
+                    'reference'       => $s->reference,
+                    'description'     => 'Pembelian ' . ($s->items_count ?? '') . ' item',
+                    'grand_total'     => $s->grand_total,
+                    'status'          => $s->status,
+                    'payment_methods' => $s->payments->map(fn ($p) => $p->paymentMethod?->name ?? 'Tunai')->unique()->values(),
+                    'kasir'           => $s->user?->name,
+                    'session_ref'     => $s->cashierSession?->reference,
+                    'created_at'      => $s->created_at?->toIso8601String(),
+                ]);
+        }
+
+        // ───────────────────────────────────────────────
+        // 3. Gabungkan, urutkan, ambil 50 terbaru
+        // ───────────────────────────────────────────────
+        $merged = $depositRows->merge($saleRows)
+            ->sortByDesc('created_at')
+            ->values()
+            ->take(50);
 
         return response()->json([
             'member' => [
-                'id' => $member->id,
-                'name' => $member->name,
+                'id'            => $member->id,
+                'name'          => $member->name,
                 'member_number' => $member->member_number,
-                'nis' => $member->nis,
+                'nis'           => $member->nis,
                 'balance_cache' => $member->balance_cache,
+                'point_balance' => $member->point_balance,
             ],
-            'transactions' => $transactions,
+            'transactions' => $merged,
         ]);
     }
 }
+
