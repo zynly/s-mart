@@ -25,7 +25,7 @@ class PaymentMethodController extends Controller
         $data = $request->validate([
             'code' => ['required', 'string', 'max:50', 'unique:payment_methods,code'],
             'name' => ['required', 'string', 'max:255'],
-            'type' => ['required', Rule::in(['cash', 'card', 'qris', 'ewallet', 'transfer', 'deposit', 'voucher', 'point', 'credit', 'payroll'])],
+            'type' => ['required', Rule::in(['cash', 'card', 'qris', 'ewallet', 'transfer', 'deposit', 'credit'])],
             'mdr_percent' => ['numeric', 'min:0', 'max:100'],
             'requires_reference' => ['boolean'],
             'allows_change' => ['boolean'],
@@ -43,7 +43,7 @@ class PaymentMethodController extends Controller
         $data = $request->validate([
             'code' => ['required', 'string', 'max:50', Rule::unique('payment_methods', 'code')->ignore($paymentMethod->id)],
             'name' => ['required', 'string', 'max:255'],
-            'type' => ['required', Rule::in(['cash', 'card', 'qris', 'ewallet', 'transfer', 'deposit', 'voucher', 'point', 'credit', 'payroll'])],
+            'type' => ['required', Rule::in(['cash', 'card', 'qris', 'ewallet', 'transfer', 'deposit', 'credit'])],
             'mdr_percent' => ['numeric', 'min:0', 'max:100'],
             'requires_reference' => ['boolean'],
             'allows_change' => ['boolean'],

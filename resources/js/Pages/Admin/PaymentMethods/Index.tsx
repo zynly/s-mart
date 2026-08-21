@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/Components/ui/dropdown-menu'
 import { AppSheet } from '@/Components/common/AppSheet'
 
-const TYPES = ['cash', 'card', 'qris', 'ewallet', 'transfer', 'deposit', 'voucher', 'point', 'credit', 'payroll'] as const
+const TYPES = ['cash', 'card', 'qris', 'ewallet', 'transfer', 'deposit', 'credit'] as const
 
 type PaymentMethodRow = {
   id: number

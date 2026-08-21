@@ -112,10 +112,7 @@ class MasterDataSeeder extends Seeder
             ['code' => 'EWALLET', 'name' => 'E-Wallet', 'type' => 'ewallet', 'requires_reference' => true, 'cash_account_id' => $bankAccountId, 'mdr_percent' => 1.5],
             ['code' => 'TRANSFER', 'name' => 'Transfer', 'type' => 'transfer', 'requires_reference' => true, 'cash_account_id' => $bankAccountId],
             ['code' => 'DEBIT', 'name' => 'Kartu Debit', 'type' => 'card', 'requires_reference' => true, 'cash_account_id' => $bankAccountId, 'mdr_percent' => 0.15],
-            ['code' => 'VOUCHER', 'name' => 'Voucher', 'type' => 'voucher'],
-            ['code' => 'POINT', 'name' => 'Poin', 'type' => 'point'],
             ['code' => 'CREDIT', 'name' => 'Kredit/Tempo', 'type' => 'credit'],
-            ['code' => 'PAYROLL', 'name' => 'Potong Gaji', 'type' => 'payroll'],
         ];
 
         foreach ($paymentMethods as $sort => $method) {

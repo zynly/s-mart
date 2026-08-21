@@ -467,8 +467,6 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
   function methodEligible(pm: PaymentMethodRow): boolean {
     if (pm.type === 'deposit') return member !== null
     if (pm.type === 'credit') return member !== null && member.type !== 'santri'
-    if (pm.type === 'point') return member !== null && member.point_balance > 0
-    if (pm.type === 'payroll') return member !== null && (member.type === 'fasilitator' || member.type === 'staff')
 
     return true
   }
@@ -477,7 +475,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
     const pm = paymentMethods.find((p) => String(p.id) === selectedMethodId)
     if (!pm || remaining <= 0) return
 
-    const amount = pm.type === 'point' ? Math.min(remaining, member ? member.point_balance * pointValue : remaining) : remaining
+    const amount = remaining
 
     const line: PaymentLine = {
       key: `${pm.id}-${Date.now()}`,
@@ -487,7 +485,6 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
       type: pm.type,
       amount,
       received_amount: pm.allows_change ? amount : undefined,
-      point_used: pm.type === 'point' ? Math.floor(amount / pointValue) : undefined,
     }
 
     setPaymentLines((prev) => [...prev, line])
@@ -618,27 +615,22 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
     )
   }
 
-  // Phase 2: Dialog State untuk 6 Metode Internal/Offline
+  // Dialog State untuk Metode Internal/Offline
   const [methodDialog, setMethodDialog] = useState<
     | { type: 'deposit' }
     | { type: 'card' }
-    | { type: 'voucher' }
-    | { type: 'point'; pointsNeeded: number }
     | { type: 'credit'; limit: number; active: number }
-    | { type: 'payroll' }
     | null
   >(null)
 
   const [depositPin, setDepositPin] = useState('')
   const [edcRefNo, setEdcRefNo] = useState('')
   const [edcBank, setEdcBank] = useState('BCA')
-  const [voucherCode, setVoucherCode] = useState('')
   const [methodDialogError, setMethodDialogError] = useState<string | null>(null)
 
   function executeSaleStore(extraPayload: {
     pin?: string
     reference_no?: string
-    point_used?: number
     coupon_code?: string
   } = {}) {
     if (!session || !outlet || !activeMethod) return
@@ -777,33 +769,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
       return
     }
 
-    // 3. Voucher Belanja
-    if (activeMethod.type === 'voucher') {
-      setVoucherCode('')
-      setMethodDialogError(null)
-      setMethodDialog({ type: 'voucher' })
-      return
-    }
-
-    // 4. Poin Loyalty
-    if (activeMethod.type === 'point') {
-      if (!member) {
-        requireMember('Poin Loyalty')
-        return
-      }
-      const pointsNeeded = Math.ceil(subtotal / pointValue)
-      if (member.point_balance < pointsNeeded) {
-        const msg = `Poin anggota (${member.point_balance} poin) tidak mencukupi untuk penukaran ${pointsNeeded} poin.`
-        setPaymentError(msg)
-        toast.error(msg)
-        return
-      }
-      setMethodDialogError(null)
-      setMethodDialog({ type: 'point', pointsNeeded })
-      return
-    }
-
-    // 5. Kredit / Tempo
+    // 3. Kredit / Tempo
     if (activeMethod.type === 'credit') {
       if (!member) {
         requireMember('Kredit / Tempo')
@@ -833,24 +799,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
       return
     }
 
-    // 6. Potong Gaji
-    if (activeMethod.type === 'payroll') {
-      if (!member) {
-        requireMember('Potong Gaji')
-        return
-      }
-      if (!['fasilitator', 'staff'].includes(member.type)) {
-        const msg = 'Metode Potong Gaji hanya berlaku untuk anggota tipe fasilitator/staf.'
-        setPaymentError(msg)
-        toast.error(msg)
-        return
-      }
-      setMethodDialogError(null)
-      setMethodDialog({ type: 'payroll' })
-      return
-    }
-
-    // 7. JIKA METODE NON-TUNAI (qris, ewallet, transfer): Panggil Gateway Inline Modal Overlay
+    // 4. JIKA METODE NON-TUNAI (qris, ewallet, transfer): Panggil Gateway Inline Modal Overlay
     if (activeMethod.type === 'qris' || activeMethod.type === 'ewallet' || activeMethod.type === 'transfer') {
       try {
         const res = await apiPost<{ provider?: string; token?: string; payment_url?: string; order_id?: string }>(route('pos.midtrans.create-transaction'), {
@@ -1678,24 +1627,6 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                         )}
                       </div>
                     )}
-                    {line.type === 'point' && member && (
-                      <div className="flex flex-col gap-1.5">
-                        <Label className="text-xs text-gray-600">Poin Dipakai (maks {member.point_balance}, {pointValue.toLocaleString('id-ID')}/poin)</Label>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={member.point_balance}
-                          value={line.point_used ?? 0}
-                          onChange={(e) => {
-                            const maxPoints = Math.min(member.point_balance, Math.floor((remaining + line.amount) / pointValue))
-                            const pointUsed = Math.max(0, Math.min(Number(e.target.value) || 0, maxPoints))
-                            updatePaymentLine(line.key, { point_used: pointUsed, amount: pointUsed * pointValue })
-                          }}
-                          className={posFieldClass}
-                        />
-                        <p className="text-xs text-gray-500">Setara <Money amount={line.amount} size="sm" /></p>
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
@@ -1882,17 +1813,14 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Modal Input Metode Pembayaran (Phase 2) */}
+      {/* Dialog Modal Input Metode Pembayaran */}
       <Dialog open={methodDialog !== null} onOpenChange={(open) => !open && setMethodDialog(null)}>
         <DialogContent className="bg-white dark:bg-surface text-gray-900 dark:text-content border border-gray-200 dark:border-border max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-gray-900 font-extrabold text-base">
+            <DialogTitle className="text-gray-900 dark:text-content font-extrabold text-base">
               {methodDialog?.type === 'deposit' && 'Otentikasi PIN Deposit Member'}
               {methodDialog?.type === 'card' && 'Detail Transaksi Mesin EDC (Kartu)'}
-              {methodDialog?.type === 'voucher' && 'Input Voucher Belanja Toko'}
-              {methodDialog?.type === 'point' && 'Penukaran Poin Loyalty Member'}
               {methodDialog?.type === 'credit' && 'Konfirmasi Kredit / Tempo (Piutang)'}
-              {methodDialog?.type === 'payroll' && 'Konfirmasi Pemotongan Gaji Pegawai'}
             </DialogTitle>
           </DialogHeader>
 
@@ -1941,32 +1869,6 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
             </div>
           )}
 
-          {methodDialog?.type === 'voucher' && (
-            <div className="flex flex-col gap-3 py-1">
-              <div className="space-y-1">
-                <Label className="text-xs text-gray-600">Kode / Barcode Voucher</Label>
-                <Input
-                  value={voucherCode}
-                  onChange={(e) => setVoucherCode(e.target.value)}
-                  placeholder="Scan atau ketik kode voucher…"
-                  className={posFieldClass}
-                  autoFocus
-                />
-              </div>
-            </div>
-          )}
-
-          {methodDialog?.type === 'point' && member && (
-            <div className="flex flex-col gap-3 py-1">
-              <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs space-y-1.5">
-                <p className="font-semibold text-amber-950">Anggota: <span className="font-bold">{member.name}</span></p>
-                <p className="text-amber-800">Total Poin Dimiliki: <span className="font-bold font-mono">{member.point_balance} poin</span></p>
-                <p className="text-amber-800">Poin Dibutuhkan: <span className="font-bold font-mono text-amber-950">{methodDialog.pointsNeeded} poin</span></p>
-                <p className="text-xs text-amber-700 font-mono">Rate: 1 Poin = Rp {pointValue.toLocaleString('id-ID')}</p>
-              </div>
-            </div>
-          )}
-
           {methodDialog?.type === 'credit' && member && (
             <div className="flex flex-col gap-3 py-1">
               <div className="rounded-xl border border-navy-200 bg-navy-50/70 p-3 text-xs space-y-1.5">
@@ -1974,16 +1876,6 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                 <p className="text-navy-800">Limit Piutang: <span className="font-bold font-mono">Rp {methodDialog.limit.toLocaleString('id-ID')}</span></p>
                 <p className="text-navy-800">Piutang Aktif: <span className="font-bold font-mono">Rp {methodDialog.active.toLocaleString('id-ID')}</span></p>
                 <p className="text-navy-900 border-t border-navy-200 pt-1">Belanja Baru (Jatuh Tempo 30 Hari): <span className="font-bold text-emerald-700 font-mono">Rp {subtotal.toLocaleString('id-ID')}</span></p>
-              </div>
-            </div>
-          )}
-
-          {methodDialog?.type === 'payroll' && member && (
-            <div className="flex flex-col gap-3 py-1">
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-xs space-y-1.5">
-                <p className="font-semibold text-emerald-950">Pegawai/Staf: <span className="font-bold">{member.name}</span> ({member.member_number})</p>
-                <p className="text-emerald-800">Jabatan/Tipe: <span className="font-bold uppercase font-mono">{member.type}</span></p>
-                <p className="text-emerald-900 border-t border-emerald-200 pt-1">Total Potong Gaji Periode Ini: <span className="font-bold text-emerald-950 font-mono">Rp {subtotal.toLocaleString('id-ID')}</span></p>
               </div>
             </div>
           )}
@@ -2009,18 +1901,8 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                     return
                   }
                   executeSaleStore({ reference_no: `${edcBank}-${edcRefNo.trim()}` })
-                } else if (methodDialog?.type === 'voucher') {
-                  if (!voucherCode.trim()) {
-                    setMethodDialogError('Kode voucher wajib diisi.')
-                    return
-                  }
-                  executeSaleStore({ reference_no: voucherCode.trim(), coupon_code: voucherCode.trim() })
-                } else if (methodDialog?.type === 'point') {
-                  executeSaleStore({ point_used: methodDialog.pointsNeeded })
                 } else if (methodDialog?.type === 'credit') {
                   executeSaleStore()
-                } else if (methodDialog?.type === 'payroll') {
-                  executeSaleStore({ reference_no: member?.member_number ?? '' })
                 }
               }}
               className="bg-emerald-600 hover:bg-emerald-700 font-bold text-white"
