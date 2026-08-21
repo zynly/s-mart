@@ -1535,27 +1535,31 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
             </section>
 
             {/* Kupon & Promo Kasir */}
-            <section className="rounded-xl border border-gray-200 dark:border-border bg-gray-50/80 dark:bg-surface-alt/80 p-3 space-y-2.5 shadow-2xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-700 dark:text-content-muted flex items-center gap-1.5">
-                  <Ticket className="size-3.5 text-primary" />
+            <section className="rounded-xl border border-gray-200 dark:border-border bg-gray-50/60 dark:bg-surface-alt/60 p-2.5 space-y-2">
+              {/* Header row: label + tombol katalog kecil */}
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10.5px] font-bold uppercase tracking-wider text-gray-500 dark:text-content-muted flex items-center gap-1">
+                  <Ticket className="size-3 text-primary" />
                   Kupon &amp; Promo
                 </span>
                 <button
                   type="button"
                   onClick={() => setShowPromosModal(true)}
-                  className="text-[11px] font-semibold text-primary hover:text-primary/80 flex items-center gap-1.5 transition bg-primary/10 hover:bg-primary/20 px-2.5 py-1 rounded-full border border-primary/20"
+                  className="flex items-center gap-1 text-[10px] font-semibold text-primary bg-primary/8 hover:bg-primary/15 border border-primary/15 px-2 py-0.5 rounded-full transition"
                 >
-                  <Sparkles className="size-3 text-primary animate-pulse" />
-                  <span>Katalog Promo &amp; Kupon ({activePromos.length + activeCoupons.length})</span>
+                  <Sparkles className="size-2.5 shrink-0" />
+                  Lihat Katalog
+                  <Badge className="ml-0.5 text-[9px] px-1 py-0 h-3.5 font-bold bg-primary text-white rounded-full border-0">
+                    {activePromos.length + activeCoupons.length}
+                  </Badge>
                 </button>
               </div>
 
-              {/* Input & Apply Button */}
-              <div className="flex items-center gap-1.5">
-                <div className="relative flex-1 flex items-center">
+              {/* Input + tombol Terapkan dalam satu baris */}
+              <div className="flex items-center gap-1">
+                <div className="relative flex-1">
                   <Input
-                    placeholder="Kode kupon (cth: KUPON-SANTRI10K)…"
+                    placeholder="Kode kupon…"
                     value={appliedCoupon}
                     onChange={(e) => {
                       setAppliedCoupon(e.target.value.toUpperCase())
@@ -1567,61 +1571,53 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                         void handleApplyCoupon()
                       }
                     }}
-                    className={`h-8.5 pr-7 text-xs font-mono font-bold uppercase ${posFieldClass}`}
+                    className={`h-7 text-[11px] font-mono font-bold uppercase pr-6 ${posFieldClass}`}
                   />
-                  {appliedCoupon ? (
+                  {appliedCoupon && (
                     <button
                       type="button"
                       onClick={handleRemoveCoupon}
-                      className="absolute right-2 text-gray-400 hover:text-gray-600 dark:hover:text-content"
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                     >
-                      <X className="size-3.5" />
+                      <X className="size-3" />
                     </button>
-                  ) : null}
+                  )}
                 </div>
                 <Button
                   type="button"
                   size="sm"
                   disabled={!appliedCoupon.trim() || couponValidating}
                   onClick={() => void handleApplyCoupon()}
-                  className="h-8.5 text-xs font-semibold px-3 shrink-0"
+                  className="h-7 text-[11px] font-semibold px-2.5 shrink-0"
                 >
-                  {couponValidating ? 'Cek…' : 'Terapkan'}
+                  {couponValidating ? '…' : 'Terapkan'}
                 </Button>
               </div>
 
-              {/* Status Card Kupon Aktif */}
+              {/* Status kupon setelah validasi */}
               {appliedCoupon && couponValidationResult && (
-                <div
-                  className={cn(
-                    'rounded-lg p-2.5 border text-xs flex items-start justify-between gap-2 transition',
-                    couponValidationResult.valid
-                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
-                      : 'bg-danger/10 border-danger/30 text-danger'
-                  )}
-                >
-                  <div className="space-y-0.5 min-w-0">
-                    <div className="flex items-center gap-1.5 font-bold">
-                      {couponValidationResult.valid ? <CheckCircle2 className="size-3.5 shrink-0 text-emerald-500" /> : <AlertCircle className="size-3.5 shrink-0 text-danger" />}
-                      <span className="font-mono">{appliedCoupon}</span>
-                      {couponValidationResult.valid && (
-                        <Badge variant="outline" className="text-[10px] bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
-                          Hemat {formatMoney(couponValidationResult.discount)}
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-[11px] opacity-90 truncate">
-                      {couponValidationResult.valid
-                        ? couponValidationResult.coupon?.name || 'Kupon siap digunakan saat checkout.'
-                        : couponValidationResult.message || 'Kupon tidak memenuhi syarat.'}
-                    </p>
+                <div className={cn(
+                  'rounded-lg px-2.5 py-1.5 border text-[11px] flex items-center justify-between gap-2',
+                  couponValidationResult.valid
+                    ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'
+                    : 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400'
+                )}>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    {couponValidationResult.valid
+                      ? <CheckCircle2 className="size-3.5 shrink-0 text-emerald-500" />
+                      : <AlertCircle className="size-3.5 shrink-0 text-rose-500" />}
+                    <span className="font-mono font-bold truncate">{appliedCoupon}</span>
+                    {couponValidationResult.valid && (
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400 shrink-0">
+                        − {formatMoney(couponValidationResult.discount)}
+                      </span>
+                    )}
+                    {!couponValidationResult.valid && (
+                      <span className="truncate opacity-80 text-[10px]">{couponValidationResult.message}</span>
+                    )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleRemoveCoupon}
-                    className="text-content-muted hover:text-danger p-0.5 shrink-0"
-                  >
-                    <Trash2 className="size-3.5" />
+                  <button type="button" onClick={handleRemoveCoupon} className="shrink-0 text-gray-400 hover:text-rose-500">
+                    <X className="size-3" />
                   </button>
                 </div>
               )}
