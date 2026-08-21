@@ -78,7 +78,7 @@ export function MemberTransactionsSheet({ member, open, onOpenChange }: MemberTr
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-xl overflow-y-auto bg-slate-50 dark:bg-slate-950 p-6">
+      <SheetContent className="w-full data-[side=right]:sm:max-w-[750px] overflow-y-auto bg-slate-50 dark:bg-slate-950 p-6">
         <SheetHeader className="pb-4 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center justify-between">
             <div>
