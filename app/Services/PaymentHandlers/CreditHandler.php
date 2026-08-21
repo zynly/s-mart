@@ -11,6 +11,7 @@ use App\Models\Receivable;
 use App\Models\Sale;
 use App\Models\SalePayment;
 use App\Services\AuthorizationService;
+use App\Services\MemberPinService;
 use App\Support\ReferenceGenerator;
 use DomainException;
 
@@ -23,12 +24,23 @@ use DomainException;
  */
 class CreditHandler implements PaymentHandler
 {
-    public function __construct(private readonly AuthorizationService $authorizationService) {}
+    public function __construct(
+        private readonly AuthorizationService $authorizationService,
+        private readonly MemberPinService $pinService,
+    ) {}
 
     public function handle(Sale $sale, PaymentMethod $method, array $payload, ?Member $member, CashierSession $session, Outlet $outlet): SalePayment
     {
         if ($member === null) {
-            throw new DomainException('Metode Kredit/Tempo membutuhkan anggota yang terpilih.');
+            throw new DomainException('Metode Kredit/Tempo membutuhkan anggota terdaftar yang terpilih.');
+        }
+
+        if ($member->pin === null) {
+            throw MemberPinNotSetException::make();
+        }
+
+        if (! $this->pinService->verify($member, (string) ($payload['pin'] ?? ''))) {
+            throw InvalidPinException::make();
         }
 
         $amount = (int) $payload['amount'];

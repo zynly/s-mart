@@ -22,56 +22,125 @@ type SaleDetail = {
 
 export default function Receipt({ sale }: { sale: SaleDetail }) {
   return (
-    <div className="mx-auto flex h-full max-w-md flex-col items-center gap-4 overflow-y-auto p-6">
-      <div className="flex size-16 items-center justify-center rounded-full bg-green-100 text-green-600">
-        <Check className="size-8" strokeWidth={2.5} />
+    <div className="mx-auto flex h-full max-w-lg flex-col items-center gap-4 overflow-y-auto p-4 sm:p-6">
+      <div className="flex size-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
+        <Check className="size-7" strokeWidth={2.5} />
       </div>
-      <p className="text-lg font-semibold text-gray-900">Transaksi Berhasil</p>
-      <p className="font-mono text-gray-500">{sale.reference}</p>
+      <div className="text-center">
+        <h1 className="text-lg font-bold text-gray-900 dark:text-white">Transaksi Berhasil</h1>
+        <p className="font-mono text-xs text-gray-500">{sale.reference}</p>
+      </div>
 
-      <div className="w-full rounded-xl border border-gray-200 bg-white p-4">
-        {sale.items.map((item) => (
-          <div key={item.id} className="flex justify-between py-1 text-sm text-gray-700">
-            <span>{item.product.name} × {item.qty}</span>
-            <Money amount={item.subtotal} size="sm" />
-          </div>
-        ))}
-        <div className="mt-2 flex justify-between border-t border-gray-200 pt-2 font-semibold text-gray-900">
-          <span>TOTAL</span>
-          <Money amount={sale.grand_total} size="lg" />
+      {/* Thermal Receipt Paper Card (Tampilan Presisi Struk Termal 58mm/80mm) */}
+      <div className="w-[320px] max-w-full font-mono text-[11px] leading-tight text-black bg-white p-4 border border-dashed border-gray-300 shadow-md">
+        {/* Header Toko */}
+        <div className="text-center font-bold text-xs uppercase tracking-wider mb-0.5">SKILLAGE MART</div>
+        <div className="text-center text-[10px] text-gray-600">SMK Skill Village Islamic School</div>
+        <div className="text-center text-[10px] text-gray-600">Jonggol, Kab. Bogor</div>
+
+        <div className="my-2 border-b border-dashed border-black" />
+
+        {/* Info Transaksi */}
+        <div className="flex justify-between">
+          <span>No: {sale.reference}</span>
         </div>
-        {sale.payments.map((payment) => (
-          <div key={payment.id} className="flex justify-between text-sm text-gray-500">
-            <span>Bayar ({payment.payment_method.name})</span>
-            <Money amount={payment.amount} size="sm" />
+        <div className="flex justify-between">
+          <span>Kasir: {sale.user?.name ?? 'Kasir'}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>Tgl: {new Date(sale.sale_date).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</span>
+        </div>
+
+        <div className="my-2 border-b border-dashed border-black" />
+
+        {/* Items */}
+        <div className="space-y-1.5">
+          {sale.items.map((item) => (
+            <div key={item.id}>
+              <div className="font-bold line-clamp-1">{item.product?.name ?? 'Produk'}</div>
+              <div className="flex justify-between text-[10px] pl-2">
+                <span>{item.qty} × Rp {item.unit_price.toLocaleString('id-ID')}</span>
+                <span className="font-bold">Rp {item.subtotal.toLocaleString('id-ID')}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="my-2 border-b border-dashed border-black" />
+
+        {/* Ringkasan Total */}
+        <div className="space-y-1">
+          <div className="flex justify-between">
+            <span>Subtotal</span>
+            <span>Rp {sale.subtotal.toLocaleString('id-ID')}</span>
           </div>
-        ))}
-        {sale.change_amount > 0 && (
-          <div className="flex justify-between text-sm text-gray-500">
-            <span>Kembalian</span>
-            <Money amount={sale.change_amount} size="sm" />
+          {sale.total_discount > 0 && (
+            <div className="flex justify-between text-red-600">
+              <span>Diskon</span>
+              <span>-Rp {sale.total_discount.toLocaleString('id-ID')}</span>
+            </div>
+          )}
+          <div className="flex justify-between font-bold text-xs pt-1 border-t border-black">
+            <span>TOTAL</span>
+            <span>Rp {sale.grand_total.toLocaleString('id-ID')}</span>
           </div>
+
+          {sale.payments.map((payment) => (
+            <div key={payment.id} className="flex justify-between text-[10px] pt-0.5">
+              <span>Bayar ({payment.payment_method?.name ?? 'Tunai'})</span>
+              <span>Rp {payment.amount.toLocaleString('id-ID')}</span>
+            </div>
+          ))}
+
+          {sale.change_amount > 0 && (
+            <div className="flex justify-between text-[10px] pt-0.5">
+              <span>Kembali</span>
+              <span>Rp {sale.change_amount.toLocaleString('id-ID')}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Member & Saldo / Status Kredit */}
+        {sale.member && (
+          <>
+            <div className="my-2 border-b border-dashed border-black" />
+            <div className="text-[10px]">
+              <span className="font-bold">{sale.member.name}</span>
+              {sale.member.class_name && <span> ({sale.member.class_name})</span>}
+            </div>
+            {sale.payments.some((p) => p.payment_method?.type === 'deposit') && (
+              <div className="flex justify-between font-bold text-[10px] pt-1">
+                <span>Saldo Akhir</span>
+                <span>Rp {sale.member.balance_cache.toLocaleString('id-ID')}</span>
+              </div>
+            )}
+            {sale.payments.some((p) => p.payment_method?.type === 'credit') && (
+              <div className="flex justify-between font-bold text-[10px] pt-1 text-amber-900">
+                <span>Status Pembayaran</span>
+                <span>KREDIT / TEMPO</span>
+              </div>
+            )}
+          </>
         )}
-        {sale.member && sale.payments.some((p) => p.payment_method.type === 'deposit') && (
-          <div className="mt-2 flex justify-between border-t border-gray-200 pt-2 text-sm text-gray-700">
-            <span>Saldo Akhir {sale.member.name}</span>
-            <Money amount={sale.member.balance_cache} />
-          </div>
-        )}
+
+        <div className="my-2 border-b border-dashed border-black" />
+        <div className="text-center text-[10px] text-gray-700">Terima kasih & barakallah</div>
+        <div className="text-center text-[9px] text-gray-500">Simpan struk sebagai bukti resmi</div>
       </div>
 
-      <div className="flex w-full gap-2">
+      {/* Tombol Aksi */}
+      <div className="flex w-full max-w-[320px] gap-2 mt-1">
         <button
           type="button"
           onClick={() => window.open(route('pos.sales.receipt-pdf', sale.id), '_blank')}
-          className="flex-1 rounded-xl border border-gray-300 bg-white py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+          className="flex-1 rounded-xl bg-navy-900 dark:bg-amber-500 text-white dark:text-navy-950 py-2.5 text-xs font-bold shadow-sm hover:bg-navy-800 transition-colors"
         >
-          Cetak Struk
+          Cetak Struk (PDF)
         </button>
         <button
           type="button"
           onClick={() => router.visit(route('pos.index'))}
-          className="flex-1 rounded-xl bg-navy-700 py-2.5 text-sm font-medium text-white transition-colors hover:bg-navy-800"
+          className="flex-1 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-surface py-2.5 text-xs font-bold text-gray-800 dark:text-gray-200 transition-colors hover:bg-gray-50"
         >
           Transaksi Baru
         </button>
