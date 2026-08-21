@@ -91,6 +91,14 @@ class SaleController extends Controller
         ]);
     }
 
+    public function catalogApi(Request $request): JsonResponse
+    {
+        $session = $this->sessionService->getActive($request->user());
+        $outlet = $session?->outlet ?? Outlet::where('is_main', true)->first();
+
+        return response()->json($this->catalogPayload($request, $outlet));
+    }
+
     /**
      * Integrasi Midtrans di kasir (QRIS/e-wallet/transfer) — order_id
      * EPHEMERAL, sengaja TIDAK disimpan ke tabel manapun: Sale belum

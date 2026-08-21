@@ -137,6 +137,13 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
   const [catalogSearch, setCatalogSearch] = useState('')
   const [posCatModalOpen, setPosCatModalOpen] = useState(false)
   const [posCatModalSearch, setPosCatModalSearch] = useState('')
+  const [catalogState, setCatalogState] = useState(catalog)
+  const [isCatalogLoading, setIsCatalogLoading] = useState(false)
+  const catalogCache = useRef<Record<string, typeof catalog>>({})
+
+  useEffect(() => {
+    setCatalogState(catalog)
+  }, [catalog])
 
   const selectedCategoriesList = useMemo(
     () => categories.filter((c) => selectedPosCategories.includes(c.id)),
@@ -149,13 +156,41 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
     return categories.filter((c) => c.name.toLowerCase().includes(q))
   }, [categories, posCatModalSearch])
 
-  function reloadCatalog(patch: { category_ids?: string; search?: string; page?: number }) {
-    router.get(route('pos.index'), {
-      category_ids: patch.category_ids !== undefined ? patch.category_ids : selectedPosCategories.join(','),
-      search: patch.search !== undefined ? patch.search : catalogSearch,
-      page: patch.page ?? 1,
-    }, { preserveState: true, preserveScroll: true, only: ['catalog'] })
-  }
+  const fetchCatalog = useCallback(async (patch: { category_ids?: string; search?: string; page?: number }) => {
+    const nextCatIds = patch.category_ids !== undefined ? patch.category_ids : selectedPosCategories.join(',')
+    const nextSearch = patch.search !== undefined ? patch.search : catalogSearch
+    const nextPage = patch.page ?? 1
+    const cacheKey = `${nextCatIds}|${nextSearch}|${nextPage}`
+
+    if (catalogCache.current[cacheKey]) {
+      setCatalogState(catalogCache.current[cacheKey])
+      return
+    }
+
+    setIsCatalogLoading(true)
+    try {
+      const url = new URL(route('pos.catalog'), window.location.origin)
+      if (nextCatIds) url.searchParams.set('category_ids', nextCatIds)
+      if (nextSearch) url.searchParams.set('search', nextSearch)
+      url.searchParams.set('page', String(nextPage))
+
+      const res = await fetch(url.toString(), {
+        headers: {
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        catalogCache.current[cacheKey] = data
+        setCatalogState(data)
+      }
+    } catch (err) {
+      console.error('Failed to fetch catalog:', err)
+    } finally {
+      setIsCatalogLoading(false)
+    }
+  }, [selectedPosCategories, catalogSearch])
   const [cart, setCart] = useState<CartLine[]>([])
   const [member, setMember] = useState<MemberResult | null>(null)
   const [appliedCoupon, setAppliedCoupon] = useState('')
@@ -1048,7 +1083,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
             <div className="flex items-center flex-wrap gap-2 min-w-0">
               <h2 className="text-xs font-bold uppercase tracking-wider text-navy-800 dark:text-content-muted">Katalog Produk</h2>
               <Badge variant="secondary" className="text-[10px] bg-navy-100 dark:bg-surface-alt text-navy-800 dark:text-content font-semibold">
-                {catalog.total} produk
+                {catalogState.total} produk
               </Badge>
               {selectedCategoriesList.length > 0 && (
                 <div className="flex items-center flex-wrap gap-1">
@@ -1061,7 +1096,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                         onClick={() => {
                           const next = selectedPosCategories.filter((id) => id !== cat.id)
                           setSelectedPosCategories(next)
-                          reloadCatalog({ category_ids: next.join(',') })
+                          void fetchCatalog({ category_ids: next.join(','), page: 1 })
                         }}
                         className="ml-0.5 text-content-muted hover:text-danger"
                       >
@@ -1081,7 +1116,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                     className="h-5 text-[10px] px-1.5 text-danger hover:text-danger hover:bg-danger/10"
                     onClick={() => {
                       setSelectedPosCategories([])
-                      reloadCatalog({ category_ids: '' })
+                      void fetchCatalog({ category_ids: '', page: 1 })
                     }}
                   >
                     Reset
@@ -1126,7 +1161,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault()
-                      reloadCatalog({ search: catalogSearch })
+                      void fetchCatalog({ search: catalogSearch, page: 1 })
                     }
                   }}
                   className={`h-8.5 w-40 sm:w-56 pl-8 pr-7 text-xs bg-white dark:bg-surface ${posFieldClass}`}
@@ -1136,7 +1171,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                     type="button"
                     onClick={() => {
                       setCatalogSearch('')
-                      reloadCatalog({ search: '' })
+                      void fetchCatalog({ search: '', page: 1 })
                     }}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 dark:hover:text-content"
                   >
@@ -1147,10 +1182,17 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
             </div>
           </div>
 
-          {/* Product Cards Grid (Vertikal Scrollable) */}
-          <div className="flex-1 overflow-y-auto pr-2 min-h-0 custom-scrollbar">
+          {/* Product Cards Grid (Vertikal Scrollable) dengan Loading Transparan */}
+          <div className="relative flex-1 overflow-y-auto pr-2 min-h-0 custom-scrollbar">
+            {isCatalogLoading && (
+              <div className="absolute inset-0 bg-white/60 dark:bg-black/50 backdrop-blur-[1px] flex items-center justify-center z-10 rounded-xl">
+                <span className="text-xs font-semibold text-primary animate-pulse bg-surface/90 px-3 py-1.5 rounded-lg border border-border shadow-xs">
+                  Memuat katalog produk…
+                </span>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4">
-              {catalog.data.map((p) => (
+              {catalogState.data.map((p) => (
                 <button
                   key={p.id}
                   type="button"
@@ -1180,7 +1222,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
               ))}
             </div>
 
-            {catalog.data.length === 0 && (
+            {catalogState.data.length === 0 && (
               <div className="flex h-48 flex-col items-center justify-center text-gray-400">
                 <Search className="mb-2 size-8 opacity-30" />
                 <p className="text-sm">Tidak ada produk berstok yang cocok.</p>
@@ -1188,12 +1230,32 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
             )}
           </div>
 
-          {/* Pagination */}
-          {catalog.last_page > 1 && (
+          {/* Pagination Instant Asynchronous */}
+          {catalogState.last_page > 1 && (
             <div className="flex shrink-0 items-center justify-between border-t border-gray-200 dark:border-border pt-2 text-xs text-gray-600 dark:text-content-muted">
-              <Button type="button" size="sm" variant="outline" className="h-7 text-xs dark:border-border dark:bg-surface dark:text-content hover:dark:bg-surface-alt" disabled={catalog.current_page <= 1} onClick={() => reloadCatalog({ page: catalog.current_page - 1 })}>◀ Sebelum</Button>
-              <span className="font-bold dark:text-content">Hal. {catalog.current_page} dari {catalog.last_page}</span>
-              <Button type="button" size="sm" variant="outline" className="h-7 text-xs dark:border-border dark:bg-surface dark:text-content hover:dark:bg-surface-alt" disabled={catalog.current_page >= catalog.last_page} onClick={() => reloadCatalog({ page: catalog.current_page + 1 })}>Lanjut ▶</Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs dark:border-border dark:bg-surface dark:text-content hover:dark:bg-surface-alt"
+                disabled={catalogState.current_page <= 1 || isCatalogLoading}
+                onClick={() => void fetchCatalog({ page: catalogState.current_page - 1 })}
+              >
+                ◀ Sebelum
+              </Button>
+              <span className="font-bold dark:text-content">
+                Hal. {catalogState.current_page} dari {catalogState.last_page}
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs dark:border-border dark:bg-surface dark:text-content hover:dark:bg-surface-alt"
+                disabled={catalogState.current_page >= catalogState.last_page || isCatalogLoading}
+                onClick={() => void fetchCatalog({ page: catalogState.current_page + 1 })}
+              >
+                Lanjut ▶
+              </Button>
             </div>
           )}
         </section>
@@ -2531,7 +2593,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                 size="sm"
                 onClick={() => {
                   setSelectedPosCategories([...modalSelectedCats])
-                  reloadCatalog({ category_ids: modalSelectedCats.join(','), page: 1 })
+                  void fetchCatalog({ category_ids: modalSelectedCats.join(','), page: 1 })
                   setPosCatModalOpen(false)
                 }}
                 className="font-semibold text-xs px-6 h-9"

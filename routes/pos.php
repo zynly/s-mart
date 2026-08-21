@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('pos')->name('pos.')->middleware(['auth'])->group(function () {
     Route::get('/', [SaleController::class, 'index'])->name('index')->middleware('can:pos.view');
+    Route::get('/catalog', [SaleController::class, 'catalogApi'])->name('catalog')->middleware('can:pos.view');
     Route::get('/scan', [SaleController::class, 'scan'])->name('scan')->middleware('can:pos.view');
     Route::get('/search-member', [SaleController::class, 'searchMember'])->name('search-member')->middleware('can:pos.view');
     Route::get('/credit-check', [SaleController::class, 'creditCheck'])->name('credit-check')->middleware('can:pos.view');
