@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react'
 import { router, usePage } from '@inertiajs/react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { toast } from 'sonner'
 import {
-  AlertCircle, ArrowDownCircle, ArrowUpCircle, Check, CheckCircle2, CheckSquare, ChevronLeft, ChevronRight, Coins, CreditCard, Filter, Folder, Lock, Pause, Phone, PlusCircle, Printer, Receipt, RotateCcw,
-  QrCode, ScanLine, Search, ShoppingCart, Sparkles, Store, Tag, Trash2, UserCircle, Wallet, X,
+  AlertCircle, ArrowDownCircle, ArrowUpCircle, Check, CheckCircle2, CheckSquare, ChevronLeft, ChevronRight, Clock, Coins, Copy, CreditCard, Filter, Flame, Folder, Gift, Info, Layers, Lock, Pause, Percent, Phone, PlusCircle, Printer, Receipt, RotateCcw,
+  QrCode, ScanLine, Search, ShoppingCart, Sparkles, Store, Tag, Ticket, Trash2, UserCircle, Wallet, X, Zap,
 } from 'lucide-react'
 import PosLayout from '@/Layouts/PosLayout'
 import { Money } from '@/Components/common/Money'
@@ -110,11 +110,33 @@ type ActivePromoRow = {
   id: number
   code: string
   name: string
+  description?: string | null
   type: string
   discount_type: string
   discount_value: number
+  max_discount: number | null
   min_purchase: number | null
+  buy_qty?: string | null
+  get_qty?: string | null
+  min_qty?: string | null
   scope: string
+  start_time?: string | null
+  end_time?: string | null
+  days_of_week?: number[] | null
+}
+
+type ActiveCouponRow = {
+  id: number
+  code: string
+  name: string
+  discount_type: 'percent' | 'amount'
+  discount_value: number
+  max_discount: number | null
+  min_purchase: number | null
+  valid_until: string
+  source: string
+  quota: number
+  used_count: number
 }
 
 type PosIndexProps = {
@@ -125,13 +147,14 @@ type PosIndexProps = {
   categories: CategoryRef[]
   holds: HoldRow[]
   activePromos?: ActivePromoRow[]
+  activeCoupons?: ActiveCouponRow[]
   noPinThreshold: number
   pointValue: number
   midtransClientKey: string | null
   midtransIsProduction: boolean
 }
 
-export default function Index({ session, outlet, paymentMethods, catalog, categories, holds, activePromos = [], noPinThreshold, pointValue, midtransClientKey, midtransIsProduction }: PosIndexProps) {
+export default function Index({ session, outlet, paymentMethods, catalog, categories, holds, activePromos = [], activeCoupons = [], noPinThreshold, pointValue, midtransClientKey, midtransIsProduction }: PosIndexProps) {
   const [selectedPosCategories, setSelectedPosCategories] = useState<number[]>([])
   const [modalSelectedCats, setModalSelectedCats] = useState<number[]>([])
   const [catalogSearch, setCatalogSearch] = useState('')
@@ -195,6 +218,15 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
   const [member, setMember] = useState<MemberResult | null>(null)
   const [appliedCoupon, setAppliedCoupon] = useState('')
   const [showPromosModal, setShowPromosModal] = useState(false)
+  const [promoModalTab, setPromoModalTab] = useState<'promos' | 'coupons'>('promos')
+  const [promoTypeFilter, setPromoTypeFilter] = useState<string>('all')
+  const [couponValidating, setCouponValidating] = useState(false)
+  const [couponValidationResult, setCouponValidationResult] = useState<{
+    valid: boolean
+    discount: number
+    message: string | null
+    coupon?: ActiveCouponRow | null
+  } | null>(null)
   const [barcode, setBarcode] = useState('')
   const [scanError, setScanError] = useState<string | null>(null)
   const [memberQuery, setMemberQuery] = useState('')
@@ -265,6 +297,8 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
   }
 
   const subtotal = useMemo(() => cart.reduce((sum, line) => sum + line.qty * line.unit_price, 0), [cart])
+  const couponDiscount = couponValidationResult?.valid ? couponValidationResult.discount : 0
+  const finalPayable = Math.max(0, subtotal - couponDiscount)
 
   const activeMethod = useMemo(() => {
     if (directMethodId) {
@@ -275,8 +309,69 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
   }, [directMethodId, paymentMethods])
 
   const isCash = activeMethod?.type === 'cash'
-  const changeAmount = isCash && cashInput > subtotal ? cashInput - subtotal : 0
-  const underpaidAmount = isCash && cashInput > 0 && cashInput < subtotal ? subtotal - cashInput : 0
+  const changeAmount = isCash && cashInput > finalPayable ? cashInput - finalPayable : 0
+  const underpaidAmount = isCash && cashInput > 0 && cashInput < finalPayable ? finalPayable - cashInput : 0
+
+  const handleApplyCoupon = useCallback(
+    async (codeToApply?: string) => {
+      const code = (codeToApply ?? appliedCoupon).trim().toUpperCase()
+      if (!code) {
+        setAppliedCoupon('')
+        setCouponValidationResult(null)
+        return
+      }
+
+      setCouponValidating(true)
+      try {
+        const res = await apiPost<{ valid: boolean; discount: number; message?: string | null; coupon?: any }>(
+          route('pos.validate-coupon'),
+          {
+            code,
+            items: cart.map((c) => ({ product_id: c.product_id, subtotal: c.qty * c.unit_price })),
+            member_id: member?.id ?? null,
+          }
+        )
+
+        if (res.valid) {
+          setAppliedCoupon(code)
+          setCouponValidationResult({
+            valid: true,
+            discount: res.discount,
+            message: null,
+            coupon: res.coupon,
+          })
+          toast.success(`Kupon ${code} berhasil diterapkan!`, {
+            description: `Mendapatkan potongan senilai ${formatMoney(res.discount)}.`,
+          })
+        } else {
+          setCouponValidationResult({
+            valid: false,
+            discount: 0,
+            message: res.message || 'Kupon tidak valid untuk transaksi ini.',
+            coupon: null,
+          })
+          toast.error(`Kupon tidak valid: ${res.message || 'Syarat kupon belum terpenuhi.'}`)
+        }
+      } catch (err: any) {
+        toast.error(err?.message || 'Gagal memvalidasi kupon.')
+      } finally {
+        setCouponValidating(false)
+      }
+    },
+    [appliedCoupon, cart, member]
+  )
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon('')
+    setCouponValidationResult(null)
+    toast.info('Kupon dibatalkan dari transaksi.')
+  }
+
+  const handleSelectCouponFromModal = (couponCode: string) => {
+    setAppliedCoupon(couponCode)
+    setShowPromosModal(false)
+    void handleApplyCoupon(couponCode)
+  }
 
   function focusScan() {
     barcodeRef.current?.focus()
@@ -688,7 +783,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
     setSubmitting(true)
     setPaymentError(null)
 
-    const finalReceived = isCash ? (cashInput > 0 ? cashInput : subtotal) : subtotal
+    const finalReceived = isCash ? (cashInput > 0 ? cashInput : finalPayable) : finalPayable
     const finalCouponCode = extraPayload.coupon_code ?? (appliedCoupon.trim() ? appliedCoupon.trim() : null)
 
     router.post(
@@ -702,8 +797,8 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
         payments: [
           {
             payment_method_id: activeMethod.id,
-            amount: subtotal,
-            received_amount: activeMethod.allows_change ? finalReceived : subtotal,
+            amount: finalPayable,
+            received_amount: activeMethod.allows_change ? finalReceived : finalPayable,
             reference_no: extraPayload.reference_no ?? null,
             pin: extraPayload.pin ?? null,
             point_used: extraPayload.point_used ?? null,
@@ -716,7 +811,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
           const flash = page.props.flash as any
           const saleId = flash?.completed_sale_id
           const saleRef = flash?.completed_sale_ref
-          const change = isCash && cashInput > subtotal ? cashInput - subtotal : 0
+          const change = isCash && cashInput > finalPayable ? cashInput - finalPayable : 0
           const changeInfo = change > 0 ? `Kembalian: Rp ${change.toLocaleString('id-ID')}. ` : ''
 
           toast.success('Pembayaran Berhasil! Transaksi telah disimpan.', {
@@ -727,11 +822,11 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
             open: true,
             type: 'success',
             title: 'Transaksi Berhasil!',
-            message: `Pembayaran senilai Rp ${subtotal.toLocaleString('id-ID')} berhasil dicatat ke sistem.`,
+            message: `Pembayaran senilai Rp ${finalPayable.toLocaleString('id-ID')} berhasil dicatat ke sistem.`,
             saleId: saleId ?? null,
             saleRef: saleRef ?? null,
-            amount: subtotal,
-            cashReceived: isCash ? (cashInput > 0 ? cashInput : subtotal) : subtotal,
+            amount: finalPayable,
+            cashReceived: isCash ? (cashInput > 0 ? cashInput : finalPayable) : finalPayable,
             changeAmount: change,
             methodName: activeMethod?.name ?? 'Tunai',
           })
@@ -739,6 +834,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
           setCart([])
           setMember(null)
           setAppliedCoupon('')
+          setCouponValidationResult(null)
           setCashInput(0)
           setPaymentError(null)
           setMethodDialog(null)
@@ -763,9 +859,9 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
   }
 
   async function handleDirectSubmit() {
-    if (!session || !outlet || cart.length === 0 || subtotal <= 0 || !activeMethod) return
+    if (!session || !outlet || cart.length === 0 || finalPayable < 0 || !activeMethod) return
 
-    if (isCash && cashInput > 0 && cashInput < subtotal) {
+    if (isCash && cashInput > 0 && cashInput < finalPayable) {
       setPaymentError(`Uang bayar kurang dari total belanja.`)
       return
     }
@@ -789,20 +885,20 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
         requireMember('Saldo Deposit')
         return
       }
-      if (member.balance_cache < subtotal) {
-        const shortage = subtotal - member.balance_cache
-        const msg = `Saldo deposit anggota (Rp ${member.balance_cache.toLocaleString('id-ID')}) tidak mencukupi untuk pembayaran Rp ${subtotal.toLocaleString('id-ID')}.`
+      if (member.balance_cache < finalPayable) {
+        const shortage = finalPayable - member.balance_cache
+        const msg = `Saldo deposit anggota (Rp ${member.balance_cache.toLocaleString('id-ID')}) tidak mencukupi untuk pembayaran Rp ${finalPayable.toLocaleString('id-ID')}.`
         setPaymentError(msg)
         setInsufficientDepositModal({
           memberName: member.name,
           memberNumber: member.member_number,
           currentBalance: member.balance_cache,
-          requiredAmount: subtotal,
+          requiredAmount: finalPayable,
           shortage,
         })
         return
       }
-      if (subtotal >= noPinThreshold && member.has_pin) {
+      if (finalPayable >= noPinThreshold && member.has_pin) {
         setDepositPin('')
         setMethodDialogError(null)
         setMethodDialog({ type: 'deposit' })
@@ -832,7 +928,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
         return
       }
       try {
-        const res = await fetch(`${route('pos.credit-check')}?member_id=${member.id}&amount=${subtotal}`)
+        const res = await fetch(`${route('pos.credit-check')}?member_id=${member.id}&amount=${finalPayable}`)
         const data = await res.json()
         if (!data.allowed) {
           const msg = `Limit piutang terlampaui: aktif Rp ${(data.active ?? 0).toLocaleString('id-ID')} dari limit Rp ${(data.limit ?? 0).toLocaleString('id-ID')}.`
@@ -853,8 +949,9 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
     if (activeMethod.type === 'qris' || activeMethod.type === 'ewallet' || activeMethod.type === 'transfer') {
       try {
         const res = await apiPost<{ provider?: string; token?: string; payment_url?: string; order_id?: string }>(route('pos.midtrans.create-transaction'), {
-          amount: subtotal,
+          amount: finalPayable,
           type: activeMethod.type,
+          coupon_code: appliedCoupon.trim() ? appliedCoupon.trim() : null,
         })
 
         type SnapResult = { transaction_id?: string; transaction_status?: 'settlement' | 'capture' | 'pending' }
@@ -870,12 +967,13 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
               outlet_id: outlet.id,
               cashier_session_id: session.id,
               member_id: member?.id ?? null,
+              coupon_code: appliedCoupon.trim() ? appliedCoupon.trim() : null,
               items: cart.map((l) => ({ product_id: l.product_id, unit_id: l.unit_id, qty: l.qty, unit_price: l.unit_price, product_name: l.product_name, unit_code: l.unit_code })),
               payments: [
                 {
                   payment_method_id: activeMethod.id,
-                  amount: subtotal,
-                  received_amount: subtotal,
+                  amount: finalPayable,
+                  received_amount: finalPayable,
                   reference_no: refNo,
                   gateway_status: status,
                 },
@@ -889,6 +987,8 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                 })
                 setCart([])
                 setMember(null)
+                setAppliedCoupon('')
+                setCouponValidationResult(null)
                 setCashInput(0)
                 setPaymentError(null)
                 idempotencyKeyRef.current = newIdempotencyKey()
@@ -906,7 +1006,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
         if (res.provider === 'pakasir' || res.payment_url) {
           setPakasirModalUrl(res.payment_url || null)
           setPakasirModalOrderId(res.order_id || null)
-          setPakasirModalAmount(subtotal)
+          setPakasirModalAmount(finalPayable)
           setSubmitting(false)
           toast.info('Memuat QRIS Pakasir Payment Gateway...')
         } else if (res.token) {
@@ -1435,46 +1535,94 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
             </section>
 
             {/* Kupon & Promo Kasir */}
-            <section className="rounded-xl border border-gray-200 dark:border-border bg-gray-50/70 dark:bg-surface-alt/70 p-2.5 space-y-2">
+            <section className="rounded-xl border border-gray-200 dark:border-border bg-gray-50/80 dark:bg-surface-alt/80 p-3 space-y-2.5 shadow-2xs">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-600 dark:text-content-muted flex items-center gap-1.5">
-                  <Tag className="size-3.5 text-amber-500" />
-                  Kupon / Promo
+                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-700 dark:text-content-muted flex items-center gap-1.5">
+                  <Ticket className="size-3.5 text-primary" />
+                  Kupon &amp; Promo
                 </span>
-                {activePromos && activePromos.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowPromosModal(true)}
+                  className="text-[11px] font-semibold text-primary hover:text-primary/80 flex items-center gap-1.5 transition bg-primary/10 hover:bg-primary/20 px-2.5 py-1 rounded-full border border-primary/20"
+                >
+                  <Sparkles className="size-3 text-primary animate-pulse" />
+                  <span>Katalog Promo &amp; Kupon ({activePromos.length + activeCoupons.length})</span>
+                </button>
+              </div>
+
+              {/* Input & Apply Button */}
+              <div className="flex items-center gap-1.5">
+                <div className="relative flex-1 flex items-center">
+                  <Input
+                    placeholder="Kode kupon (cth: KUPON-SANTRI10K)…"
+                    value={appliedCoupon}
+                    onChange={(e) => {
+                      setAppliedCoupon(e.target.value.toUpperCase())
+                      if (couponValidationResult) setCouponValidationResult(null)
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        void handleApplyCoupon()
+                      }
+                    }}
+                    className={`h-8.5 pr-7 text-xs font-mono font-bold uppercase ${posFieldClass}`}
+                  />
+                  {appliedCoupon ? (
+                    <button
+                      type="button"
+                      onClick={handleRemoveCoupon}
+                      className="absolute right-2 text-gray-400 hover:text-gray-600 dark:hover:text-content"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  ) : null}
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!appliedCoupon.trim() || couponValidating}
+                  onClick={() => void handleApplyCoupon()}
+                  className="h-8.5 text-xs font-semibold px-3 shrink-0"
+                >
+                  {couponValidating ? 'Cek…' : 'Terapkan'}
+                </Button>
+              </div>
+
+              {/* Status Card Kupon Aktif */}
+              {appliedCoupon && couponValidationResult && (
+                <div
+                  className={cn(
+                    'rounded-lg p-2.5 border text-xs flex items-start justify-between gap-2 transition',
+                    couponValidationResult.valid
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
+                      : 'bg-danger/10 border-danger/30 text-danger'
+                  )}
+                >
+                  <div className="space-y-0.5 min-w-0">
+                    <div className="flex items-center gap-1.5 font-bold">
+                      {couponValidationResult.valid ? <CheckCircle2 className="size-3.5 shrink-0 text-emerald-500" /> : <AlertCircle className="size-3.5 shrink-0 text-danger" />}
+                      <span className="font-mono">{appliedCoupon}</span>
+                      {couponValidationResult.valid && (
+                        <Badge variant="outline" className="text-[10px] bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
+                          Hemat {formatMoney(couponValidationResult.discount)}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-[11px] opacity-90 truncate">
+                      {couponValidationResult.valid
+                        ? couponValidationResult.coupon?.name || 'Kupon siap digunakan saat checkout.'
+                        : couponValidationResult.message || 'Kupon tidak memenuhi syarat.'}
+                    </p>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setShowPromosModal(true)}
-                    className="text-[11px] font-semibold text-amber-600 hover:text-amber-700 dark:text-amber-400 flex items-center gap-1 transition hover:underline"
+                    onClick={handleRemoveCoupon}
+                    className="text-content-muted hover:text-danger p-0.5 shrink-0"
                   >
-                    <Sparkles className="size-3 text-amber-500" />
-                    Promo Hari Ini ({activePromos.length})
+                    <Trash2 className="size-3.5" />
                   </button>
-                )}
-              </div>
-              <div className="relative flex items-center">
-                <Input
-                  placeholder="Ketik kode kupon / promo…"
-                  value={appliedCoupon}
-                  onChange={(e) => setAppliedCoupon(e.target.value.toUpperCase())}
-                  className={`h-8 pr-7 text-xs font-mono font-semibold uppercase ${posFieldClass}`}
-                />
-                {appliedCoupon ? (
-                  <button
-                    type="button"
-                    onClick={() => setAppliedCoupon('')}
-                    className="absolute right-2 text-gray-400 hover:text-gray-600 dark:hover:text-content"
-                  >
-                    <X className="size-3.5" />
-                  </button>
-                ) : null}
-              </div>
-              {appliedCoupon && (
-                <div className="flex items-center justify-between text-[11px] text-emerald-600 dark:text-emerald-400 font-medium px-1">
-                  <span>Kode aktif: <b className="font-mono">{appliedCoupon}</b></span>
-                  <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200">
-                    Akan Diterapkan
-                  </Badge>
                 </div>
               )}
             </section>
@@ -1484,21 +1632,23 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
               <h3 className="mb-2 text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-content-muted">Ringkasan</h3>
               <div className="space-y-1.5 text-xs">
                 <div className="flex justify-between text-gray-600 dark:text-content-muted">
-                  <span>Subtotal</span>
+                  <span>Subtotal Belanja</span>
                   <Money amount={subtotal} size="sm" />
                 </div>
+                {couponDiscount > 0 && (
+                  <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-semibold">
+                    <span>Potongan Kupon/Voucher</span>
+                    <span>− <Money amount={couponDiscount} size="sm" /></span>
+                  </div>
+                )}
                 <div className="flex justify-between text-gray-500 dark:text-content-subtle">
-                  <span>Diskon</span>
-                  <span>−</span>
-                </div>
-                <div className="flex justify-between text-gray-600 dark:text-content-muted">
-                  <span>Pajak</span>
-                  <span>−</span>
+                  <span>Pajak (PPN)</span>
+                  <span>Sudah Termasuk</span>
                 </div>
                 <div className="mt-1.5 border-t border-gray-200 dark:border-border pt-1.5">
                   <div className="flex items-baseline justify-between">
-                    <span className="text-sm font-bold text-gray-900 dark:text-content">TOTAL</span>
-                    <span className="font-mono text-lg font-bold text-amber-500"><Money amount={subtotal} size="lg" /></span>
+                    <span className="text-sm font-bold text-gray-900 dark:text-content">TOTAL BAYAR</span>
+                    <span className="font-mono text-lg font-bold text-amber-500"><Money amount={finalPayable} size="lg" /></span>
                   </div>
                 </div>
               </div>
@@ -2403,70 +2553,289 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Lihat Promo Hari Ini */}
-      <Dialog open={showPromosModal} onOpenChange={setShowPromosModal}>
-        <DialogContent className="max-h-[85vh] w-[92vw] sm:max-w-2xl md:max-w-3xl overflow-hidden flex flex-col p-0 rounded-2xl border-border bg-card shadow-2xl">
-          <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20">
+      {/* Dialog Katalog Promo & Kupon Hari Ini — 2 Tab */}
+      <Dialog open={showPromosModal} onOpenChange={(open) => {
+        setShowPromosModal(open)
+        if (!open) setPromoTypeFilter('all')
+      }}>
+        <DialogContent className="max-h-[90vh] w-[95vw] sm:max-w-2xl md:max-w-3xl overflow-hidden flex flex-col p-0 rounded-2xl border-border bg-card shadow-2xl">
+
+          {/* Header */}
+          <DialogHeader className="px-5 pt-5 pb-0 shrink-0">
             <DialogTitle className="flex items-center gap-2 text-base font-bold">
-              <Sparkles className="size-4.5 text-amber-500" />
-              Promo &amp; Diskon Aktif Hari Ini
+              <Sparkles className="size-4.5 text-primary" />
+              Katalog Promo &amp; Kupon Hari Ini
             </DialogTitle>
+
+            {/* 2-Tab Switcher */}
+            <div className="mt-3 flex gap-0 rounded-xl bg-muted p-1 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setPromoModalTab('promos')}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 transition-all',
+                  promoModalTab === 'promos'
+                    ? 'bg-white dark:bg-surface shadow text-primary font-bold'
+                    : 'text-content-muted hover:text-content'
+                )}
+              >
+                <Zap className="size-3.5" />
+                ✨ Promo Otomatis Toko
+                <Badge variant="outline" className="ml-1 text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-primary/20">
+                  {activePromos.length}
+                </Badge>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPromoModalTab('coupons')}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 transition-all',
+                  promoModalTab === 'coupons'
+                    ? 'bg-white dark:bg-surface shadow text-primary font-bold'
+                    : 'text-content-muted hover:text-content'
+                )}
+              >
+                <Ticket className="size-3.5" />
+                🎟️ Kupon &amp; Voucher
+                <Badge variant="outline" className="ml-1 text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-primary/20">
+                  {activeCoupons.length}
+                </Badge>
+              </button>
+            </div>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto px-6 py-4">
-            {activePromos.length === 0 ? (
-              <div className="py-8 text-center text-xs text-content-muted">
-                Tidak ada promo toko yang sedang aktif hari ini.
+
+          {/* ── TAB 1: PROMO OTOMATIS ── */}
+          {promoModalTab === 'promos' && (
+            <div className="flex-1 overflow-y-auto px-5 pb-5 pt-3 space-y-3">
+              {/* Penjelasan */}
+              <div className="rounded-lg bg-primary/5 border border-primary/15 p-3 text-xs text-content-muted flex items-start gap-2">
+                <Info className="size-3.5 shrink-0 text-primary mt-0.5" />
+                <p>Promo berikut <strong>dihitung otomatis</strong> oleh sistem kasir saat barang dimasukkan ke keranjang. Kasir tidak perlu menginput kode apapun.</p>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {activePromos.map((p) => {
-                  const discountText =
-                    p.discount_type === 'percent'
-                      ? `${p.discount_value}%`
-                      : p.discount_type === 'amount'
-                      ? formatMoney(p.discount_value)
-                      : p.discount_type === 'fixed_price'
-                      ? `Harga Pas ${formatMoney(p.discount_value)}`
-                      : 'Gratis'
-                  return (
-                    <div
-                      key={p.id}
-                      className="p-3 rounded-xl border border-border bg-background hover:border-amber-400 transition flex flex-col justify-between gap-2.5 shadow-xs"
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between gap-1.5">
-                          <span className="font-bold text-xs text-content truncate">{p.name}</span>
-                          <Badge variant="outline" className="text-[10px] font-mono shrink-0 bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950 dark:text-amber-300">
-                            {p.code}
-                          </Badge>
+
+              {/* Filter Type Pills */}
+              {activePromos.length > 0 && (() => {
+                const promoTypeLabels: Record<string, { label: string; icon: React.ReactNode }> = {
+                  all:          { label: 'Semua', icon: <Layers className="size-3" /> },
+                  product:      { label: 'Diskon Barang', icon: <Percent className="size-3" /> },
+                  category:     { label: 'Kategori', icon: <Folder className="size-3" /> },
+                  bundle:       { label: 'Paket Bundel', icon: <Gift className="size-3" /> },
+                  buy_x_get_y:  { label: 'Beli X Gratis Y', icon: <Sparkles className="size-3" /> },
+                  tiered_qty:   { label: 'Grosir / Semakin Banyak', icon: <Layers className="size-3" /> },
+                  happy_hour:   { label: 'Flash Sale / Happy Hour', icon: <Zap className="size-3" /> },
+                  clearance:    { label: 'Cuci Gudang', icon: <Flame className="size-3" /> },
+                  member_level: { label: 'Level Member', icon: <UserCircle className="size-3" /> },
+                  birthday:     { label: 'Birthday Promo', icon: <Gift className="size-3" /> },
+                }
+                const types = Array.from(new Set(activePromos.map((p) => p.type)))
+                return (
+                  <div className="flex gap-1.5 flex-wrap">
+                    {(['all', ...types] as string[]).map((t) => {
+                      const meta = promoTypeLabels[t] ?? { label: t, icon: <Tag className="size-3" /> }
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setPromoTypeFilter(t)}
+                          className={cn(
+                            'flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full border transition',
+                            promoTypeFilter === t
+                              ? 'bg-primary text-white border-primary shadow-sm'
+                              : 'bg-muted/60 text-content-muted border-border hover:bg-muted hover:text-content'
+                          )}
+                        >
+                          {meta.icon}
+                          {meta.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
+
+              {/* Promo Cards */}
+              {activePromos.length === 0 ? (
+                <div className="py-10 text-center text-xs text-content-muted">
+                  Tidak ada promo toko yang aktif hari ini.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {activePromos
+                    .filter((p) => promoTypeFilter === 'all' || p.type === promoTypeFilter)
+                    .map((p) => {
+                      const typeIcons: Record<string, React.ReactNode> = {
+                        product: <Percent className="size-3.5 text-primary" />,
+                        category: <Folder className="size-3.5 text-sky-500" />,
+                        bundle: <Gift className="size-3.5 text-violet-500" />,
+                        buy_x_get_y: <Sparkles className="size-3.5 text-amber-500" />,
+                        tiered_qty: <Layers className="size-3.5 text-teal-500" />,
+                        happy_hour: <Zap className="size-3.5 text-rose-500" />,
+                        clearance: <Flame className="size-3.5 text-orange-500" />,
+                        member_level: <UserCircle className="size-3.5 text-indigo-500" />,
+                        birthday: <Gift className="size-3.5 text-pink-500" />,
+                      }
+                      const discountText =
+                        p.discount_type === 'percent'
+                          ? `${p.discount_value}%`
+                          : p.discount_type === 'amount'
+                          ? formatMoney(p.discount_value)
+                          : p.discount_type === 'fixed_price'
+                          ? `Harga Pas ${formatMoney(p.discount_value)}`
+                          : 'Gratis'
+
+                      return (
+                        <div
+                          key={p.id}
+                          className="p-3 rounded-xl border border-border bg-background hover:border-primary/40 hover:shadow-sm transition flex flex-col gap-2 shadow-xs"
+                        >
+                          <div className="flex items-start justify-between gap-1.5">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              {typeIcons[p.type] ?? <Tag className="size-3.5 text-content-muted shrink-0" />}
+                              <span className="font-bold text-xs text-content truncate">{p.name}</span>
+                            </div>
+                            <Badge variant="outline" className="text-[10px] font-mono shrink-0 bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950 dark:text-amber-300">
+                              {p.code}
+                            </Badge>
+                          </div>
+
+                          {p.description && (
+                            <p className="text-[11px] text-content-muted leading-relaxed">{p.description}</p>
+                          )}
+
+                          <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">Hemat {discountText}</span>
+                            {p.min_purchase ? <span className="text-content-subtle">• Min. {formatMoney(p.min_purchase)}</span> : null}
+                            {p.buy_qty && p.get_qty ? <span className="text-content-subtle">• Beli {p.buy_qty} Gratis {p.get_qty}</span> : null}
+                            {p.start_time && p.end_time ? (
+                              <span className="flex items-center gap-0.5 text-content-subtle">
+                                <Clock className="size-3" /> {p.start_time}–{p.end_time}
+                              </span>
+                            ) : null}
+                          </div>
+
+                          <div className="mt-auto">
+                            <Badge className="text-[10px] w-full justify-center py-1.5 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 rounded-lg font-semibold">
+                              <CheckCircle2 className="size-3 mr-1" />
+                              ✓ Otomatis Dihitung di Keranjang
+                            </Badge>
+                          </div>
                         </div>
-                        <div className="text-[11px] text-content-muted flex items-center justify-between gap-1">
-                          <span className="font-semibold text-emerald-600 dark:text-emerald-400">Hemat {discountText}</span>
-                          {p.min_purchase ? (
-                            <span className="text-[10px] text-content-subtle">Min. {formatMoney(p.min_purchase)}</span>
-                          ) : null}
+                      )
+                    })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── TAB 2: KUPON & VOUCHER ── */}
+          {promoModalTab === 'coupons' && (
+            <div className="flex-1 overflow-y-auto px-5 pb-5 pt-3 space-y-3">
+              {/* Penjelasan */}
+              <div className="rounded-lg bg-primary/5 border border-primary/15 p-3 text-xs text-content-muted flex items-start gap-2">
+                <Ticket className="size-3.5 shrink-0 text-primary mt-0.5" />
+                <p>Kupon &amp; voucher harus <strong>diinput manual oleh kasir</strong>. Klik <em>"Pakai Kupon Ini"</em> atau salin kode ke kolom kupon di sidebar.</p>
+              </div>
+
+              {activeCoupons.length === 0 ? (
+                <div className="py-10 text-center text-xs text-content-muted">
+                  Tidak ada kupon atau voucher aktif saat ini.
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {activeCoupons.map((c) => {
+                    const isApplied = appliedCoupon === c.code
+                    const discountText =
+                      c.discount_type === 'percent'
+                        ? `${c.discount_value}%`
+                        : formatMoney(c.discount_value)
+
+                    return (
+                      <div
+                        key={c.id}
+                        className={cn(
+                          'rounded-xl border p-3 flex items-center gap-3 shadow-xs transition',
+                          isApplied
+                            ? 'border-emerald-500/40 bg-emerald-500/5'
+                            : 'border-border bg-background hover:border-primary/30'
+                        )}
+                      >
+                        {/* Ticket Icon */}
+                        <div className={cn(
+                          'flex size-10 shrink-0 items-center justify-center rounded-xl',
+                          c.source === 'voucher' ? 'bg-violet-100 dark:bg-violet-950' : 'bg-primary/10'
+                        )}>
+                          {c.source === 'voucher'
+                            ? <Gift className="size-5 text-violet-600 dark:text-violet-400" />
+                            : <Ticket className="size-5 text-primary" />}
+                        </div>
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0 space-y-0.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-bold text-xs text-content">{c.name}</span>
+                            <Badge variant="outline" className="text-[10px] font-mono bg-muted/60 text-content-muted border-border">
+                              {c.code}
+                            </Badge>
+                            {c.source === 'voucher' && (
+                              <Badge className="text-[10px] bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/30">
+                                Voucher
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                            Diskon {discountText}
+                            {c.max_discount ? ` (maks. ${formatMoney(c.max_discount)})` : ''}
+                          </p>
+                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-content-subtle">
+                            {c.min_purchase ? <span>Min. belanja {formatMoney(c.min_purchase)}</span> : null}
+                            {c.valid_until && <span>Berlaku s/d {c.valid_until}</span>}
+                            {c.quota > 0 && (
+                              <span>Sisa: {c.quota - c.used_count}/{c.quota}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex flex-col gap-1.5 shrink-0">
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={isApplied}
+                            onClick={() => handleSelectCouponFromModal(c.code)}
+                            className={cn(
+                              'h-7 text-[11px] px-3 font-bold',
+                              isApplied
+                                ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                                : ''
+                            )}
+                          >
+                            {isApplied ? (
+                              <><CheckCircle2 className="size-3 mr-1" /> Terpakai</>
+                            ) : (
+                              'Pakai Kupon Ini'
+                            )}
+                          </Button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(c.code).then(() => {
+                                toast.success(`Kode ${c.code} disalin!`)
+                              })
+                            }}
+                            className="flex items-center justify-center gap-1 text-[10px] text-content-muted hover:text-content transition"
+                          >
+                            <Copy className="size-3" /> Salin Kode
+                          </button>
                         </div>
                       </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={appliedCoupon === p.code ? 'default' : 'outline'}
-                        className={`h-7 text-xs w-full font-semibold ${appliedCoupon === p.code ? 'bg-amber-500 hover:bg-amber-600 text-white' : ''}`}
-                        onClick={() => {
-                          setAppliedCoupon(p.code)
-                          setShowPromosModal(false)
-                          toast.success(`Kode promo ${p.code} diterapkan ke transaksi!`)
-                        }}
-                      >
-                        {appliedCoupon === p.code ? 'Terpakai di Transaksi' : 'Gunakan Kode Promo'}
-                      </Button>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-          <DialogFooter className="px-6 py-3 border-t border-border bg-muted/10">
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="px-5 py-3 border-t border-border bg-muted/10 shrink-0">
             <Button type="button" variant="outline" size="sm" onClick={() => setShowPromosModal(false)}>
               Tutup
             </Button>

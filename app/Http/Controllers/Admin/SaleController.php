@@ -16,6 +16,7 @@ use App\Http\Requests\Admin\CompleteSaleRequest;
 use App\Http\Requests\Admin\HoldSaleRequest;
 use App\Http\Requests\Admin\VoidSaleRequest;
 use App\Models\Category;
+use App\Models\Coupon;
 use App\Models\Member;
 use App\Models\Outlet;
 use App\Models\PaymentMethod;
@@ -33,6 +34,7 @@ use App\Services\PaymentGatewayService;
 use App\Services\PaymentService;
 use App\Services\PriceService;
 use App\Services\SaleService;
+use App\Services\VoucherService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use DomainException;
 use Illuminate\Http\JsonResponse;
@@ -58,6 +60,7 @@ class SaleController extends Controller
         private readonly AuthorizationService $authorizationService,
         private readonly MidtransGatewayInterface $midtransGateway,
         private readonly PaymentGatewayService $paymentGatewayService,
+        private readonly VoucherService $voucherService,
     ) {}
 
     public function index(Request $request): Response
@@ -83,7 +86,13 @@ class SaleController extends Controller
                     $q->whereNull('end_date')->orWhere('end_date', '>=', now()->toDateString());
                 })
                 ->orderByDesc('priority')
-                ->get(['id', 'code', 'name', 'type', 'discount_type', 'discount_value', 'min_purchase', 'scope']),
+                ->get(['id', 'code', 'name', 'description', 'type', 'discount_type', 'discount_value', 'max_discount', 'min_purchase', 'buy_qty', 'get_qty', 'min_qty', 'scope', 'start_time', 'end_time', 'days_of_week']),
+            'activeCoupons' => Coupon::where('status', 'active')
+                ->where('valid_from', '<=', now())
+                ->where('valid_until', '>=', now())
+                ->whereColumn('used_count', '<', 'quota')
+                ->orderByDesc('id')
+                ->get(['id', 'code', 'name', 'discount_type', 'discount_value', 'max_discount', 'min_purchase', 'valid_until', 'source', 'quota', 'used_count']),
             'noPinThreshold' => (int) config('pos.no_pin_threshold', 0),
             'pointValue' => (int) config('pos.point_value', 100),
             'midtransClientKey' => config('services.midtrans.client_key'),
@@ -97,6 +106,24 @@ class SaleController extends Controller
         $outlet = $session?->outlet ?? Outlet::where('is_main', true)->first();
 
         return response()->json($this->catalogPayload($request, $outlet));
+    }
+
+    public function validateCouponApi(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'code' => ['required', 'string', 'max:30'],
+            'items' => ['sometimes', 'array'],
+            'items.*.product_id' => ['required_with:items', 'integer'],
+            'items.*.subtotal' => ['required_with:items', 'integer'],
+            'member_id' => ['nullable', 'integer'],
+        ]);
+
+        $member = !empty($data['member_id']) ? Member::find($data['member_id']) : null;
+        $lines = $data['items'] ?? [];
+
+        $result = $this->voucherService->validate($data['code'], $lines, $member);
+
+        return response()->json($result);
     }
 
     /**
