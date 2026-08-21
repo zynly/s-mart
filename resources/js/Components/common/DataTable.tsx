@@ -133,42 +133,40 @@ export function DataTable<TData>({
 
   return (
     <div className="flex flex-col gap-3 flex-1 min-h-[450px] w-full">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs dark:border-slate-800 dark:bg-slate-900 w-full text-xs">
-        <div className="flex items-center gap-1.5 shrink-0">
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs dark:border-slate-800 dark:bg-slate-900 w-full text-xs">
+        <span className="font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mr-1 flex items-center gap-1.5 shrink-0">
           <SlidersHorizontal className="size-3.5 text-blue-600 dark:text-blue-400" />
-          <span className="font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300">Tampilkan Kolom:</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5 flex-1 justify-start sm:justify-end">
-          {table
-            .getAllColumns()
-            .filter((column) => column.getCanHide())
-            .map((column) => {
-              const isVisible = column.getIsVisible()
-              const headerLabel =
-                typeof column.columnDef.header === 'string'
-                  ? column.columnDef.header
-                  : getLabel(column.id)
+          <span>Tampilkan Kolom:</span>
+        </span>
+        {table
+          .getAllColumns()
+          .filter((column) => column.getCanHide())
+          .map((column) => {
+            const isVisible = column.getIsVisible()
+            const headerLabel =
+              typeof column.columnDef.header === 'string'
+                ? column.columnDef.header
+                : getLabel(column.id)
 
-              return (
-                <label
-                  key={column.id}
-                  className={cn(
-                    'flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer select-none',
-                    isVisible
-                      ? 'border-blue-200 bg-blue-50/60 text-blue-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200 shadow-2xs'
-                      : 'border-slate-200/60 bg-slate-100/60 text-slate-400 dark:border-slate-800 dark:bg-slate-800/40 opacity-50',
-                  )}
-                >
-                  <Checkbox
-                    checked={isVisible}
-                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                    className="size-3.5 rounded data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
-                  />
-                  <span className={cn(!isVisible && 'line-through')}>{headerLabel}</span>
-                </label>
-              )
-            })}
-        </div>
+            return (
+              <label
+                key={column.id}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer select-none',
+                  isVisible
+                    ? 'border-blue-200 bg-blue-50/60 text-blue-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200 shadow-2xs'
+                    : 'border-slate-200/60 bg-slate-100/60 text-slate-400 dark:border-slate-800 dark:bg-slate-800/40 opacity-50',
+                )}
+              >
+                <Checkbox
+                  checked={isVisible}
+                  onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                  className="size-3.5 rounded data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                />
+                <span className={cn(!isVisible && 'line-through')}>{headerLabel}</span>
+              </label>
+            )
+          })}
       </div>
 
       <div className="relative flex-1 min-h-[380px] w-full overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
