@@ -172,10 +172,16 @@ class SaleController extends Controller
             return ['data' => [], 'current_page' => 1, 'last_page' => 1, 'total' => 0];
         }
 
+        $categoryIds = $request->input('category_ids');
+        if (is_string($categoryIds)) {
+            $categoryIds = array_filter(array_map('intval', explode(',', $categoryIds)));
+        }
+
         $query = Product::query()
             ->where('is_active', true)
             ->whereHas('stocks', fn ($q) => $q->where('outlet_id', $outlet->id)->where('qty', '>', 0))
-            ->when($request->integer('category_id'), fn ($q, $catId) => $q->where('category_id', $catId))
+            ->when(!empty($categoryIds), fn ($q) => $q->whereIn('category_id', (array) $categoryIds))
+            ->when(empty($categoryIds) && $request->integer('category_id'), fn ($q) => $q->where('category_id', $request->integer('category_id')))
             ->when($request->string('search')->toString(), fn ($q, $search) => $q->where(
                 fn ($sub) => $sub->where('name', 'ilike', "%{$search}%")->orWhere('sku', 'ilike', "%{$search}%")
             ))
@@ -217,7 +223,7 @@ class SaleController extends Controller
                 'is_favorite' => $product->is_favorite,
                 'price' => $prices->get($product->id)?->price ?? 0,
                 'has_promo' => $promoProductIds->contains($product->id),
-                'image_url' => $image ? (str_starts_with($image->path, 'http') ? $image->path : Storage::disk('s3')->url($image->path)) : null,
+                'image_url' => $image ? (str_starts_with($image->path, 'http') ? $image->path : url('/media/' . ltrim($image->path, '/'))) : null,
             ];
         });
 
@@ -249,7 +255,7 @@ class SaleController extends Controller
         if ($image && $image->path) {
             $imageUrl = str_starts_with($image->path, 'http')
                 ? $image->path
-                : Storage::disk('s3')->url($image->path);
+                : url('/media/' . ltrim($image->path, '/'));
         }
 
         return response()->json([

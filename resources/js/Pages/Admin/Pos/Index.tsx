@@ -3,7 +3,7 @@ import { router, usePage } from '@inertiajs/react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { toast } from 'sonner'
 import {
-  AlertCircle, ArrowDownCircle, ArrowUpCircle, Check, CheckCircle2, ChevronLeft, ChevronRight, Coins, CreditCard, Filter, Folder, Lock, Pause, Phone, PlusCircle, Printer, Receipt, RotateCcw,
+  AlertCircle, ArrowDownCircle, ArrowUpCircle, Check, CheckCircle2, CheckSquare, ChevronLeft, ChevronRight, Coins, CreditCard, Filter, Folder, Lock, Pause, Phone, PlusCircle, Printer, Receipt, RotateCcw,
   QrCode, ScanLine, Search, ShoppingCart, Sparkles, Store, Tag, Trash2, UserCircle, Wallet, X,
 } from 'lucide-react'
 import PosLayout from '@/Layouts/PosLayout'
@@ -14,6 +14,7 @@ import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
 import { Badge } from '@/Components/ui/badge'
+import { Checkbox } from '@/Components/ui/checkbox'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { newIdempotencyKey } from '@/Lib/idempotency'
@@ -131,21 +132,26 @@ type PosIndexProps = {
 }
 
 export default function Index({ session, outlet, paymentMethods, catalog, categories, holds, activePromos = [], noPinThreshold, pointValue, midtransClientKey, midtransIsProduction }: PosIndexProps) {
-  const [catalogCategory, setCatalogCategory] = useState('')
+  const [selectedPosCategories, setSelectedPosCategories] = useState<number[]>([])
+  const [modalSelectedCats, setModalSelectedCats] = useState<number[]>([])
   const [catalogSearch, setCatalogSearch] = useState('')
   const [posCatModalOpen, setPosCatModalOpen] = useState(false)
   const [posCatModalSearch, setPosCatModalSearch] = useState('')
 
-  const selectedCategoryObj = categories.find((c) => String(c.id) === String(catalogCategory))
+  const selectedCategoriesList = useMemo(
+    () => categories.filter((c) => selectedPosCategories.includes(c.id)),
+    [categories, selectedPosCategories]
+  )
+
   const filteredModalCategories = useMemo(() => {
     if (!posCatModalSearch.trim()) return categories
     const q = posCatModalSearch.toLowerCase()
     return categories.filter((c) => c.name.toLowerCase().includes(q))
   }, [categories, posCatModalSearch])
 
-  function reloadCatalog(patch: { category_id?: string; search?: string; page?: number }) {
+  function reloadCatalog(patch: { category_ids?: string; search?: string; page?: number }) {
     router.get(route('pos.index'), {
-      category_id: patch.category_id !== undefined ? patch.category_id : catalogCategory,
+      category_ids: patch.category_ids !== undefined ? patch.category_ids : selectedPosCategories.join(','),
       search: patch.search !== undefined ? patch.search : catalogSearch,
       page: patch.page ?? 1,
     }, { preserveState: true, preserveScroll: true, only: ['catalog'] })
@@ -1044,21 +1050,43 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
               <Badge variant="secondary" className="text-[10px] bg-navy-100 dark:bg-surface-alt text-navy-800 dark:text-content font-semibold">
                 {catalog.total} produk
               </Badge>
-              {selectedCategoryObj && (
-                <Badge variant="outline" className="text-[10px] gap-1 bg-primary/10 text-primary border-primary/30 py-0.5">
-                  <Folder className="size-3" />
-                  <span className="max-w-[120px] truncate">{selectedCategoryObj.name}</span>
-                  <button
+              {selectedCategoriesList.length > 0 && (
+                <div className="flex items-center flex-wrap gap-1">
+                  {selectedCategoriesList.slice(0, 3).map((cat) => (
+                    <Badge key={cat.id} variant="outline" className="text-[10px] gap-1 bg-primary/10 text-primary border-primary/30 py-0.5">
+                      <Folder className="size-2.5" />
+                      <span className="max-w-[100px] truncate">{cat.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = selectedPosCategories.filter((id) => id !== cat.id)
+                          setSelectedPosCategories(next)
+                          reloadCatalog({ category_ids: next.join(',') })
+                        }}
+                        className="ml-0.5 text-content-muted hover:text-danger"
+                      >
+                        <X className="size-2.5" />
+                      </button>
+                    </Badge>
+                  ))}
+                  {selectedCategoriesList.length > 3 && (
+                    <Badge variant="secondary" className="text-[10px] py-0.5 font-mono">
+                      +{selectedCategoriesList.length - 3} lainnya
+                    </Badge>
+                  )}
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 text-[10px] px-1.5 text-danger hover:text-danger hover:bg-danger/10"
                     onClick={() => {
-                      setCatalogCategory('')
-                      reloadCatalog({ category_id: '' })
+                      setSelectedPosCategories([])
+                      reloadCatalog({ category_ids: '' })
                     }}
-                    className="ml-1 text-content-muted hover:text-danger"
                   >
-                    <X className="size-3" />
-                  </button>
-                </Badge>
+                    Reset
+                  </Button>
+                </div>
               )}
             </div>
 
@@ -1067,14 +1095,25 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setPosCatModalOpen(true)}
+                onClick={() => {
+                  setModalSelectedCats([...selectedPosCategories])
+                  setPosCatModalOpen(true)
+                }}
                 className="h-8.5 text-xs bg-white dark:bg-surface border-gray-200 dark:border-border gap-1.5 px-3 hover:border-primary/50"
               >
                 <Folder className="size-3.5 text-primary shrink-0" />
-                <span className="truncate max-w-[110px] sm:max-w-[140px] font-medium">
-                  {selectedCategoryObj ? selectedCategoryObj.name : 'Semua Kategori'}
+                <span className="truncate max-w-[130px] sm:max-w-[160px] font-medium">
+                  {selectedPosCategories.length === 0
+                    ? 'Semua Kategori (Filter)'
+                    : `${selectedPosCategories.length} Kategori Dipilih`}
                 </span>
-                <Filter className="size-3 text-content-muted shrink-0" />
+                {selectedPosCategories.length > 0 ? (
+                  <Badge variant="secondary" className="text-[10px] h-4.5 px-1.5 font-mono bg-primary/10 text-primary">
+                    {selectedPosCategories.length}
+                  </Badge>
+                ) : (
+                  <Filter className="size-3 text-content-muted shrink-0" />
+                )}
               </Button>
 
               {/* Input Pencarian Produk dengan Icon & Clear Button */}
@@ -2373,13 +2412,13 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
         </DialogContent>
       </Dialog>
 
-      {/* Sub-Dialog Kategori POS (Grid 4 Kolom Rapi) */}
+      {/* Sub-Dialog Kategori POS (Grid 4 Kolom Rapi dengan Multi-Select Checkbox) */}
       <Dialog open={posCatModalOpen} onOpenChange={setPosCatModalOpen}>
         <DialogContent className="flex flex-col h-[80vh] max-h-[80vh] w-[92vw] sm:max-w-3xl md:max-w-4xl lg:max-w-5xl overflow-hidden p-0 rounded-2xl shadow-2xl border-border bg-card">
           <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20 shrink-0">
             <DialogTitle className="flex items-center gap-2 text-base font-bold">
               <Folder className="size-4.5 text-primary" />
-              Pilih Kategori Produk Kasir
+              Pilih Filter Kategori Produk Kasir
             </DialogTitle>
           </DialogHeader>
 
@@ -2403,84 +2442,93 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                   </button>
                 )}
               </div>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-8 text-xs gap-1 shrink-0"
-                onClick={() => {
-                  setCatalogCategory('')
-                  reloadCatalog({ category_id: '' })
-                  setPosCatModalOpen(false)
-                }}
-              >
-                <RotateCcw className="size-3.5" /> Tampilkan Semua Kategori
-              </Button>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs gap-1"
+                  onClick={() => setModalSelectedCats(categories.map((c) => c.id))}
+                >
+                  <CheckSquare className="size-3.5" /> Pilih Semua
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 text-xs text-danger hover:text-danger hover:bg-danger/10 gap-1"
+                  onClick={() => setModalSelectedCats([])}
+                >
+                  <RotateCcw className="size-3.5" /> Reset (Semua)
+                </Button>
+              </div>
             </div>
 
-            {/* Grid 4 Kolom Kategori */}
+            {/* Grid 4 Kolom Kategori dengan Checkbox */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 max-h-[440px] overflow-y-auto p-1">
-              <button
-                type="button"
-                onClick={() => {
-                  setCatalogCategory('')
-                  reloadCatalog({ category_id: '' })
-                  setPosCatModalOpen(false)
-                }}
-                className={`flex items-center justify-between gap-2 p-3 rounded-xl border cursor-pointer transition text-left select-none ${
-                  catalogCategory === ''
-                    ? 'border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40 font-bold'
-                    : 'border-border/80 bg-card hover:bg-muted/40 hover:border-border font-medium'
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <Folder className="size-4 text-primary shrink-0" />
-                  <span className="text-xs text-content truncate">Semua Kategori</span>
+              {filteredModalCategories.length === 0 ? (
+                <div className="col-span-full py-12 text-center text-xs text-content-muted">
+                  Tidak ada kategori yang sesuai kata kunci pencarian.
                 </div>
-                {catalogCategory === '' && <CheckCircle2 className="size-4 text-primary shrink-0" />}
-              </button>
-
-              {filteredModalCategories.map((cat) => {
-                const isSelected = String(cat.id) === String(catalogCategory)
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => {
-                      setCatalogCategory(String(cat.id))
-                      reloadCatalog({ category_id: String(cat.id) })
-                      setPosCatModalOpen(false)
-                    }}
-                    className={`flex items-center justify-between gap-2 p-3 rounded-xl border cursor-pointer transition text-left select-none ${
-                      isSelected
-                        ? 'border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40 font-bold'
-                        : 'border-border/80 bg-card hover:bg-muted/40 hover:border-border font-medium'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <Folder className={`size-4 shrink-0 ${isSelected ? 'text-primary' : 'text-content-muted'}`} />
-                      <span className="text-xs text-content truncate">{cat.name}</span>
-                    </div>
-                    {isSelected && <CheckCircle2 className="size-4 text-primary shrink-0" />}
-                  </button>
-                )
-              })}
+              ) : (
+                filteredModalCategories.map((cat) => {
+                  const isChecked = modalSelectedCats.includes(cat.id)
+                  return (
+                    <label
+                      key={cat.id}
+                      className={`flex items-center justify-between gap-2 p-3 rounded-xl border cursor-pointer transition select-none ${
+                        isChecked
+                          ? 'border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40 font-bold'
+                          : 'border-border/80 bg-card hover:bg-muted/40 hover:border-border font-medium'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Checkbox
+                          checked={isChecked}
+                          onCheckedChange={(checked) =>
+                            setModalSelectedCats((prev) =>
+                              checked ? [...prev, cat.id] : prev.filter((id) => id !== cat.id)
+                            )
+                          }
+                        />
+                        <span className="text-xs text-content truncate">{cat.name}</span>
+                      </div>
+                    </label>
+                  )
+                })
+              )}
             </div>
           </div>
 
           <div className="px-6 py-3.5 border-t border-border bg-muted/20 flex items-center justify-between gap-2 shrink-0">
             <span className="text-xs text-content-muted">
-              {selectedCategoryObj ? `Kategori Aktif: ${selectedCategoryObj.name}` : 'Menampilkan semua kategori'}
+              {modalSelectedCats.length === 0
+                ? 'Semua kategori aktif (tanpa filter khusus)'
+                : `${modalSelectedCats.length} dari ${categories.length} kategori dipilih`}
             </span>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => setPosCatModalOpen(false)}
-              className="text-xs px-5"
-            >
-              Tutup
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setPosCatModalOpen(false)}
+                className="text-xs px-4"
+              >
+                Batal
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  setSelectedPosCategories([...modalSelectedCats])
+                  reloadCatalog({ category_ids: modalSelectedCats.join(','), page: 1 })
+                  setPosCatModalOpen(false)
+                }}
+                className="font-semibold text-xs px-5"
+              >
+                Terapkan Filter
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

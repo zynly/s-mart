@@ -53,6 +53,23 @@ Route::post('/cek-saldo', [CheckBalanceController::class, 'check'])
     ->middleware('throttle:5,1')
     ->name('cek-saldo.check');
 
+// Media Proxy Streaming dari S3 (RustFS) dengan Browser Caching 7 Hari
+Route::get('/media/{path}', function (string $path) {
+    if (! \Illuminate\Support\Facades\Storage::disk('s3')->exists($path)) {
+        abort(404);
+    }
+
+    $mime = \Illuminate\Support\Facades\Storage::disk('s3')->mimeType($path) ?: 'image/png';
+    $stream = \Illuminate\Support\Facades\Storage::disk('s3')->readStream($path);
+
+    return response()->stream(function () use ($stream) {
+        fpassthru($stream);
+    }, 200, [
+        'Content-Type' => $mime,
+        'Cache-Control' => 'public, max-age=604800, immutable',
+    ]);
+})->where('path', '.*')->name('media.show');
+
 use App\Http\Controllers\PakasirWebhookController;
 
 // Integrasi Midtrans (top-up wali) — Notification URL, DI LUAR

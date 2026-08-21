@@ -27,6 +27,6 @@ class ProductImage extends Model
             return $this->path;
         }
 
-        return \Illuminate\Support\Facades\Storage::disk('s3')->url($this->path);
+        return url('/media/' . ltrim($this->path, '/'));
     }
 }

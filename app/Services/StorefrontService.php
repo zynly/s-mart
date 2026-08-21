@@ -217,8 +217,7 @@ class StorefrontService
                             if (str_starts_with($img->path, 'http://') || str_starts_with($img->path, 'https://')) {
                                 return $img->path;
                             }
-                            $disk = config('filesystems.default', 's3');
-                            return Storage::disk($disk)->url($img->path);
+                            return url('/media/' . ltrim($img->path, '/'));
                         })->all();
                     }
 
