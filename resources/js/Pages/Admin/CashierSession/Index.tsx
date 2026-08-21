@@ -6,7 +6,7 @@ import type { ColumnDef } from '@tanstack/react-table'
 import {
   AlertCircle, AlertTriangle, ArrowDownCircle, ArrowDownLeft, ArrowUpCircle,
   ArrowUpRight, Banknote, Check, CheckCircle2, ChevronDown, ChevronUp, Coins, CreditCard, DollarSign,
-  Edit2, History, Info, Loader2, Lock, PlayCircle, Plus, PlusCircle, QrCode, Receipt, ShieldAlert,
+  Edit2, FileText, History, Info, Loader2, Lock, PlayCircle, Plus, PlusCircle, QrCode, Receipt, ShieldAlert,
   ShoppingBag, Store, UserCheck, Wallet, XCircle,
 } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
@@ -65,6 +65,7 @@ type ActiveSession = {
   total_sales_cash: number
   total_sales_deposit: number
   total_sales_noncash: number
+  total_sales_credit?: number
   total_topup_cash: number
   total_receivable_cash: number
   total_cash_in: number
@@ -87,6 +88,7 @@ type SessionRow = {
   total_sales_cash?: number
   total_sales_deposit?: number
   total_sales_noncash?: number
+  total_sales_credit?: number
   total_topup_cash?: number
   total_receivable_cash?: number
   total_cash_in?: number
@@ -146,6 +148,7 @@ type SessionDetailData = {
     total_sales_cash: number
     total_sales_noncash: number
     total_sales_deposit: number
+    total_sales_credit?: number
     total_topup_cash: number
     total_receivable_cash: number
     total_cash_in: number
@@ -452,6 +455,7 @@ export default function Index({
     { id: 'omzet_tunai', header: 'Tunai', cell: ({ row }) => <Money amount={row.original.total_sales_cash ?? 0} size="sm" className="text-emerald-600 dark:text-emerald-400 font-semibold" /> },
     { id: 'omzet_deposit', header: 'Deposit', cell: ({ row }) => <Money amount={row.original.total_sales_deposit ?? 0} size="sm" className="text-purple-600 dark:text-purple-400 font-semibold" /> },
     { id: 'omzet_nontunai', header: 'Non-Tunai', cell: ({ row }) => <Money amount={row.original.total_sales_noncash ?? 0} size="sm" className="text-blue-600 dark:text-blue-400 font-semibold" /> },
+    { id: 'omzet_kredit', header: 'Kredit', cell: ({ row }) => <Money amount={row.original.total_sales_credit ?? 0} size="sm" className="text-amber-600 dark:text-amber-400 font-semibold" /> },
     { id: 'topup', header: 'Topup', cell: ({ row }) => <Money amount={row.original.total_topup_cash ?? 0} size="sm" className="text-cyan-600 dark:text-cyan-400" /> },
     { id: 'piutang', header: 'Piutang', cell: ({ row }) => <Money amount={row.original.total_receivable_cash ?? 0} size="sm" className="text-indigo-600 dark:text-indigo-400" /> },
     { id: 'kas_masuk', header: 'Kas Masuk', cell: ({ row }) => <Money amount={row.original.total_cash_in ?? 0} size="sm" className="text-teal-600 dark:text-teal-400" /> },
@@ -805,6 +809,7 @@ export default function Index({
                     ['Penjualan Tunai', active.total_sales_cash, Coins, 'text-emerald-600'],
                     ['Penjualan Saldo Santri', active.total_sales_deposit, CreditCard, 'text-blue-600'],
                     ['Penjualan Non-tunai', active.total_sales_noncash, QrCode, 'text-purple-600'],
+                    ['Penjualan Kredit (Piutang)', active.total_sales_credit ?? 0, FileText, 'text-amber-600'],
                     ['Top-Up Tunai', active.total_topup_cash, PlusCircle, 'text-emerald-600'],
                     ['Pelunasan Piutang Tunai', active.total_receivable_cash, Banknote, 'text-emerald-600'],
                     ['Kas Masuk', active.total_cash_in, ArrowDownCircle, 'text-emerald-600'],
@@ -1241,6 +1246,10 @@ export default function Index({
                   <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
                     <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Penjualan Non-Tunai</span>
                     <Money amount={sessionDetail.session.total_sales_noncash} size="sm" className="font-extrabold text-blue-600 dark:text-blue-400 mt-1" />
+                  </div>
+                  <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Penjualan Kredit (Piutang)</span>
+                    <Money amount={sessionDetail.session.total_sales_credit ?? 0} size="sm" className="font-extrabold text-amber-600 dark:text-amber-400 mt-1" />
                   </div>
 
                   {/* Row 2: Topup, Piutang, Kas Masuk/Keluar */}

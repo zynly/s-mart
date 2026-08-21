@@ -12,6 +12,24 @@ class CashierSession extends Model
 {
     use BelongsToOutlet, LogsActivityCustom;
 
+    protected $appends = ['total_sales_credit'];
+
+    public function getTotalSalesCreditAttribute(): int
+    {
+        if (array_key_exists('total_sales_credit', $this->attributes)) {
+            return (int) $this->attributes['total_sales_credit'];
+        }
+
+        if (! $this->exists) {
+            return 0;
+        }
+
+        return (int) SalePayment::query()
+            ->whereHas('sale', fn ($q) => $q->where('cashier_session_id', $this->id)->where('status', 'completed'))
+            ->whereHas('paymentMethod', fn ($q) => $q->where('type', 'credit'))
+            ->sum('amount');
+    }
+
     protected $fillable = [
         'reference', 'outlet_id', 'user_id', 'cash_account_id', 'opened_at',
         'closed_at', 'opening_cash', 'expected_cash', 'actual_cash', 'difference',
