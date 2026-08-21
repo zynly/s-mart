@@ -308,15 +308,22 @@ export default function Index({ tab, members, stats, levels, categories, filters
     },
     {
       id: 'class',
-      header: 'Kelas/Jurusan',
+      header: 'Kelas / Jurusan',
       cell: ({ row }) => {
         const m = row.original
         if (m.type !== 'santri') return <span className="text-content-muted">—</span>
-        return (
-          <span className="text-xs text-content">
-            {[m.class_name, m.major].filter(Boolean).join(' · ') || '—'}
-          </span>
-        )
+
+        const cls = m.class_name?.trim()
+        const mjr = m.major?.trim()
+
+        if (!cls && !mjr) return <span className="text-content-muted">—</span>
+        if (cls && mjr && cls.toUpperCase().includes(mjr.toUpperCase())) {
+          return <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{cls}</span>
+        }
+        if (cls && mjr) {
+          return <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{cls} · {mjr}</span>
+        }
+        return <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{cls || mjr}</span>
       },
     },
     {
