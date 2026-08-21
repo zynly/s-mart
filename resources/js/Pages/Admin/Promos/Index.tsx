@@ -86,15 +86,12 @@ const TYPE_DESCRIPTIONS: Record<string, string> = {
   tiered_qty: 'Tingkatan diskon makin tinggi seiring bertambahnya jumlah pembelian.',
   happy_hour: 'Diskon yang hanya berlaku pada jam dan hari-hari tertentu.',
   clearance: 'Potongan harga besar untuk mengosongkan dan menghabiskan stok lama.',
+  member_level: 'Diskon khusus berdasarkan tingkatan membership (Santri, Fasilitator, Staf).',
+  birthday: 'Kado & voucher potongan belanja spesial di hari ulang tahun.',
 }
 
-// Gap G-01: PromoEngine::matchesProduct() tidak pernah menerapkan tipe ini
-// (default => false) — diskon level anggota berjalan otomatis dari Level
-// Keanggotaan, bonus ulang tahun dari proses terjadwal, BUKAN dari record
-// Promo. Disembunyikan dari pilihan promo BARU; nilai lama tetap bisa
-// dibuka/dinonaktifkan (lihat isLegacyType di bawah).
-const LEGACY_TYPES = ['member_level', 'birthday']
-const SELECTABLE_TYPE_ENTRIES = Object.entries(TYPE_LABELS).filter(([value]) => !LEGACY_TYPES.includes(value))
+const SELECTABLE_TYPE_ENTRIES = Object.entries(TYPE_LABELS)
+const LEGACY_TYPES: string[] = []
 
 const DAY_LABELS = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
 
