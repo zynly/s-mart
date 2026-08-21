@@ -419,7 +419,7 @@ export default function Index({ tab, members, stats, levels, categories, filters
       header: 'Aksi',
       meta: { align: 'center' },
       cell: ({ row }) => (
-        <div className="flex flex-wrap items-center justify-center gap-1.5 py-1">
+        <div className="flex items-center justify-center gap-1 py-1 whitespace-nowrap shrink-0">
           <Button
             type="button"
             variant="outline"
@@ -429,7 +429,7 @@ export default function Index({ tab, members, stats, levels, categories, filters
               e.stopPropagation()
               setHistoryTarget(row.original)
             }}
-            className="h-7 text-xs px-2 gap-1 text-emerald-800 bg-emerald-100/80 hover:bg-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 font-bold border-emerald-300 shadow-2xs"
+            className="h-7 text-xs px-1.5 gap-1 text-emerald-800 bg-emerald-100/80 hover:bg-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 font-bold border-emerald-300 shadow-2xs shrink-0"
             title="Riwayat Mutasi Transaksi (Deposit, Belanja, Tarik Tunai)"
           >
             <Wallet className="size-3.5 text-emerald-700" />
@@ -445,7 +445,7 @@ export default function Index({ tab, members, stats, levels, categories, filters
               e.stopPropagation()
               openCardPreview(row.original.id, row.original.name)
             }}
-            className="h-7 text-xs px-2 gap-1 text-blue-700 bg-blue-50/50 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/50 border-blue-200 dark:border-blue-800 shadow-2xs"
+            className="h-7 text-xs px-1.5 gap-1 text-blue-700 bg-blue-50/50 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/50 border-blue-200 dark:border-blue-800 shadow-2xs shrink-0"
             title="Pratinjau Kartu Santri PDF"
           >
             <CreditCard className="size-3.5 text-blue-600" />
@@ -461,7 +461,7 @@ export default function Index({ tab, members, stats, levels, categories, filters
               e.stopPropagation()
               printCards([row.original.id])
             }}
-            className="h-7 text-xs px-2 gap-1 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/50 border-emerald-200 dark:border-emerald-800 shadow-2xs"
+            className="h-7 text-xs px-1.5 gap-1 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/50 border-emerald-200 dark:border-emerald-800 shadow-2xs shrink-0"
             title="Cetak Kartu"
           >
             <Printer className="size-3.5 text-emerald-600" />
@@ -477,7 +477,7 @@ export default function Index({ tab, members, stats, levels, categories, filters
               e.stopPropagation()
               openEdit(row.original)
             }}
-            className="h-7 text-xs px-2 gap-1 text-amber-700 bg-amber-50/50 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-900/50 border-amber-200 dark:border-amber-800 shadow-2xs"
+            className="h-7 text-xs px-1.5 gap-1 text-amber-700 bg-amber-50/50 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-900/50 border-amber-200 dark:border-amber-800 shadow-2xs shrink-0"
             title="Ubah Data Anggota"
           >
             <Pencil className="size-3.5 text-amber-600" />
@@ -493,7 +493,7 @@ export default function Index({ tab, members, stats, levels, categories, filters
               e.stopPropagation()
               setReissueTarget(row.original)
             }}
-            className="h-7 text-xs px-2 gap-1 text-sky-700 bg-sky-50/50 hover:bg-sky-100 dark:bg-sky-950/40 dark:text-sky-300 dark:hover:bg-sky-900/50 border-sky-200 dark:border-sky-800 shadow-2xs"
+            className="h-7 text-xs px-1.5 gap-1 text-sky-700 bg-sky-50/50 hover:bg-sky-100 dark:bg-sky-950/40 dark:text-sky-300 dark:hover:bg-sky-900/50 border-sky-200 dark:border-sky-800 shadow-2xs shrink-0"
             title="Terbitkan Ulang Kartu"
           >
             <RefreshCw className="size-3.5 text-sky-600" />
@@ -509,7 +509,7 @@ export default function Index({ tab, members, stats, levels, categories, filters
               e.stopPropagation()
               setResetPinTarget(row.original)
             }}
-            className="h-7 text-xs px-2 gap-1 text-cyan-700 bg-cyan-50/50 hover:bg-cyan-100 dark:bg-cyan-950/40 dark:text-cyan-300 dark:hover:bg-cyan-900/50 border-cyan-200 dark:border-cyan-800 shadow-2xs"
+            className="h-7 text-xs px-1.5 gap-1 text-cyan-700 bg-cyan-50/50 hover:bg-cyan-100 dark:bg-cyan-950/40 dark:text-cyan-300 dark:hover:bg-cyan-900/50 border-cyan-200 dark:border-cyan-800 shadow-2xs shrink-0"
             title="Reset PIN"
           >
             <KeyRound className="size-3.5 text-cyan-600" />
@@ -527,7 +527,7 @@ export default function Index({ tab, members, stats, levels, categories, filters
               setPointAdjustmentValue(row.original.point_balance ?? 0)
               setPointAdjustmentNote('')
             }}
-            className="h-7 text-xs px-2 gap-1 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/50 border-emerald-200 dark:border-emerald-800 shadow-2xs"
+            className="h-7 text-xs px-1.5 gap-1 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/50 border-emerald-200 dark:border-emerald-800 shadow-2xs shrink-0"
             title="Sesuaikan / Reset Poin"
           >
             <Coins className="size-3.5 text-emerald-600" />
@@ -545,7 +545,7 @@ export default function Index({ tab, members, stats, levels, categories, filters
               setNewPin('')
               setSetPinError(null)
             }}
-            className="h-7 text-xs px-2 gap-1 text-blue-700 bg-blue-50/50 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/50 border-blue-200 dark:border-blue-800 shadow-2xs"
+            className="h-7 text-xs px-1.5 gap-1 text-blue-700 bg-blue-50/50 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/50 border-blue-200 dark:border-blue-800 shadow-2xs shrink-0"
             title="Buat / Ganti PIN"
           >
             <Lock className="size-3.5 text-blue-600" />
@@ -562,7 +562,7 @@ export default function Index({ tab, members, stats, levels, categories, filters
                 e.stopPropagation()
                 setDeactivateTarget(row.original)
               }}
-              className="h-7 text-xs px-2 gap-1 text-rose-700 bg-rose-50/50 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-900/50 border-rose-200 dark:border-rose-800 shadow-2xs"
+              className="h-7 text-xs px-1.5 gap-1 text-rose-700 bg-rose-50/50 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-900/50 border-rose-200 dark:border-rose-800 shadow-2xs shrink-0"
               title="Nonaktifkan Anggota"
             >
               <UserX className="size-3.5 text-rose-600" />
