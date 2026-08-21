@@ -183,7 +183,7 @@ class SaleController extends Controller
             ->orderByDesc('is_favorite')
             ->orderBy('name');
 
-        $page = $query->paginate(12, ['id', 'name', 'sku', 'category_id', 'base_unit_id', 'is_favorite'], 'page', $request->integer('page', 1));
+        $page = $query->paginate(24, ['id', 'name', 'sku', 'category_id', 'base_unit_id', 'is_favorite'], 'page', $request->integer('page', 1));
 
         $productIds = $page->pluck('id');
         $prices = ProductPrice::where('outlet_id', $outlet->id)
@@ -217,7 +217,7 @@ class SaleController extends Controller
                 'is_favorite' => $product->is_favorite,
                 'price' => $prices->get($product->id)?->price ?? 0,
                 'has_promo' => $promoProductIds->contains($product->id),
-                'image_url' => $image ? (str_starts_with($image->path, 'http') ? $image->path : Storage::disk(config('filesystems.default', 's3'))->url($image->path)) : null,
+                'image_url' => $image ? (str_starts_with($image->path, 'http') ? $image->path : Storage::disk('s3')->url($image->path)) : null,
             ];
         });
 
@@ -249,7 +249,7 @@ class SaleController extends Controller
         if ($image && $image->path) {
             $imageUrl = str_starts_with($image->path, 'http')
                 ? $image->path
-                : Storage::disk(config('filesystems.default', 's3'))->url($image->path);
+                : Storage::disk('s3')->url($image->path);
         }
 
         return response()->json([

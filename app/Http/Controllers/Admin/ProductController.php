@@ -60,7 +60,7 @@ class ProductController extends Controller
                 if (str_starts_with($firstImage->path, 'http://') || str_starts_with($firstImage->path, 'https://')) {
                     $url = $firstImage->path;
                 } else {
-                    $disk = config('filesystems.default', 'public');
+                    $disk = config('filesystems.default', 's3');
                     $url = Storage::disk($disk)->url($firstImage->path);
                 }
             }
@@ -114,7 +114,7 @@ class ProductController extends Controller
             'images',
         ]);
 
-        $disk = config('filesystems.default', 'public');
+        $disk = config('filesystems.default', 's3');
         $formattedImages = $product->images->map(function ($img) use ($disk) {
             $url = (str_starts_with($img->path, 'http://') || str_starts_with($img->path, 'https://'))
                 ? $img->path

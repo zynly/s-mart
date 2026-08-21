@@ -3,7 +3,7 @@ import { router, usePage } from '@inertiajs/react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { toast } from 'sonner'
 import {
-  AlertCircle, ArrowDownCircle, ArrowUpCircle, Check, CheckCircle2, ChevronLeft, ChevronRight, Coins, CreditCard, Lock, Pause, Phone, PlusCircle, Printer, Receipt,
+  AlertCircle, ArrowDownCircle, ArrowUpCircle, Check, CheckCircle2, ChevronLeft, ChevronRight, Coins, CreditCard, Filter, Folder, Lock, Pause, Phone, PlusCircle, Printer, Receipt, RotateCcw,
   QrCode, ScanLine, Search, ShoppingCart, Sparkles, Store, Tag, Trash2, UserCircle, Wallet, X,
 } from 'lucide-react'
 import PosLayout from '@/Layouts/PosLayout'
@@ -133,11 +133,20 @@ type PosIndexProps = {
 export default function Index({ session, outlet, paymentMethods, catalog, categories, holds, activePromos = [], noPinThreshold, pointValue, midtransClientKey, midtransIsProduction }: PosIndexProps) {
   const [catalogCategory, setCatalogCategory] = useState('')
   const [catalogSearch, setCatalogSearch] = useState('')
+  const [posCatModalOpen, setPosCatModalOpen] = useState(false)
+  const [posCatModalSearch, setPosCatModalSearch] = useState('')
+
+  const selectedCategoryObj = categories.find((c) => String(c.id) === String(catalogCategory))
+  const filteredModalCategories = useMemo(() => {
+    if (!posCatModalSearch.trim()) return categories
+    const q = posCatModalSearch.toLowerCase()
+    return categories.filter((c) => c.name.toLowerCase().includes(q))
+  }, [categories, posCatModalSearch])
 
   function reloadCatalog(patch: { category_id?: string; search?: string; page?: number }) {
     router.get(route('pos.index'), {
-      category_id: patch.category_id ?? catalogCategory,
-      search: patch.search ?? catalogSearch,
+      category_id: patch.category_id !== undefined ? patch.category_id : catalogCategory,
+      search: patch.search !== undefined ? patch.search : catalogSearch,
       page: patch.page ?? 1,
     }, { preserveState: true, preserveScroll: true, only: ['catalog'] })
   }
@@ -1029,41 +1038,73 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
           {scanError && <p className="-mt-2 text-sm text-danger">{scanError}</p>}
 
           {/* Filter Bar & Header Katalog */}
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-gray-200 dark:border-border pb-2">
-            <div className="flex items-center gap-2">
+          <div className="flex shrink-0 flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-gray-200 dark:border-border pb-2.5">
+            <div className="flex items-center flex-wrap gap-2 min-w-0">
               <h2 className="text-xs font-bold uppercase tracking-wider text-navy-800 dark:text-content-muted">Katalog Produk</h2>
               <Badge variant="secondary" className="text-[10px] bg-navy-100 dark:bg-surface-alt text-navy-800 dark:text-content font-semibold">
                 {catalog.total} produk
               </Badge>
+              {selectedCategoryObj && (
+                <Badge variant="outline" className="text-[10px] gap-1 bg-primary/10 text-primary border-primary/30 py-0.5">
+                  <Folder className="size-3" />
+                  <span className="max-w-[120px] truncate">{selectedCategoryObj.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCatalogCategory('')
+                      reloadCatalog({ category_id: '' })
+                    }}
+                    className="ml-1 text-content-muted hover:text-danger"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </Badge>
+              )}
             </div>
+
             <div className="flex items-center gap-2">
-              <Input
-                placeholder="Cari produk…"
-                value={catalogSearch}
-                onChange={(e) => setCatalogSearch(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && reloadCatalog({ search: catalogSearch })}
-                className={`h-7 w-32 sm:w-40 rounded-lg text-xs neu-pressed ${posFieldClass}`}
-              />
-              <Select
-                value={catalogCategory || 'all'}
-                onValueChange={(v) => {
-                  const val = v === 'all' ? '' : v
-                  setCatalogCategory(val)
-                  reloadCatalog({ category_id: val })
-                }}
+              {/* Tombol Trigger Filter Kategori - Sub Modal Grid 4 Kolom */}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPosCatModalOpen(true)}
+                className="h-8.5 text-xs bg-white dark:bg-surface border-gray-200 dark:border-border gap-1.5 px-3 hover:border-primary/50"
               >
-                <SelectTrigger className={`h-7 w-32 rounded-lg text-xs neu-pressed ${posFieldClass}`}>
-                  <SelectValue placeholder="Semua kategori" />
-                </SelectTrigger>
-                <SelectContent className={posDropdownClass}>
-                  <SelectItem value="all">Semua kategori</SelectItem>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Folder className="size-3.5 text-primary shrink-0" />
+                <span className="truncate max-w-[110px] sm:max-w-[140px] font-medium">
+                  {selectedCategoryObj ? selectedCategoryObj.name : 'Semua Kategori'}
+                </span>
+                <Filter className="size-3 text-content-muted shrink-0" />
+              </Button>
+
+              {/* Input Pencarian Produk dengan Icon & Clear Button */}
+              <div className="relative">
+                <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-content-muted pointer-events-none" />
+                <Input
+                  placeholder="Cari nama / barcode produk…"
+                  value={catalogSearch}
+                  onChange={(e) => setCatalogSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      reloadCatalog({ search: catalogSearch })
+                    }
+                  }}
+                  className={`h-8.5 w-40 sm:w-56 pl-8 pr-7 text-xs bg-white dark:bg-surface ${posFieldClass}`}
+                />
+                {catalogSearch ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCatalogSearch('')
+                      reloadCatalog({ search: '' })
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 dark:hover:text-content"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                ) : null}
+              </div>
             </div>
           </div>
 
@@ -2329,6 +2370,118 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
               Tutup
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sub-Dialog Kategori POS (Grid 4 Kolom Rapi) */}
+      <Dialog open={posCatModalOpen} onOpenChange={setPosCatModalOpen}>
+        <DialogContent className="flex flex-col h-[80vh] max-h-[80vh] w-[92vw] sm:max-w-3xl md:max-w-4xl lg:max-w-5xl overflow-hidden p-0 rounded-2xl shadow-2xl border-border bg-card">
+          <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20 shrink-0">
+            <DialogTitle className="flex items-center gap-2 text-base font-bold">
+              <Folder className="size-4.5 text-primary" />
+              Pilih Kategori Produk Kasir
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="p-6 space-y-4 flex-1 overflow-y-auto min-h-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="relative flex-1">
+                <Search className="size-3.5 absolute left-3 top-3 text-content-muted" />
+                <Input
+                  placeholder="Cari nama kategori…"
+                  value={posCatModalSearch}
+                  onChange={(e) => setPosCatModalSearch(e.target.value)}
+                  className="pl-9 text-xs bg-background h-9"
+                />
+                {posCatModalSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setPosCatModalSearch('')}
+                    className="absolute right-3 top-2.5 text-content-muted hover:text-content"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                )}
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs gap-1 shrink-0"
+                onClick={() => {
+                  setCatalogCategory('')
+                  reloadCatalog({ category_id: '' })
+                  setPosCatModalOpen(false)
+                }}
+              >
+                <RotateCcw className="size-3.5" /> Tampilkan Semua Kategori
+              </Button>
+            </div>
+
+            {/* Grid 4 Kolom Kategori */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 max-h-[440px] overflow-y-auto p-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setCatalogCategory('')
+                  reloadCatalog({ category_id: '' })
+                  setPosCatModalOpen(false)
+                }}
+                className={`flex items-center justify-between gap-2 p-3 rounded-xl border cursor-pointer transition text-left select-none ${
+                  catalogCategory === ''
+                    ? 'border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40 font-bold'
+                    : 'border-border/80 bg-card hover:bg-muted/40 hover:border-border font-medium'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Folder className="size-4 text-primary shrink-0" />
+                  <span className="text-xs text-content truncate">Semua Kategori</span>
+                </div>
+                {catalogCategory === '' && <CheckCircle2 className="size-4 text-primary shrink-0" />}
+              </button>
+
+              {filteredModalCategories.map((cat) => {
+                const isSelected = String(cat.id) === String(catalogCategory)
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => {
+                      setCatalogCategory(String(cat.id))
+                      reloadCatalog({ category_id: String(cat.id) })
+                      setPosCatModalOpen(false)
+                    }}
+                    className={`flex items-center justify-between gap-2 p-3 rounded-xl border cursor-pointer transition text-left select-none ${
+                      isSelected
+                        ? 'border-primary bg-primary/10 shadow-xs ring-1 ring-primary/40 font-bold'
+                        : 'border-border/80 bg-card hover:bg-muted/40 hover:border-border font-medium'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Folder className={`size-4 shrink-0 ${isSelected ? 'text-primary' : 'text-content-muted'}`} />
+                      <span className="text-xs text-content truncate">{cat.name}</span>
+                    </div>
+                    {isSelected && <CheckCircle2 className="size-4 text-primary shrink-0" />}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="px-6 py-3.5 border-t border-border bg-muted/20 flex items-center justify-between gap-2 shrink-0">
+            <span className="text-xs text-content-muted">
+              {selectedCategoryObj ? `Kategori Aktif: ${selectedCategoryObj.name}` : 'Menampilkan semua kategori'}
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setPosCatModalOpen(false)}
+              className="text-xs px-5"
+            >
+              Tutup
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </PosLayout>
