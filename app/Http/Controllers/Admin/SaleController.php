@@ -8,6 +8,7 @@ use App\Exceptions\InsufficientPointBalanceException;
 use App\Exceptions\InsufficientStockException;
 use App\Exceptions\InvalidPinException;
 use App\Exceptions\MaxHoldExceededException;
+use App\Exceptions\MemberPinLockedException;
 use App\Exceptions\MemberPinNotSetException;
 use App\Exceptions\PaymentMismatchException;
 use App\Http\Controllers\Controller;
@@ -327,7 +328,7 @@ class SaleController extends Controller
             ]);
         } catch (InsufficientStockException|InsufficientBalanceException|InsufficientPointBalanceException $e) {
             throw ValidationException::withMessages(['items' => $e->getMessage()]);
-        } catch (PaymentMismatchException|CreditLimitExceededException|MemberPinNotSetException|InvalidPinException $e) {
+        } catch (PaymentMismatchException|CreditLimitExceededException|MemberPinNotSetException|InvalidPinException|MemberPinLockedException $e) {
             throw ValidationException::withMessages(['payments' => $e->getMessage()]);
         } catch (DomainException|RuntimeException $e) {
             throw ValidationException::withMessages(['items' => $e->getMessage()]);

@@ -3,6 +3,8 @@
 namespace App\Services\PaymentHandlers;
 
 use App\Exceptions\CreditLimitExceededException;
+use App\Exceptions\InvalidPinException;
+use App\Exceptions\MemberPinNotSetException;
 use App\Models\CashierSession;
 use App\Models\Member;
 use App\Models\Outlet;
@@ -33,6 +35,10 @@ class CreditHandler implements PaymentHandler
     {
         if ($member === null) {
             throw new DomainException('Metode Kredit/Tempo membutuhkan anggota terdaftar yang terpilih.');
+        }
+
+        if ($member->type === 'santri') {
+            throw new DomainException('Anggota santri tidak diizinkan menggunakan metode pembayaran Kredit/Tempo.');
         }
 
         if ($member->pin === null) {
@@ -91,6 +97,15 @@ class CreditHandler implements PaymentHandler
      */
     public function checkLimit(Member $member, int $amount): array
     {
+        if ($member->type === 'santri') {
+            return [
+                'allowed' => false,
+                'reason' => 'santri_not_allowed',
+                'limit' => 0,
+                'active' => 0,
+            ];
+        }
+
         $activeReceivable = (int) Receivable::where('member_id', $member->id)
             ->whereIn('status', ['unpaid', 'partial', 'overdue'])
             ->sum('remaining_amount');

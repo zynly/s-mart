@@ -19,6 +19,9 @@ class MemberService
             $entryYear = $data['entry_year'] ?? (int) now()->format('Y');
             $data['entry_year'] = $entryYear;
             $data['member_number'] = ReferenceGenerator::generateMemberNumber($data['type'], $entryYear);
+            if (empty($data['pin'])) {
+                $data['pin'] = MemberPinService::DEFAULT_PIN;
+            }
 
             $member = Member::create($data);
 

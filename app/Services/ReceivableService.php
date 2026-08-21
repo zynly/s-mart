@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Exceptions\ReceivableOverpaymentException;
 use App\Models\CashierSession;
+use App\Models\Member;
 use App\Models\Receivable;
 use App\Models\ReceivablePayment;
 use App\Models\User;
@@ -12,6 +13,8 @@ use App\Support\ReferenceGenerator;
 use DomainException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 class ReceivableService
 {
@@ -58,6 +61,109 @@ class ReceivableService
             }
 
             return $payment;
+        });
+    }
+
+    /**
+     * Pembayaran cicilan piutang anggota:
+     * - Mendukung alokasi ke faktur spesifik ($receivableId) atau FIFO (faktur tertua).
+     * - Validasi PIN Kasir untuk metode 'cash'.
+     *
+     * @return Collection<int, ReceivablePayment>
+     */
+    public function payInstallment(
+        Member $member,
+        int $amount,
+        string $paymentMethod,
+        ?int $receivableId = null,
+        ?int $cashAccountId = null,
+        ?string $cashierPin = null,
+        ?User $user = null,
+        ?string $note = null,
+        ?CashierSession $session = null,
+    ): Collection {
+        if ($paymentMethod === 'cash') {
+            $currentUser = $user ?? auth()->user();
+            if ($currentUser === null) {
+                throw new DomainException('User kasir harus terautentikasi.');
+            }
+
+            if (empty($cashierPin)) {
+                throw ValidationException::withMessages(['cashier_pin' => 'PIN Kasir wajib dimasukkan untuk transaksi tunai.']);
+            }
+
+            $pinMatches = false;
+            if (!empty($currentUser->pin) && Hash::check($cashierPin, $currentUser->pin)) {
+                $pinMatches = true;
+            } elseif (Hash::check($cashierPin, $currentUser->password)) {
+                $pinMatches = true;
+            }
+
+            if (! $pinMatches) {
+                throw ValidationException::withMessages(['cashier_pin' => 'PIN Kasir tidak valid atau salah.']);
+            }
+        }
+
+        return DB::transaction(function () use ($member, $amount, $paymentMethod, $receivableId, $cashAccountId, $user, $note, $session) {
+            $payments = collect();
+            $remainingToPay = $amount;
+
+            if ($receivableId !== null) {
+                $receivables = Receivable::lockForUpdate()
+                    ->where('id', $receivableId)
+                    ->where('member_id', $member->id)
+                    ->whereIn('status', ['unpaid', 'partial', 'overdue'])
+                    ->get();
+            } else {
+                $receivables = Receivable::lockForUpdate()
+                    ->where('member_id', $member->id)
+                    ->whereIn('status', ['unpaid', 'partial', 'overdue'])
+                    ->orderBy('due_date', 'asc')
+                    ->orderBy('id', 'asc')
+                    ->get();
+            }
+
+            $totalActive = $receivables->sum('remaining_amount');
+            if ($amount > $totalActive) {
+                throw ReceivableOverpaymentException::make($totalActive, $amount);
+            }
+
+            foreach ($receivables as $rec) {
+                if ($remainingToPay <= 0) {
+                    break;
+                }
+
+                $payPortion = min($remainingToPay, $rec->remaining_amount);
+
+                $payment = ReceivablePayment::create([
+                    'reference' => ReferenceGenerator::generate('PTG', $rec->outlet_id),
+                    'receivable_id' => $rec->id,
+                    'cash_account_id' => $cashAccountId,
+                    'payment_date' => now()->toDateString(),
+                    'amount' => $payPortion,
+                    'payment_method' => $paymentMethod,
+                    'note' => $note,
+                    'created_by' => $user?->id ?? auth()->id(),
+                ]);
+
+                $newPaid = $rec->paid_amount + $payPortion;
+                $newRemaining = $rec->total_amount - $newPaid;
+
+                $rec->update([
+                    'paid_amount' => $newPaid,
+                    'remaining_amount' => $newRemaining,
+                    'status' => $this->resolveStatus($newRemaining, $newPaid, $rec->due_date),
+                ]);
+
+                if ($session !== null) {
+                    $this->sessionService->addReceivablePayment($session, $payPortion, $paymentMethod === 'cash');
+                }
+
+                $payments->push($payment);
+                $remainingToPay -= $payPortion;
+            }
+
+            return $payments;
         });
     }
 

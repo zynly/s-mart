@@ -165,7 +165,7 @@ return [
                     'label' => 'Integrasi',
                     'route' => 'admin.integrations.index',
                     'icon' => 'Cpu',
-                    'permissions' => ['system.reset'],
+                    'permissions' => ['setting.view', 'system.reset'],
                 ],
             ],
         ],

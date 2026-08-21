@@ -7,9 +7,9 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Services\AuthorizationService;
 use App\Services\SaleService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 
-uses(RefreshDatabase::class);
+uses(DatabaseTransactions::class);
 
 /**
  * T-105 — CreditHandler::checkLimit() (ADR-0005). Limit dicek terhadap
@@ -23,7 +23,7 @@ it('rejects a credit sale that would push active receivables past the member lim
     $creditMethod = PaymentMethod::where('type', 'credit')->firstOrFail();
 
     $member = Member::first();
-    $member->update(['receivable_limit' => 10000]);
+    $member->update(['receivable_limit' => 10000, 'type' => 'fasilitator']);
 
     $price = activeBasePrice($fixture['product'], $fixture['outlet']);
     // qty dipilih supaya grand_total pasti > receivable_limit (10.000).
@@ -50,7 +50,7 @@ it('allows a credit sale within the member limit and records it as a receivable'
 
     $price = activeBasePrice($fixture['product'], $fixture['outlet']);
     $member = Member::first();
-    $member->update(['receivable_limit' => $price * 10]);
+    $member->update(['receivable_limit' => $price * 10, 'type' => 'fasilitator']);
 
     $sale = app(SaleService::class)->complete([
         'outlet_id' => $fixture['outlet']->id,
@@ -74,21 +74,36 @@ it('allows a credit sale within the member limit and records it as a receivable'
     ]);
 });
 
-/**
- * Audit Fase 6 (Temuan Sedang): CreditHandler sebelumnya percaya
- * `$payload['approver']` truthy MENTAH (tidak pernah ada jalur untuk
- * mengisinya secara sah, dan seandainya ada tidak pernah dicek
- * permission). Sekarang lewat token sekali-pakai — verifikasi jalur
- * sah (token valid) benar-benar melewati limit, DAN token
- * palsu/sembarangan tetap ditolak sama seperti tanpa token sama sekali.
- */
+it('strictly forbids credit for santri members', function () {
+    $fixture = posFixture();
+    $unit = Unit::find($fixture['product']->base_unit_id);
+    $creditMethod = PaymentMethod::where('type', 'credit')->firstOrFail();
+
+    $price = activeBasePrice($fixture['product'], $fixture['outlet']);
+    $member = Member::first();
+    $member->update(['type' => 'santri', 'receivable_limit' => 100000]);
+
+    expect(fn () => app(SaleService::class)->complete([
+        'outlet_id' => $fixture['outlet']->id,
+        'cashier_session_id' => $fixture['session']->id,
+        'member_id' => $member->id,
+        'idempotency_key' => 'test-credit-santri-'.uniqid(),
+        'items' => [
+            ['product_id' => $fixture['product']->id, 'unit_id' => $unit->id, 'qty' => 1],
+        ],
+        'payments' => [
+            ['payment_method_id' => $creditMethod->id, 'amount' => $price],
+        ],
+    ]))->toThrow(\DomainException::class, 'Anggota santri tidak diizinkan menggunakan metode pembayaran Kredit/Tempo.');
+});
+
 it('allows an over-limit credit sale ONLY with a valid receivable.approve token, not with a forged one', function () {
     $fixture = posFixture();
     $unit = Unit::find($fixture['product']->base_unit_id);
     $creditMethod = PaymentMethod::where('type', 'credit')->firstOrFail();
 
     $member = Member::first();
-    $member->update(['receivable_limit' => 10000]);
+    $member->update(['receivable_limit' => 10000, 'type' => 'fasilitator']);
 
     $price = activeBasePrice($fixture['product'], $fixture['outlet']);
     $qty = (int) ceil(20000 / max(1, $price)) + 1;

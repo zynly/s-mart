@@ -14,6 +14,7 @@ use App\Services\CardPrintService;
 use App\Services\CardService;
 use App\Services\MemberPinService;
 use App\Services\MemberService;
+use App\Services\PointService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -28,6 +29,7 @@ class MemberController extends Controller
         private readonly CardService $cardService,
         private readonly MemberPinService $pinService,
         private readonly CardPrintService $cardPrintService,
+        private readonly PointService $pointService,
     ) {}
 
     public function index(Request $request): Response
@@ -79,9 +81,25 @@ class MemberController extends Controller
 
     public function resetPin(Member $member): RedirectResponse
     {
-        $this->pinService->reset($member);
+        $this->pinService->resetToDefault($member);
 
-        return back()->with('success', 'PIN anggota direset. Anggota akan diminta buat PIN baru saat transaksi berikutnya.');
+        return back()->with('success', 'PIN anggota direset ke 123456.');
+    }
+
+    public function adjustPoints(Request $request, Member $member): RedirectResponse
+    {
+        $validated = $request->validate([
+            'points' => ['required', 'integer', 'min:0'],
+            'note' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $this->pointService->adjust(
+            $member,
+            (int) $validated['points'],
+            $validated['note'] ?: 'Penyesuaian manual poin anggota'
+        );
+
+        return back()->with('success', 'Saldo poin anggota berhasil disesuaikan.');
     }
 
     /**

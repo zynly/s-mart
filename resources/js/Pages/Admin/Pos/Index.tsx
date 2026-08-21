@@ -451,7 +451,8 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
   }
 
   function methodEligible(pm: PaymentMethodRow): boolean {
-    if (pm.type === 'deposit' || pm.type === 'credit') return member !== null
+    if (pm.type === 'deposit') return member !== null
+    if (pm.type === 'credit') return member !== null && member.type !== 'santri'
     if (pm.type === 'point') return member !== null && member.point_balance > 0
     if (pm.type === 'payroll') return member !== null && (member.type === 'fasilitator' || member.type === 'staff')
 
@@ -788,6 +789,12 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
     if (activeMethod.type === 'credit') {
       if (!member) {
         requireMember('Kredit / Tempo')
+        return
+      }
+      if (member.type === 'santri') {
+        const msg = 'Anggota santri tidak diizinkan menggunakan metode Kredit/Tempo.'
+        setPaymentError(msg)
+        toast.error(msg)
         return
       }
       try {

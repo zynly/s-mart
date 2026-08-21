@@ -1,7 +1,7 @@
 import { useState, type FormEventHandler, type ReactElement } from 'react'
 import { router, useForm } from '@inertiajs/react'
 import type { ColumnDef } from '@tanstack/react-table'
-import { MoreHorizontal, Printer, CreditCard, Pencil, RefreshCw, KeyRound, Lock, UserX, Wallet } from 'lucide-react'
+import { MoreHorizontal, Printer, CreditCard, Pencil, RefreshCw, KeyRound, Lock, UserX, Wallet, Coins } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
 import { PageTabs } from '@/Components/common/PageTabs'
@@ -52,6 +52,7 @@ type MemberRow = {
   level: Level | null
   status: string
   balance_cache: number
+  point_balance: number
   receivable_limit: number
   active_card: ActiveCard
   guardians: GuardianRow[]
@@ -128,6 +129,10 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
   const [reissueReason, setReissueReason] = useState('')
   const [newGuardian, setNewGuardian] = useState({ name: '', phone: '', relation: '', is_primary: false })
   const [pdfModal, setPdfModal] = useState<{ open: boolean; title: string; url: string }>({ open: false, title: '', url: '' })
+  const [adjustPointTarget, setAdjustPointTarget] = useState<MemberRow | null>(null)
+  const [pointAdjustmentValue, setPointAdjustmentValue] = useState(0)
+  const [pointAdjustmentNote, setPointAdjustmentNote] = useState('')
+  const [adjustingPoint, setAdjustingPoint] = useState(false)
   const [historyTarget, setHistoryTarget] = useState<MemberRow | null>(null)
   const form = useForm(emptyForm)
 
@@ -355,6 +360,21 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
           >
             <KeyRound className="size-3.5 text-cyan-600" />
             Reset PIN
+          </Button>
+
+          <Button
+            variant="outline"
+            size="xs"
+            onClick={() => {
+              setAdjustPointTarget(row.original)
+              setPointAdjustmentValue(row.original.point_balance ?? 0)
+              setPointAdjustmentNote('')
+            }}
+            className="h-7 text-xs px-2 gap-1 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/50 border-emerald-200 dark:border-emerald-800"
+            title="Sesuaikan / Reset Poin"
+          >
+            <Coins className="size-3.5 text-emerald-600" />
+            Poin
           </Button>
 
           <Button
@@ -687,9 +707,9 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
       <ConfirmDialog
         open={resetPinTarget !== null}
         onOpenChange={(open) => !open && setResetPinTarget(null)}
-        title="Reset PIN Anggota"
-        description={`PIN ${resetPinTarget?.name} akan dihapus. Anggota akan diminta membuat PIN baru saat transaksi berikutnya.`}
-        confirmLabel="Reset PIN"
+        title="Reset PIN Anggota ke 123456"
+        description={`PIN untuk ${resetPinTarget?.name} akan diatur ulang ke PIN default: 123456 dan status kunci PIN (lockout) akan dibuka.`}
+        confirmLabel="Ya, Reset ke 123456"
         onConfirm={() => {
           if (resetPinTarget) {
             router.put(route('admin.members.reset-pin', resetPinTarget.id), {}, { preserveScroll: true })
@@ -697,6 +717,72 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
           setResetPinTarget(null)
         }}
       />
+
+      <Dialog open={adjustPointTarget !== null} onOpenChange={(open) => !open && setAdjustPointTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Sesuaikan / Reset Poin — {adjustPointTarget?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 p-3 border border-emerald-200 dark:border-emerald-800 text-xs">
+              <p className="text-emerald-900 dark:text-emerald-200">Saldo Poin Saat Ini: <span className="font-bold font-mono text-sm">{adjustPointTarget?.point_balance ?? 0} Poin</span></p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Saldo Poin Baru</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  min="0"
+                  value={pointAdjustmentValue}
+                  onChange={(e) => setPointAdjustmentValue(Math.max(0, parseInt(e.target.value) || 0))}
+                  className="font-mono text-base font-bold"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPointAdjustmentValue(0)}
+                  className="shrink-0 text-xs text-rose-600 border-rose-200 hover:bg-rose-50"
+                >
+                  Reset ke 0
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Catatan / Alasan Penyesuaian (Opsional)</Label>
+              <Input
+                placeholder="Misal: Penyesuaian reward semester, koreksi saldo..."
+                value={pointAdjustmentNote}
+                onChange={(e) => setPointAdjustmentNote(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAdjustPointTarget(null)}>Batal</Button>
+            <Button
+              disabled={adjustingPoint}
+              onClick={() => {
+                if (!adjustPointTarget) return
+                setAdjustingPoint(true)
+                router.put(
+                  route('admin.members.adjust-points', adjustPointTarget.id),
+                  { points: pointAdjustmentValue, note: pointAdjustmentNote },
+                  {
+                    preserveScroll: true,
+                    onSuccess: () => setAdjustPointTarget(null),
+                    onFinish: () => setAdjustingPoint(false),
+                  }
+                )
+              }}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+            >
+              {adjustingPoint ? 'Menyimpan…' : 'Simpan Perubahan Poin'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={setPinTarget !== null} onOpenChange={(open) => !open && setSetPinTarget(null)}>
         <DialogContent className="sm:max-w-sm">

@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Hash;
 
 class MemberPinService
 {
+    public const DEFAULT_PIN = '123456';
+
     private const WEAK_PINS = [
         '1234', '0000', '1111', '2222', '3333', '4444',
         '5555', '6666', '7777', '8888', '9999', '4321',
@@ -17,7 +19,9 @@ class MemberPinService
 
     public function set(Member $member, string $pin): void
     {
-        $this->ensureNotWeak($member, $pin);
+        if ($pin !== self::DEFAULT_PIN) {
+            $this->ensureNotWeak($member, $pin);
+        }
 
         $member->update([
             'pin' => $pin,
@@ -67,6 +71,15 @@ class MemberPinService
     {
         $member->update([
             'pin' => null,
+            'pin_attempts' => 0,
+            'pin_locked_until' => null,
+        ]);
+    }
+
+    public function resetToDefault(Member $member): void
+    {
+        $member->update([
+            'pin' => self::DEFAULT_PIN,
             'pin_attempts' => 0,
             'pin_locked_until' => null,
         ]);

@@ -182,4 +182,47 @@ class PointService
 
         return $expiredCount;
     }
+
+    public function adjust(Member $member, int $newBalance, string $note = 'Penyesuaian manual poin'): PointTransaction
+    {
+        return DB::transaction(function () use ($member, $newBalance, $note) {
+            $locked = Member::lockForUpdate()->findOrFail($member->id);
+            $before = $locked->point_balance;
+            $diff = $newBalance - $before;
+            $locked->forceFill(['point_balance' => $newBalance])->save();
+
+            return PointTransaction::create([
+                'member_id' => $locked->id,
+                'type' => 'adjustment',
+                'points' => $diff,
+                'balance_before' => $before,
+                'balance_after' => $newBalance,
+                'note' => $note,
+            ]);
+        });
+    }
+
+    public function bulkReset(string $periodNote = 'Reset poin massal'): int
+    {
+        $affected = 0;
+        DB::transaction(function () use ($periodNote, &$affected) {
+            $members = Member::lockForUpdate()->where('point_balance', '>', 0)->get();
+            foreach ($members as $member) {
+                $before = $member->point_balance;
+                $member->forceFill(['point_balance' => 0])->save();
+
+                PointTransaction::create([
+                    'member_id' => $member->id,
+                    'type' => 'expired',
+                    'points' => -$before,
+                    'balance_before' => $before,
+                    'balance_after' => 0,
+                    'note' => $periodNote,
+                ]);
+                $affected++;
+            }
+        });
+
+        return $affected;
+    }
 }

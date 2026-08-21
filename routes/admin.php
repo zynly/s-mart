@@ -148,6 +148,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::delete('/members/{member}', [MemberController::class, 'destroy'])->name('members.destroy')->middleware('can:member.delete');
     Route::put('/members/{member}/reset-pin', [MemberController::class, 'resetPin'])->name('members.reset-pin')->middleware('can:member.update');
     Route::put('/members/{member}/set-pin', [MemberController::class, 'setPin'])->name('members.set-pin')->middleware('can:member.update');
+    Route::put('/members/{member}/adjust-points', [MemberController::class, 'adjustPoints'])->name('members.adjust-points')->middleware('can:member.update');
     Route::post('/members/{member}/reissue-card', [MemberController::class, 'reissueCard'])->name('members.reissue-card')->middleware('can:card.create');
     Route::get('/members/print-cards', [MemberController::class, 'printCards'])->name('members.print-cards')->middleware('can:member.print');
     Route::get('/members/{member}/preview-card', [MemberController::class, 'previewCard'])->name('members.preview-card')->middleware('can:member.print');
@@ -236,8 +237,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // Piutang Anggota (Fase 9 — T-060)
     Route::middleware('can:receivable.view')->group(function () {
         Route::get('/receivables', [ReceivableController::class, 'index'])->name('receivables.index');
+        Route::get('/receivables/payments/{payment}/receipt-pdf', [ReceivableController::class, 'receiptPdf'])->name('receivables.payment-receipt-pdf');
     });
     Route::post('/receivables/{receivable}/pay', [ReceivableController::class, 'pay'])->name('receivables.pay')->middleware('can:receivable.update');
+    Route::post('/receivables/members/{member}/pay', [ReceivableController::class, 'payInstallment'])->name('receivables.pay-installment')->middleware('can:receivable.update');
+    Route::post('/receivables/members/{member}/snap', [ReceivableController::class, 'createSnap'])->name('receivables.snap')->middleware('can:receivable.update');
     Route::delete('/receivables/{receivable}', [ReceivableController::class, 'writeOff'])->name('receivables.write-off')->middleware('can:receivable.delete');
 
     // Diskon & Promo (Fase 10 — T-067)
@@ -256,6 +260,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::put('/coupons/{coupon}/cancel', [CouponController::class, 'cancel'])->name('coupons.cancel')->middleware('can:coupon.update');
 
     Route::get('/points', [PointController::class, 'index'])->name('points.index')->middleware('can:member.view');
+    Route::post('/points/adjust', [PointController::class, 'adjust'])->name('points.adjust')->middleware('can:member.update');
+    Route::post('/points/bulk-reset', [PointController::class, 'bulkReset'])->name('points.bulk-reset')->middleware('can:member.update');
 
     // Retur, Void & Koreksi (Fase 11)
     Route::middleware('can:sale_return.view')->group(function () {
@@ -349,10 +355,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     });
     Route::put('/settings/{section}', [SettingController::class, 'update'])->name('settings.update')->middleware('can:setting.update');
 
-    Route::middleware('can:system.reset')->group(function () {
-        Route::get('/settings-danger-zone', [SystemResetController::class, 'index'])->name('settings.danger-zone');
-        Route::post('/settings-danger-zone/reset-transactions', [SystemResetController::class, 'resetTransactions'])->name('settings.reset-transactions');
-
+    Route::middleware('can:setting.view')->group(function () {
         // Modul Uji Integrasi System & Env
         Route::get('/integrations', [\App\Http\Controllers\Admin\IntegrationController::class, 'index'])->name('integrations.index');
         Route::post('/integrations/test-storage', [\App\Http\Controllers\Admin\IntegrationController::class, 'testStorage'])->name('integrations.test-storage');
@@ -361,5 +364,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::post('/integrations/test-smtp', [\App\Http\Controllers\Admin\IntegrationController::class, 'testSmtp'])->name('integrations.test-smtp');
         Route::post('/integrations/test-db', [\App\Http\Controllers\Admin\IntegrationController::class, 'testDatabase'])->name('integrations.test-db');
         Route::post('/integrations/update-midtrans-channels', [\App\Http\Controllers\Admin\IntegrationController::class, 'updatePaymentMethods'])->name('integrations.update-midtrans-channels');
+    });
+
+    Route::middleware('can:system.reset')->group(function () {
+        Route::get('/settings-danger-zone', [SystemResetController::class, 'index'])->name('settings.danger-zone');
+        Route::post('/settings-danger-zone/reset-transactions', [SystemResetController::class, 'resetTransactions'])->name('settings.reset-transactions');
     });
 });
