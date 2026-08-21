@@ -133,41 +133,79 @@ export function DataTable<TData>({
 
   return (
     <div className="flex flex-col gap-3 flex-1 min-h-[450px] w-full">
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs dark:border-slate-800 dark:bg-slate-900 w-full text-xs">
-        <span className="font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mr-1 flex items-center gap-1.5 shrink-0">
-          <SlidersHorizontal className="size-3.5 text-blue-600 dark:text-blue-400" />
-          <span>Tampilkan Kolom:</span>
-        </span>
-        {table
-          .getAllColumns()
-          .filter((column) => column.getCanHide())
-          .map((column) => {
-            const isVisible = column.getIsVisible()
-            const headerLabel =
-              typeof column.columnDef.header === 'string'
-                ? column.columnDef.header
-                : getLabel(column.id)
+      {/* Toolbar Tampilkan Kolom dengan Kontrol Lengkap (Opsi B: Rata Kiri-Kanan) */}
+      {table.getAllColumns().some((c) => c.getCanHide()) && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs dark:border-slate-800 dark:bg-slate-900 w-full text-xs">
+          {/* Kolom Checkboxes di Sisi Kiri */}
+          <div className="flex flex-wrap items-center gap-2 flex-1">
+            <span className="font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300 mr-1 flex items-center gap-1.5 shrink-0">
+              <SlidersHorizontal className="size-3.5 text-blue-600 dark:text-blue-400" />
+              <span>Tampilkan Kolom:</span>
+            </span>
+            {table
+              .getAllColumns()
+              .filter((column) => column.getCanHide())
+              .map((column) => {
+                const isVisible = column.getIsVisible()
+                const headerLabel =
+                  typeof column.columnDef.header === 'string'
+                    ? column.columnDef.header
+                    : getLabel(column.id)
 
-            return (
-              <label
-                key={column.id}
-                className={cn(
-                  'flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer select-none',
-                  isVisible
-                    ? 'border-blue-200 bg-blue-50/60 text-blue-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200 shadow-2xs'
-                    : 'border-slate-200/60 bg-slate-100/60 text-slate-400 dark:border-slate-800 dark:bg-slate-800/40 opacity-50',
-                )}
-              >
-                <Checkbox
-                  checked={isVisible}
-                  onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                  className="size-3.5 rounded data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
-                />
-                <span className={cn(!isVisible && 'line-through')}>{headerLabel}</span>
-              </label>
-            )
-          })}
-      </div>
+                return (
+                  <label
+                    key={column.id}
+                    className={cn(
+                      'flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer select-none',
+                      isVisible
+                        ? 'border-blue-200 bg-blue-50/60 text-blue-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200 shadow-2xs'
+                        : 'border-slate-200/60 bg-slate-100/60 text-slate-400 dark:border-slate-800 dark:bg-slate-800/40 opacity-50',
+                    )}
+                  >
+                    <Checkbox
+                      checked={isVisible}
+                      onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                      className="size-3.5 rounded data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                    />
+                    <span className={cn(!isVisible && 'line-through')}>{headerLabel}</span>
+                  </label>
+                )
+              })}
+          </div>
+
+          {/* Kontrol Aksi Cepat & Indikator di Sisi Kanan */}
+          <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 border-t sm:border-t-0 sm:border-l border-slate-200 dark:border-slate-800 pt-2.5 sm:pt-0 sm:pl-3">
+            <span className="inline-flex items-center rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:text-slate-300">
+              <strong className="text-blue-600 dark:text-blue-400 mr-0.5">
+                {table.getAllColumns().filter((c) => c.getCanHide() && c.getIsVisible()).length}
+              </strong>
+              /{table.getAllColumns().filter((c) => c.getCanHide()).length} Kolom Aktif
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              onClick={() => table.toggleAllColumnsVisible(true)}
+              className="h-7 text-xs font-semibold text-blue-700 bg-blue-50/50 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+              title="Aktifkan seluruh kolom tabel"
+            >
+              Pilih Semua
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              onClick={() => {
+                setColumnVisibility({})
+              }}
+              className="h-7 text-xs font-semibold text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border-slate-200 dark:border-slate-700"
+              title="Kembalikan tampilan kolom standar"
+            >
+              Reset
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="relative flex-1 min-h-[380px] w-full overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
         <Table className="w-full text-xs">
