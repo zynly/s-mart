@@ -1,7 +1,7 @@
 import { useState, type FormEventHandler, type ReactElement } from 'react'
 import { router, useForm } from '@inertiajs/react'
 import type { ColumnDef } from '@tanstack/react-table'
-import { MoreHorizontal, Printer, CreditCard, Pencil, RefreshCw, KeyRound, Lock, UserX, Wallet, Coins, Users, CheckCircle2, GraduationCap } from 'lucide-react'
+import { MoreHorizontal, Printer, CreditCard, Pencil, RefreshCw, KeyRound, Lock, UserX, Wallet, Coins, Users, CheckCircle2, GraduationCap, Search, Filter, RotateCcw } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
 import { PageTabs } from '@/Components/common/PageTabs'
@@ -158,6 +158,15 @@ export default function Index({ tab, members, stats, levels, categories, filters
       { preserveState: true }
     )
   }
+
+  function resetFilter() {
+    setSearch('')
+    setTypeFilter('')
+    setStatusFilter('')
+    router.get(route('admin.members.index'), {}, { preserveState: true })
+  }
+
+  const isFiltered = Boolean(search || (typeFilter && typeFilter !== 'all') || (statusFilter && statusFilter !== 'all'))
 
   function openCardPreview(memberId: number, memberName: string) {
     const url = route('admin.members.cards.pdf', { ids: [memberId] })
@@ -551,39 +560,78 @@ export default function Index({ tab, members, stats, levels, categories, filters
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        <Input
-          placeholder="Cari nama/no. anggota/NIS…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && applyFilter()}
-          className="max-w-xs"
-        />
-        <Select value={typeFilter || 'all'} onValueChange={(v) => setTypeFilter(v === 'all' ? '' : v)}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Semua tipe" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Semua tipe</SelectItem>
-            {Object.entries(TYPE_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>{label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={statusFilter || 'all'} onValueChange={(v) => setStatusFilter(v === 'all' ? '' : v)}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Semua status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Semua status</SelectItem>
-            <SelectItem value="active">Aktif</SelectItem>
-            <SelectItem value="inactive">Nonaktif</SelectItem>
-            <SelectItem value="suspended">Suspend</SelectItem>
-            <SelectItem value="graduated">Lulus</SelectItem>
-            <SelectItem value="transferred">Pindah</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button variant="outline" onClick={applyFilter}>Terapkan</Button>
+      {/* Full-width Balanced Filter Toolbar (Rata Kiri-Kanan) */}
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-1 flex-col gap-2.5 sm:flex-row sm:items-center">
+          {/* Search Box */}
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+            <Input
+              placeholder="Cari nama, nomor anggota, atau NIS…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && applyFilter()}
+              className="pl-9 h-9 text-sm bg-slate-50/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700"
+            />
+          </div>
+
+          {/* Type Filter */}
+          <div className="w-full sm:w-44 shrink-0">
+            <Select value={typeFilter || 'all'} onValueChange={(v) => setTypeFilter(v === 'all' ? '' : v)}>
+              <SelectTrigger className="h-9 text-sm bg-slate-50/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
+                <SelectValue placeholder="Semua tipe" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Tipe</SelectItem>
+                {Object.entries(TYPE_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Status Filter */}
+          <div className="w-full sm:w-40 shrink-0">
+            <Select value={statusFilter || 'all'} onValueChange={(v) => setStatusFilter(v === 'all' ? '' : v)}>
+              <SelectTrigger className="h-9 text-sm bg-slate-50/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
+                <SelectValue placeholder="Semua status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Status</SelectItem>
+                <SelectItem value="active">Aktif</SelectItem>
+                <SelectItem value="inactive">Nonaktif</SelectItem>
+                <SelectItem value="suspended">Suspend</SelectItem>
+                <SelectItem value="graduated">Lulus</SelectItem>
+                <SelectItem value="transferred">Pindah</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Action Buttons Right */}
+        <div className="flex items-center gap-2 shrink-0 justify-end">
+          {isFiltered && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={resetFilter}
+              className="h-9 px-2.5 text-xs text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+              title="Reset Filter"
+            >
+              <RotateCcw className="size-3.5 mr-1 text-slate-400" />
+              Reset
+            </Button>
+          )}
+          <Button
+            onClick={applyFilter}
+            size="sm"
+            className="h-9 px-4 text-xs font-semibold gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
+          >
+            <Filter className="size-3.5" />
+            Terapkan Filter
+          </Button>
+        </div>
       </div>
 
       <DataTable
