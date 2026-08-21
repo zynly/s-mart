@@ -34,3 +34,4 @@ DESIGN.md
 # analisis/migrasi katalog — bukan source code, tidak untuk repo).
 /POS-OLD.sql
 graphify-out/
+/dist-desktop/
