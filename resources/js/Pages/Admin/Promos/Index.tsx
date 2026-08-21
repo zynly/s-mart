@@ -145,10 +145,14 @@ export default function Index({ tab, promos, products, categories, filters }: Pr
 
   // Filter state for product selection
   const [prodSearch, setProdSearch] = useState('')
-  const [prodCatFilter, setProdCatFilter] = useState('all')
+  const [selectedCatFilters, setSelectedCatFilters] = useState<number[]>([])
   const [prodFilterTab, setProdFilterTab] = useState<'all' | 'selected'>('all')
 
-  // Filter state for category selection
+  // Sub-modal filter state for category selection
+  const [catFilterModalOpen, setCatFilterModalOpen] = useState(false)
+  const [catModalSearch, setCatModalSearch] = useState('')
+
+  // Filter state for category selection (promo tipe category)
   const [catSearch, setCatSearch] = useState('')
 
   function applyFilter(type: string) {
@@ -158,9 +162,10 @@ export default function Index({ tab, promos, products, categories, filters }: Pr
 
   function resetFilters() {
     setProdSearch('')
-    setProdCatFilter('all')
+    setSelectedCatFilters([])
     setProdFilterTab('all')
     setCatSearch('')
+    setCatModalSearch('')
   }
 
   function openCreate() {
@@ -222,7 +227,7 @@ export default function Index({ tab, promos, products, categories, filters }: Pr
 
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
-      if (prodCatFilter !== 'all' && String(p.category_id) !== prodCatFilter) {
+      if (selectedCatFilters.length > 0 && (!p.category_id || !selectedCatFilters.includes(p.category_id))) {
         return false
       }
       if (prodFilterTab === 'selected' && !form.data.product_ids.includes(p.id)) {
@@ -237,13 +242,19 @@ export default function Index({ tab, promos, products, categories, filters }: Pr
       }
       return true
     })
-  }, [products, prodCatFilter, prodFilterTab, prodSearch, form.data.product_ids])
+  }, [products, selectedCatFilters, prodFilterTab, prodSearch, form.data.product_ids])
 
   const filteredCategories = useMemo(() => {
     if (!catSearch.trim()) return categories
     const q = catSearch.toLowerCase()
     return categories.filter((c) => c.name.toLowerCase().includes(q))
   }, [categories, catSearch])
+
+  const modalFilteredCategories = useMemo(() => {
+    if (!catModalSearch.trim()) return categories
+    const q = catModalSearch.toLowerCase()
+    return categories.filter((c) => c.name.toLowerCase().includes(q))
+  }, [categories, catModalSearch])
 
   function selectAllFilteredProducts() {
     const idsToAdd = filteredProducts.map((p) => p.id)
@@ -384,17 +395,17 @@ export default function Index({ tab, promos, products, categories, filters }: Pr
 
       {/* Dialog Modal Tambah / Edit Promo (Lebar, Proporsional, Bersih) */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="flex flex-col max-h-[92vh] w-[96vw] sm:max-w-4xl md:max-w-5xl lg:max-w-6xl xl:max-w-7xl overflow-hidden p-0 rounded-2xl shadow-2xl border-border bg-card">
-          <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20">
+        <DialogContent className="flex flex-col h-[90vh] max-h-[90vh] w-[96vw] sm:max-w-4xl md:max-w-5xl lg:max-w-6xl xl:max-w-7xl overflow-hidden p-0 rounded-2xl shadow-2xl border-border bg-card">
+          <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20 shrink-0">
             <DialogTitle className="flex items-center gap-2 text-lg font-bold">
               <Tag className="size-5 text-primary" />
               {editing ? `Ubah Promo — ${editing.name}` : 'Tambah Promo Baru'}
             </DialogTitle>
           </DialogHeader>
 
-          <form onSubmit={submit} className="flex flex-col flex-1 overflow-hidden">
+          <form onSubmit={submit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
             {/* Scrollable Form Body */}
-            <div className="flex-1 overflow-y-auto px-6 py-5">
+            <div className="flex-1 overflow-y-auto min-h-0 px-6 py-5">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
                 {/* Kolom Kiri: Pengaturan Dasar & Aturan Promo (5 dari 12 kolom) */}
@@ -612,22 +623,28 @@ export default function Index({ tab, promos, products, categories, filters }: Pr
                       {/* Toolbar Filter & Pencarian Produk */}
                       <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-1">
                         <div className="sm:col-span-5">
-                          <Select value={prodCatFilter} onValueChange={setProdCatFilter}>
-                            <SelectTrigger className="h-8.5 text-xs bg-background">
-                              <SelectValue placeholder="Semua Kategori" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">
-                                <div className="flex items-center gap-1.5">
-                                  <Folder className="size-3.5 text-content-muted" />
-                                  <span>Semua Kategori</span>
-                                </div>
-                              </SelectItem>
-                              {categories.map((c) => (
-                                <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setCatFilterModalOpen(true)}
+                            className="h-8.5 text-xs bg-background w-full flex items-center justify-between gap-2 px-3 border-border hover:border-primary/50"
+                          >
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <Folder className="size-3.5 text-primary shrink-0" />
+                              <span className="truncate">
+                                {selectedCatFilters.length === 0
+                                  ? 'Semua Kategori (Filter)'
+                                  : `${selectedCatFilters.length} Kategori Dipilih`}
+                              </span>
+                            </div>
+                            {selectedCatFilters.length > 0 ? (
+                              <Badge variant="secondary" className="text-[10px] h-4.5 px-1.5 font-mono">
+                                {selectedCatFilters.length}
+                              </Badge>
+                            ) : (
+                              <Filter className="size-3 text-content-muted shrink-0" />
+                            )}
+                          </Button>
                         </div>
 
                         <div className="sm:col-span-7 relative">
@@ -942,20 +959,130 @@ export default function Index({ tab, promos, products, categories, filters }: Pr
               </div>
             </div>
 
-            {/* Sticky Fixed Footer */}
-            <DialogFooter className="px-6 py-3.5 border-t border-border bg-muted/20 flex sm:justify-between items-center gap-2">
-              <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
+            {/* Sticky Fixed Footer (Bebas dari negative margin clipping) */}
+            <div className="px-6 py-4 border-t border-border bg-muted/30 flex items-center justify-between gap-3 shrink-0 rounded-b-2xl">
+              <Button type="button" variant="outline" onClick={() => setFormOpen(false)} className="px-5">
                 Batal
               </Button>
               <Button
                 type="submit"
                 disabled={form.processing || (form.data.type === 'tiered_qty' && (form.data.tiers.length === 0 || duplicateTierQty))}
-                className="gap-2 font-semibold"
+                className="gap-2 font-semibold px-6"
               >
                 {editing ? 'Simpan Perubahan Promo' : 'Buat & Aktifkan Promo'}
               </Button>
-            </DialogFooter>
+            </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sub-Dialog: Filter Kategori Produk Sasaran (Grid 4 Kolom Rapi dengan Checkbox) */}
+      <Dialog open={catFilterModalOpen} onOpenChange={setCatFilterModalOpen}>
+        <DialogContent className="flex flex-col h-[80vh] max-h-[80vh] w-[92vw] sm:max-w-3xl md:max-w-4xl lg:max-w-5xl overflow-hidden p-0 rounded-2xl shadow-2xl border-border bg-card">
+          <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20 shrink-0">
+            <DialogTitle className="flex items-center gap-2 text-base font-bold">
+              <Folder className="size-4.5 text-primary" />
+              Pilih Filter Kategori Barang Sasaran
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="p-6 space-y-4 flex-1 overflow-y-auto min-h-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="relative flex-1">
+                <Search className="size-3.5 absolute left-3 top-3 text-content-muted" />
+                <Input
+                  placeholder="Cari nama kategori..."
+                  value={catModalSearch}
+                  onChange={(e) => setCatModalSearch(e.target.value)}
+                  className="pl-9 text-xs bg-background h-9"
+                />
+                {catModalSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setCatModalSearch('')}
+                    className="absolute right-3 top-2.5 text-content-muted hover:text-content"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs gap-1"
+                  onClick={() => setSelectedCatFilters(categories.map((c) => c.id))}
+                >
+                  <CheckSquare className="size-3.5" /> Pilih Semua
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 text-xs text-danger hover:text-danger hover:bg-danger/10 gap-1"
+                  onClick={() => setSelectedCatFilters([])}
+                >
+                  <RotateCcw className="size-3.5" /> Reset (Semua)
+                </Button>
+              </div>
+            </div>
+
+            {/* Grid 4 Kolom Kategori dengan Checkbox */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 max-h-[440px] overflow-y-auto p-1">
+              {modalFilteredCategories.length === 0 ? (
+                <div className="col-span-full py-12 text-center text-xs text-content-muted">
+                  Tidak ada kategori yang sesuai pencarian.
+                </div>
+              ) : (
+                modalFilteredCategories.map((cat) => {
+                  const isChecked = selectedCatFilters.includes(cat.id)
+                  const productCount = products.filter((p) => p.category_id === cat.id).length
+                  return (
+                    <label
+                      key={cat.id}
+                      className={`flex items-center justify-between gap-2 p-3 rounded-xl border cursor-pointer transition select-none ${
+                        isChecked
+                          ? 'border-primary bg-primary/10 shadow-xs'
+                          : 'border-border/80 bg-card hover:bg-muted/40 hover:border-border'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Checkbox
+                          checked={isChecked}
+                          onCheckedChange={(checked) =>
+                            setSelectedCatFilters((prev) =>
+                              checked ? [...prev, cat.id] : prev.filter((id) => id !== cat.id)
+                            )
+                          }
+                        />
+                        <span className="text-xs font-medium text-content truncate">{cat.name}</span>
+                      </div>
+                      <Badge variant="outline" className="text-[10px] shrink-0 font-mono px-1.5 h-4.5 bg-background">
+                        {productCount}
+                      </Badge>
+                    </label>
+                  )
+                })
+              )}
+            </div>
+          </div>
+
+          <div className="px-6 py-3.5 border-t border-border bg-muted/20 flex items-center justify-between gap-2 shrink-0">
+            <span className="text-xs text-content-muted">
+              {selectedCatFilters.length === 0
+                ? 'Semua kategori aktif (tanpa filter khusus)'
+                : `${selectedCatFilters.length} dari ${categories.length} kategori dipilih`}
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setCatFilterModalOpen(false)}
+              className="font-semibold text-xs px-5"
+            >
+              Terapkan Filter
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
