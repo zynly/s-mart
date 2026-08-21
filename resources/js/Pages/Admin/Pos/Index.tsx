@@ -1667,8 +1667,9 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                         {midtransPayingKey === line.key ? (
                           <p className="text-xs text-gray-500">Menunggu pembayaran di popup Midtrans…</p>
                         ) : line.reference_no ? (
-                          <div className="rounded-md border border-success/30 bg-success/10 px-2.5 py-1.5">
-                            <span className="text-xs text-success">✓ Dibayar via Midtrans · {line.reference_no}</span>
+                          <div className="rounded-md border border-success/30 bg-success/10 px-2.5 py-1.5 flex items-center gap-1.5">
+                            <CheckCircle2 className="size-3.5 text-success shrink-0" />
+                            <span className="text-xs text-success font-medium">Dibayar via Midtrans · {line.reference_no}</span>
                           </div>
                         ) : (
                           <Button type="button" variant="outline" size="sm" onClick={() => void payLineWithMidtrans(line)}>

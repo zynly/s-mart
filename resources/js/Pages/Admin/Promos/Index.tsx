@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
 import { formatMoney } from '@/Lib/money'
 import type { Paginated } from '@/Types'
-import { Search, Filter, CheckSquare, RotateCcw, X, Plus, Trash2, Tag, Percent, Sparkles, Layers, ShoppingBag } from 'lucide-react'
+import { Search, Filter, CheckSquare, RotateCcw, X, Plus, Trash2, Tag, Percent, Sparkles, Layers, ShoppingBag, Package, Receipt, Folder } from 'lucide-react'
 
 type Ref = {
   id: number
@@ -67,13 +67,13 @@ type PromosIndexProps = {
 }
 
 const TYPE_LABELS: Record<string, string> = {
-  product: '🏷️ Diskon Barang Tertentu',
-  category: '📂 Diskon Kategori Barang',
-  bundle: '📦 Paket Hemat (Bundling)',
-  buy_x_get_y: '🎁 Beli X Gratis Y (Buy 1 Get 1)',
-  tiered_qty: '📈 Makin Banyak Makin Murah (Grosir/Bertingkat)',
-  happy_hour: '⏰ Diskon Jam Tertentu (Flash Sale / Jam Khusus)',
-  clearance: '🏷️ Cuci Gudang (Habiskan Stok)',
+  product: 'Diskon Barang Tertentu',
+  category: 'Diskon Kategori Barang',
+  bundle: 'Paket Hemat (Bundling)',
+  buy_x_get_y: 'Beli X Gratis Y (Buy 1 Get 1)',
+  tiered_qty: 'Makin Banyak Makin Murah (Grosir/Bertingkat)',
+  happy_hour: 'Diskon Jam Tertentu (Flash Sale / Jam Khusus)',
+  clearance: 'Cuci Gudang (Habiskan Stok)',
   member_level: 'Diskon Member Level (Sistem)',
   birthday: 'Bonus Ulang Tahun (Sistem)',
 }
@@ -471,8 +471,18 @@ export default function Index({ tab, promos, products, categories, filters }: Pr
                         <Select value={form.data.scope} onValueChange={(v) => form.setData('scope', v)}>
                           <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="item">📦 Per Barang</SelectItem>
-                            <SelectItem value="bill">🧾 Per Total Nota</SelectItem>
+                            <SelectItem value="item">
+                              <div className="flex items-center gap-1.5">
+                                <Package className="size-3.5 text-content-muted" />
+                                <span>Per Barang</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="bill">
+                              <div className="flex items-center gap-1.5">
+                                <Receipt className="size-3.5 text-content-muted" />
+                                <span>Per Total Nota</span>
+                              </div>
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -607,7 +617,12 @@ export default function Index({ tab, promos, products, categories, filters }: Pr
                               <SelectValue placeholder="Semua Kategori" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="all">📂 Semua Kategori</SelectItem>
+                              <SelectItem value="all">
+                                <div className="flex items-center gap-1.5">
+                                  <Folder className="size-3.5 text-content-muted" />
+                                  <span>Semua Kategori</span>
+                                </div>
+                              </SelectItem>
                               {categories.map((c) => (
                                 <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                               ))}
