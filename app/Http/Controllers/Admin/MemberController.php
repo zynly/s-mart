@@ -44,6 +44,7 @@ class MemberController extends Controller
             ->when($request->string('type')->toString(), fn ($q, $type) => $q->where('type', $type))
             ->when($request->string('status')->toString(), fn ($q, $status) => $q->where('status', $status))
             ->when($request->string('class_name')->toString(), fn ($q, $class) => $q->where('class_name', $class))
+            ->when($request->string('major')->toString(), fn ($q, $major) => $q->where('major', $major))
             ->orderBy('name')
             ->paginate(20)
             ->withQueryString();
@@ -73,9 +74,10 @@ class MemberController extends Controller
             'tab' => 'members',
             'members' => $members,
             'stats' => $stats,
-            'levels' => MemberLevel::where('is_active', true)->orderBy('name')->get(['id', 'name']),
-            'categories' => Category::orderBy('name')->get(['id', 'name']),
-            'filters' => $request->only('search', 'type', 'status', 'class_name'),
+            'levels' => \Illuminate\Support\Facades\Cache::remember('dropdown_member_levels', 3600, fn () => MemberLevel::where('is_active', true)->orderBy('name')->get(['id', 'name'])),
+            'categories' => \Illuminate\Support\Facades\Cache::remember('dropdown_categories', 3600, fn () => Category::orderBy('name')->get(['id', 'name'])),
+            'majors' => ['BD', 'PPLG', 'UPT', 'TKP'],
+            'filters' => $request->only('search', 'type', 'status', 'class_name', 'major'),
         ]);
     }
 

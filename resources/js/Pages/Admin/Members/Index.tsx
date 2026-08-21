@@ -74,8 +74,16 @@ type MembersIndexProps = {
   stats?: MemberStats
   levels: Level[]
   categories: Ref[]
-  filters: { search?: string; type?: string; status?: string; class_name?: string }
+  majors?: string[]
+  filters: { search?: string; type?: string; status?: string; class_name?: string; major?: string }
 }
+
+const MAJOR_OPTIONS = [
+  { value: 'BD', label: 'BD (Bisnis Digital)' },
+  { value: 'PPLG', label: 'PPLG (Pengembangan Perangkat Lunak & Gim)' },
+  { value: 'UPT', label: 'UPT (Unit Produksi / Pariwisata / Tata Boga)' },
+  { value: 'TKP', label: 'TKP (Teknik Konstruksi & Perumahan)' },
+]
 
 const TYPE_LABELS: Record<MemberRow['type'], string> = {
   santri: 'Santri',
@@ -126,6 +134,7 @@ const emptyForm = {
 export default function Index({ tab, members, stats, levels, categories, filters }: MembersIndexProps) {
   const [search, setSearch] = useState(filters.search ?? '')
   const [typeFilter, setTypeFilter] = useState(filters.type ?? '')
+  const [majorFilter, setMajorFilter] = useState(filters.major ?? '')
   const [statusFilter, setStatusFilter] = useState(filters.status ?? '')
   const [sheetOpen, setSheetOpen] = useState(false)
   const [sampleCardOpen, setSampleCardOpen] = useState(false)
@@ -153,6 +162,7 @@ export default function Index({ tab, members, stats, levels, categories, filters
       {
         search: search || undefined,
         type: typeFilter || undefined,
+        major: majorFilter || undefined,
         status: statusFilter || undefined,
       },
       { preserveState: true }
@@ -162,11 +172,12 @@ export default function Index({ tab, members, stats, levels, categories, filters
   function resetFilter() {
     setSearch('')
     setTypeFilter('')
+    setMajorFilter('')
     setStatusFilter('')
     router.get(route('admin.members.index'), {}, { preserveState: true })
   }
 
-  const isFiltered = Boolean(search || (typeFilter && typeFilter !== 'all') || (statusFilter && statusFilter !== 'all'))
+  const isFiltered = Boolean(search || (typeFilter && typeFilter !== 'all') || (majorFilter && majorFilter !== 'all') || (statusFilter && statusFilter !== 'all'))
 
   function openCardPreview(memberId: number, memberName: string) {
     const url = route('admin.members.preview-card', memberId)
@@ -621,7 +632,7 @@ export default function Index({ tab, members, stats, levels, categories, filters
           </div>
 
           {/* Type Filter */}
-          <div className="w-full sm:w-44 shrink-0">
+          <div className="w-full sm:w-36 shrink-0">
             <Select value={typeFilter || 'all'} onValueChange={(v) => setTypeFilter(v === 'all' ? '' : v)}>
               <SelectTrigger className="h-9 text-sm bg-slate-50/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
                 <SelectValue placeholder="Semua tipe" />
@@ -635,8 +646,23 @@ export default function Index({ tab, members, stats, levels, categories, filters
             </Select>
           </div>
 
+          {/* Major / Jurusan Filter */}
+          <div className="w-full sm:w-36 shrink-0">
+            <Select value={majorFilter || 'all'} onValueChange={(v) => setMajorFilter(v === 'all' ? '' : v)}>
+              <SelectTrigger className="h-9 text-sm bg-slate-50/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
+                <SelectValue placeholder="Semua Jurusan" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Jurusan</SelectItem>
+                {MAJOR_OPTIONS.map((m) => (
+                  <SelectItem key={m.value} value={m.value}>{m.value}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Status Filter */}
-          <div className="w-full sm:w-40 shrink-0">
+          <div className="w-full sm:w-36 shrink-0">
             <Select value={statusFilter || 'all'} onValueChange={(v) => setStatusFilter(v === 'all' ? '' : v)}>
               <SelectTrigger className="h-9 text-sm bg-slate-50/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
                 <SelectValue placeholder="Semua status" />
@@ -741,11 +767,21 @@ export default function Index({ tab, members, stats, levels, categories, filters
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="m-class">Kelas</Label>
-                    <Input id="m-class" value={form.data.class_name} onChange={(e) => form.setData('class_name', e.target.value)} />
+                    <Input id="m-class" placeholder="Contoh: X BD, XI PPLG" value={form.data.class_name} onChange={(e) => form.setData('class_name', e.target.value)} />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="m-major">Jurusan</Label>
-                    <Input id="m-major" value={form.data.major} onChange={(e) => form.setData('major', e.target.value)} />
+                    <Select value={form.data.major || 'none'} onValueChange={(v) => form.setData('major', v === 'none' ? '' : v)}>
+                      <SelectTrigger id="m-major">
+                        <SelectValue placeholder="Pilih Jurusan" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Tanpa Jurusan (Fasilitator/Staf)</SelectItem>
+                        {MAJOR_OPTIONS.map((m) => (
+                          <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
