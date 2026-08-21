@@ -199,6 +199,15 @@ function MethodCard({
         </p>
       </label>
 
+      {/* Badge Via Midtrans */}
+      {MT_CATEGORY[m.type] && (
+        <div className={`mt-1 inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide w-fit
+          ${m.is_active ? 'bg-white/15 text-white/80' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+          <CreditCard className="size-2.5" />
+          Via Midtrans
+        </div>
+      )}
+
       {/* Sub-channels: grid 3 kolom agar rapi tanpa scrollbar */}
       {hasSub && (
         <div className={`mt-2 flex-1 border-t pt-2
@@ -521,7 +530,7 @@ export default function Index({
                 Metode Pembayaran Kasir POS
               </CardTitle>
               <CardDescription className="text-xs">
-                Centang metode &amp; sub-channel yang tampil di kasir — semua tersimpan ke database
+                Centang ☑ = muncul di kasir. Uncheck = tersembunyi. Badge <span className="font-bold text-amber-600">Via Midtrans</span> = diproses oleh payment gateway Midtrans.
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -539,6 +548,22 @@ export default function Index({
         </CardHeader>
 
         <CardContent className="pt-5">
+          {/* Legenda singkat */}
+          <div className="mb-4 flex flex-wrap gap-3 text-[11px] text-content-muted">
+            <span className="flex items-center gap-1">
+              <span className="inline-block size-3 rounded border-2 border-emerald-600 bg-emerald-600" />
+              Centang atas = aktif di kasir
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 border border-amber-200">Via Midtrans</span>
+              = QRIS / E-Wallet / Transfer Bank
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block size-3 rounded border-2 border-emerald-600 bg-emerald-600" />
+              Centang bawah = sub-channel Midtrans yang diizinkan
+            </span>
+          </div>
+
           {/* Grid 5 kolom, h-[200px] fixed per card = semua sama tinggi */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
             {methods.map(m => {
@@ -559,7 +584,7 @@ export default function Index({
 
           <p className="mt-4 flex items-center gap-1.5 text-[11px] text-content-muted">
             <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
-            Checkbox atas = aktif/nonaktif di kasir. Checkbox bawah = sub-channel Midtrans yang diizinkan saat proses bayar.
+            Perubahan baru berlaku setelah klik <strong>Simpan</strong> dan kasir di-refresh.
           </p>
         </CardContent>
       </Card>

@@ -1548,7 +1548,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                   className="flex items-center gap-1 text-[10px] font-semibold text-primary bg-primary/8 hover:bg-primary/15 border border-primary/15 px-2 py-0.5 rounded-full transition"
                 >
                   <Sparkles className="size-2.5 shrink-0" />
-                  Lihat Katalog
+                  Lihat Promo
                   <Badge className="ml-0.5 text-[9px] px-1 py-0 h-3.5 font-bold bg-primary text-white rounded-full border-0">
                     {activePromos.length + activeCoupons.length}
                   </Badge>
