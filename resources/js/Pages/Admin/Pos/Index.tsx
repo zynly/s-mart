@@ -4,7 +4,7 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import { toast } from 'sonner'
 import {
   AlertCircle, ArrowDownCircle, ArrowUpCircle, Check, CheckCircle2, ChevronLeft, ChevronRight, Coins, CreditCard, Lock, Pause, Phone, PlusCircle, Printer, Receipt,
-  QrCode, ScanLine, Search, ShoppingCart, Store, Trash2, UserCircle, Wallet, X,
+  QrCode, ScanLine, Search, ShoppingCart, Sparkles, Store, Tag, Trash2, UserCircle, Wallet, X,
 } from 'lucide-react'
 import PosLayout from '@/Layouts/PosLayout'
 import { Money } from '@/Components/common/Money'
@@ -105,6 +105,17 @@ type PaymentLine = {
   gateway_status?: 'settlement' | 'capture' | 'pending'
 }
 
+type ActivePromoRow = {
+  id: number
+  code: string
+  name: string
+  type: string
+  discount_type: string
+  discount_value: number
+  min_purchase: number | null
+  scope: string
+}
+
 type PosIndexProps = {
   session: SessionInfo
   outlet: OutletInfo
@@ -112,13 +123,14 @@ type PosIndexProps = {
   catalog: CatalogPage
   categories: CategoryRef[]
   holds: HoldRow[]
+  activePromos?: ActivePromoRow[]
   noPinThreshold: number
   pointValue: number
   midtransClientKey: string | null
   midtransIsProduction: boolean
 }
 
-export default function Index({ session, outlet, paymentMethods, catalog, categories, holds, noPinThreshold, pointValue, midtransClientKey, midtransIsProduction }: PosIndexProps) {
+export default function Index({ session, outlet, paymentMethods, catalog, categories, holds, activePromos = [], noPinThreshold, pointValue, midtransClientKey, midtransIsProduction }: PosIndexProps) {
   const [catalogCategory, setCatalogCategory] = useState('')
   const [catalogSearch, setCatalogSearch] = useState('')
 
@@ -131,6 +143,8 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
   }
   const [cart, setCart] = useState<CartLine[]>([])
   const [member, setMember] = useState<MemberResult | null>(null)
+  const [appliedCoupon, setAppliedCoupon] = useState('')
+  const [showPromosModal, setShowPromosModal] = useState(false)
   const [barcode, setBarcode] = useState('')
   const [scanError, setScanError] = useState<string | null>(null)
   const [memberQuery, setMemberQuery] = useState('')
@@ -571,6 +585,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
         outlet_id: outlet.id,
         cashier_session_id: session.id,
         member_id: member?.id ?? null,
+        coupon_code: appliedCoupon.trim() ? appliedCoupon.trim() : null,
         items: cart.map((l) => ({ product_id: l.product_id, unit_id: l.unit_id, qty: l.qty, unit_price: l.unit_price, product_name: l.product_name, unit_code: l.unit_code })),
         payments: paymentLines.map((l) => ({
           payment_method_id: l.payment_method_id,
@@ -589,6 +604,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
           })
           setCart([])
           setMember(null)
+          setAppliedCoupon('')
           setPaymentOpen(false)
           idempotencyKeyRef.current = newIdempotencyKey()
         },
@@ -631,6 +647,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
     setPaymentError(null)
 
     const finalReceived = isCash ? (cashInput > 0 ? cashInput : subtotal) : subtotal
+    const finalCouponCode = extraPayload.coupon_code ?? (appliedCoupon.trim() ? appliedCoupon.trim() : null)
 
     router.post(
       route('pos.sales.store'),
@@ -638,7 +655,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
         outlet_id: outlet.id,
         cashier_session_id: session.id,
         member_id: member?.id ?? null,
-        coupon_code: extraPayload.coupon_code ?? null,
+        coupon_code: finalCouponCode,
         items: cart.map((l) => ({ product_id: l.product_id, unit_id: l.unit_id, qty: l.qty, unit_price: l.unit_price, product_name: l.product_name, unit_code: l.unit_code })),
         payments: [
           {
@@ -679,6 +696,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
 
           setCart([])
           setMember(null)
+          setAppliedCoupon('')
           setCashInput(0)
           setPaymentError(null)
           setMethodDialog(null)
@@ -1321,6 +1339,51 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                     <p className="text-[11px] text-gray-500 dark:text-content-muted">ID Member: {member.member_number}</p>
                     {member.level && <Badge className="mt-1 text-[10px]" variant="outline">{member.level.name}</Badge>}
                   </div>
+                </div>
+              )}
+            </section>
+
+            {/* Kupon & Promo Kasir */}
+            <section className="rounded-xl border border-gray-200 dark:border-border bg-gray-50/70 dark:bg-surface-alt/70 p-2.5 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-gray-600 dark:text-content-muted flex items-center gap-1.5">
+                  <Tag className="size-3.5 text-amber-500" />
+                  Kupon / Promo
+                </span>
+                {activePromos && activePromos.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPromosModal(true)}
+                    className="text-[11px] font-semibold text-amber-600 hover:text-amber-700 dark:text-amber-400 flex items-center gap-1 transition hover:underline"
+                  >
+                    <Sparkles className="size-3 text-amber-500" />
+                    Promo Hari Ini ({activePromos.length})
+                  </button>
+                )}
+              </div>
+              <div className="relative flex items-center">
+                <Input
+                  placeholder="Ketik kode kupon / promo…"
+                  value={appliedCoupon}
+                  onChange={(e) => setAppliedCoupon(e.target.value.toUpperCase())}
+                  className={`h-8 pr-7 text-xs font-mono font-semibold uppercase ${posFieldClass}`}
+                />
+                {appliedCoupon ? (
+                  <button
+                    type="button"
+                    onClick={() => setAppliedCoupon('')}
+                    className="absolute right-2 text-gray-400 hover:text-gray-600 dark:hover:text-content"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                ) : null}
+              </div>
+              {appliedCoupon && (
+                <div className="flex items-center justify-between text-[11px] text-emerald-600 dark:text-emerald-400 font-medium px-1">
+                  <span>Kode aktif: <b className="font-mono">{appliedCoupon}</b></span>
+                  <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200">
+                    Akan Diterapkan
+                  </Badge>
                 </div>
               )}
             </section>
@@ -2312,6 +2375,75 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
               </Button>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Lihat Promo Hari Ini */}
+      <Dialog open={showPromosModal} onOpenChange={setShowPromosModal}>
+        <DialogContent className="max-h-[85vh] max-w-lg overflow-hidden flex flex-col p-0 rounded-2xl border-border bg-card">
+          <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20">
+            <DialogTitle className="flex items-center gap-2 text-base font-bold">
+              <Sparkles className="size-4.5 text-amber-500" />
+              Promo &amp; Diskon Aktif Hari Ini
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+            {activePromos.length === 0 ? (
+              <div className="py-8 text-center text-xs text-content-muted">
+                Tidak ada promo toko yang sedang aktif hari ini.
+              </div>
+            ) : (
+              activePromos.map((p) => {
+                const discountText =
+                  p.discount_type === 'percent'
+                    ? `${p.discount_value}%`
+                    : p.discount_type === 'amount'
+                    ? formatMoney(p.discount_value)
+                    : p.discount_type === 'fixed_price'
+                    ? `Harga Pas ${formatMoney(p.discount_value)}`
+                    : 'Gratis'
+                return (
+                  <div
+                    key={p.id}
+                    className="p-3 rounded-xl border border-border bg-background hover:border-amber-400 transition flex items-center justify-between gap-3 shadow-xs"
+                  >
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-xs text-content truncate">{p.name}</span>
+                        <Badge variant="outline" className="text-[10px] font-mono bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950 dark:text-amber-300">
+                          {p.code}
+                        </Badge>
+                      </div>
+                      <div className="text-[11px] text-content-muted flex items-center gap-2">
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">Hemat {discountText}</span>
+                        {p.min_purchase ? (
+                          <span>• Min. Belanja {formatMoney(p.min_purchase)}</span>
+                        ) : null}
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={appliedCoupon === p.code ? 'default' : 'outline'}
+                      className={`h-7 text-xs px-2.5 font-semibold ${appliedCoupon === p.code ? 'bg-amber-500 hover:bg-amber-600 text-white' : ''}`}
+                      onClick={() => {
+                        setAppliedCoupon(p.code)
+                        setShowPromosModal(false)
+                        toast.success(`Kode promo ${p.code} diterapkan ke transaksi!`)
+                      }}
+                    >
+                      {appliedCoupon === p.code ? 'Terpakai' : 'Gunakan'}
+                    </Button>
+                  </div>
+                )
+              })
+            )}
+          </div>
+          <DialogFooter className="px-6 py-3 border-t border-border bg-muted/10">
+            <Button type="button" variant="outline" size="sm" onClick={() => setShowPromosModal(false)}>
+              Tutup
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </PosLayout>

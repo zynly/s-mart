@@ -75,6 +75,15 @@ class SaleController extends Controller
             'holds' => $session !== null
                 ? SaleHold::where('cashier_session_id', $session->id)->orderByDesc('held_at')->get(['id', 'reference', 'item_count', 'total', 'held_at', 'member_id'])
                 : [],
+            'activePromos' => Promo::where('is_active', true)
+                ->where(function ($q) {
+                    $q->whereNull('start_date')->orWhere('start_date', '<=', now()->toDateString());
+                })
+                ->where(function ($q) {
+                    $q->whereNull('end_date')->orWhere('end_date', '>=', now()->toDateString());
+                })
+                ->orderByDesc('priority')
+                ->get(['id', 'code', 'name', 'type', 'discount_type', 'discount_value', 'min_purchase', 'scope']),
             'noPinThreshold' => (int) config('pos.no_pin_threshold', 0),
             'pointValue' => (int) config('pos.point_value', 100),
             'midtransClientKey' => config('services.midtrans.client_key'),
