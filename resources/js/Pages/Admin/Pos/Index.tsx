@@ -2380,63 +2380,65 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
 
       {/* Dialog Lihat Promo Hari Ini */}
       <Dialog open={showPromosModal} onOpenChange={setShowPromosModal}>
-        <DialogContent className="max-h-[85vh] max-w-lg overflow-hidden flex flex-col p-0 rounded-2xl border-border bg-card">
+        <DialogContent className="max-h-[85vh] w-[92vw] max-w-2xl overflow-hidden flex flex-col p-0 rounded-2xl border-border bg-card shadow-2xl">
           <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20">
             <DialogTitle className="flex items-center gap-2 text-base font-bold">
               <Sparkles className="size-4.5 text-amber-500" />
               Promo &amp; Diskon Aktif Hari Ini
             </DialogTitle>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+          <div className="flex-1 overflow-y-auto px-6 py-4">
             {activePromos.length === 0 ? (
               <div className="py-8 text-center text-xs text-content-muted">
                 Tidak ada promo toko yang sedang aktif hari ini.
               </div>
             ) : (
-              activePromos.map((p) => {
-                const discountText =
-                  p.discount_type === 'percent'
-                    ? `${p.discount_value}%`
-                    : p.discount_type === 'amount'
-                    ? formatMoney(p.discount_value)
-                    : p.discount_type === 'fixed_price'
-                    ? `Harga Pas ${formatMoney(p.discount_value)}`
-                    : 'Gratis'
-                return (
-                  <div
-                    key={p.id}
-                    className="p-3 rounded-xl border border-border bg-background hover:border-amber-400 transition flex items-center justify-between gap-3 shadow-xs"
-                  >
-                    <div className="min-w-0 flex-1 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs text-content truncate">{p.name}</span>
-                        <Badge variant="outline" className="text-[10px] font-mono bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950 dark:text-amber-300">
-                          {p.code}
-                        </Badge>
-                      </div>
-                      <div className="text-[11px] text-content-muted flex items-center gap-2">
-                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">Hemat {discountText}</span>
-                        {p.min_purchase ? (
-                          <span>• Min. Belanja {formatMoney(p.min_purchase)}</span>
-                        ) : null}
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={appliedCoupon === p.code ? 'default' : 'outline'}
-                      className={`h-7 text-xs px-2.5 font-semibold ${appliedCoupon === p.code ? 'bg-amber-500 hover:bg-amber-600 text-white' : ''}`}
-                      onClick={() => {
-                        setAppliedCoupon(p.code)
-                        setShowPromosModal(false)
-                        toast.success(`Kode promo ${p.code} diterapkan ke transaksi!`)
-                      }}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {activePromos.map((p) => {
+                  const discountText =
+                    p.discount_type === 'percent'
+                      ? `${p.discount_value}%`
+                      : p.discount_type === 'amount'
+                      ? formatMoney(p.discount_value)
+                      : p.discount_type === 'fixed_price'
+                      ? `Harga Pas ${formatMoney(p.discount_value)}`
+                      : 'Gratis'
+                  return (
+                    <div
+                      key={p.id}
+                      className="p-3 rounded-xl border border-border bg-background hover:border-amber-400 transition flex flex-col justify-between gap-2.5 shadow-xs"
                     >
-                      {appliedCoupon === p.code ? 'Terpakai' : 'Gunakan'}
-                    </Button>
-                  </div>
-                )
-              })
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between gap-1.5">
+                          <span className="font-bold text-xs text-content truncate">{p.name}</span>
+                          <Badge variant="outline" className="text-[10px] font-mono shrink-0 bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950 dark:text-amber-300">
+                            {p.code}
+                          </Badge>
+                        </div>
+                        <div className="text-[11px] text-content-muted flex items-center justify-between gap-1">
+                          <span className="font-semibold text-emerald-600 dark:text-emerald-400">Hemat {discountText}</span>
+                          {p.min_purchase ? (
+                            <span className="text-[10px] text-content-subtle">Min. {formatMoney(p.min_purchase)}</span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={appliedCoupon === p.code ? 'default' : 'outline'}
+                        className={`h-7 text-xs w-full font-semibold ${appliedCoupon === p.code ? 'bg-amber-500 hover:bg-amber-600 text-white' : ''}`}
+                        onClick={() => {
+                          setAppliedCoupon(p.code)
+                          setShowPromosModal(false)
+                          toast.success(`Kode promo ${p.code} diterapkan ke transaksi!`)
+                        }}
+                      >
+                        {appliedCoupon === p.code ? 'Terpakai di Transaksi' : 'Gunakan Kode Promo'}
+                      </Button>
+                    </div>
+                  )
+                })}
+              </div>
             )}
           </div>
           <DialogFooter className="px-6 py-3 border-t border-border bg-muted/10">
