@@ -30,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'midtrans/notification',
             'api/v1/callback/pakasir',
             'pakasir/notification',
+            'admin/integrations/update-midtrans-channels',
         ]);
 
         $middleware->web(append: [
