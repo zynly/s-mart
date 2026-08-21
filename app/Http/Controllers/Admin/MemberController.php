@@ -48,9 +48,20 @@ class MemberController extends Controller
             ->paginate(20)
             ->withQueryString();
 
+        $stats = [
+            'total_members' => Member::count(),
+            'total_santri' => Member::where('type', 'santri')->count(),
+            'total_fasilitator' => Member::where('type', 'fasilitator')->count(),
+            'total_staff' => Member::whereIn('type', ['staff', 'public'])->count(),
+            'total_deposit' => (float) Member::sum('balance_cache'),
+            'total_points' => (int) Member::sum('point_balance'),
+            'active_members' => Member::where('status', 'active')->count(),
+        ];
+
         return Inertia::render('Admin/Members/Index', [
             'tab' => 'members',
             'members' => $members,
+            'stats' => $stats,
             'levels' => MemberLevel::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'categories' => Category::orderBy('name')->get(['id', 'name']),
             'filters' => $request->only('search', 'type', 'status', 'class_name'),

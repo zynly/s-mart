@@ -1,7 +1,7 @@
 import { useState, type FormEventHandler, type ReactElement } from 'react'
 import { router, useForm } from '@inertiajs/react'
 import type { ColumnDef } from '@tanstack/react-table'
-import { MoreHorizontal, Printer, CreditCard, Pencil, RefreshCw, KeyRound, Lock, UserX, Wallet, Coins } from 'lucide-react'
+import { MoreHorizontal, Printer, CreditCard, Pencil, RefreshCw, KeyRound, Lock, UserX, Wallet, Coins, Users, CheckCircle2, GraduationCap } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
 import { PageTabs } from '@/Components/common/PageTabs'
@@ -58,9 +58,20 @@ type MemberRow = {
   guardians: GuardianRow[]
 }
 
+export type MemberStats = {
+  total_members: number
+  total_santri: number
+  total_fasilitator: number
+  total_staff: number
+  total_deposit: number
+  total_points: number
+  active_members: number
+}
+
 type MembersIndexProps = {
   tab: string
   members: Paginated<MemberRow>
+  stats?: MemberStats
   levels: Level[]
   categories: Ref[]
   filters: { search?: string; type?: string; status?: string; class_name?: string }
@@ -112,7 +123,7 @@ const emptyForm = {
   joined_at: '',
 }
 
-export default function Index({ tab, members, levels, categories, filters }: MembersIndexProps) {
+export default function Index({ tab, members, stats, levels, categories, filters }: MembersIndexProps) {
   const [search, setSearch] = useState(filters.search ?? '')
   const [typeFilter, setTypeFilter] = useState(filters.type ?? '')
   const [statusFilter, setStatusFilter] = useState(filters.status ?? '')
@@ -137,24 +148,29 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
   const form = useForm(emptyForm)
 
   function applyFilter() {
-    router.get(route('admin.members.index'), { search, type: typeFilter, status: statusFilter }, { preserveState: true, replace: true })
+    router.get(
+      route('admin.members.index'),
+      {
+        search: search || undefined,
+        type: typeFilter || undefined,
+        status: statusFilter || undefined,
+      },
+      { preserveState: true }
+    )
   }
 
   function openCardPreview(memberId: number, memberName: string) {
+    const url = route('admin.members.cards.pdf', { ids: [memberId] })
     setPdfModal({
       open: true,
-      title: `Pratinjau Kartu Santri - ${memberName}`,
-      url: `${route('admin.members.preview-card', memberId)}#zoom=PageWidth&navpanes=0&pagemode=none`,
+      url,
+      title: `Kartu Anggota — ${memberName}`,
     })
   }
 
   function printCards(ids: number[]) {
-    const params = ids.map((id) => `ids[]=${id}`).join('&')
-    setPdfModal({
-      open: true,
-      title: `Cetak Kartu Santri (${ids.length} Kartu)`,
-      url: `${route('admin.members.print-cards')}?${params}#zoom=PageWidth&navpanes=0&pagemode=none`,
-    })
+    const url = route('admin.members.cards.pdf', { ids })
+    window.open(url, '_blank')
   }
 
   function openCreate() {
@@ -194,108 +210,123 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
 
   const submit: FormEventHandler = (e) => {
     e.preventDefault()
-    const options = { preserveScroll: true as const, onSuccess: () => setSheetOpen(false) }
     if (editing) {
-      form.put(route('admin.members.update', editing.id), options)
+      form.put(route('admin.members.update', editing.id), {
+        onSuccess: () => setSheetOpen(false),
+      })
     } else {
-      form.post(route('admin.members.store'), options)
+      form.post(route('admin.members.store'), {
+        onSuccess: () => setSheetOpen(false),
+      })
     }
   }
 
-  function toggleBlockedCategory(categoryId: number, checked: boolean) {
-    form.setData(
-      'blocked_categories',
-      checked ? [...form.data.blocked_categories, categoryId] : form.data.blocked_categories.filter((id) => id !== categoryId),
-    )
+  function toggleBlockedCategory(categoryId: number, blocked: boolean) {
+    const current = form.data.blocked_categories
+    if (blocked) {
+      form.setData('blocked_categories', [...current, categoryId])
+    } else {
+      form.setData('blocked_categories', current.filter((id) => id !== categoryId))
+    }
   }
-
 
   function addGuardian() {
     if (!editing || !newGuardian.name.trim() || !newGuardian.phone.trim()) return
-
-    router.post(route('admin.members.guardians.store', editing.id), newGuardian, {
-      preserveScroll: true,
-      onSuccess: () => setNewGuardian({ name: '', phone: '', relation: '', is_primary: false }),
-    })
+    router.post(
+      route('admin.members.guardians.link', editing.id),
+      newGuardian,
+      {
+        preserveScroll: true,
+        onSuccess: () => setNewGuardian({ name: '', phone: '', relation: '', is_primary: false }),
+      }
+    )
   }
 
   function unlinkGuardian(guardianId: number) {
     if (!editing) return
-    router.delete(route('admin.members.guardians.destroy', [editing.id, guardianId]), { preserveScroll: true })
-  }
-
-  function resetGuardianPassword(guardianId: number) {
-    router.put(route('admin.guardians.reset-password', guardianId), {}, { preserveScroll: true })
+    router.delete(route('admin.members.guardians.unlink', [editing.id, guardianId]), { preserveScroll: true })
   }
 
   function toggleGuardianActive(guardianId: number) {
-    router.put(route('admin.guardians.toggle-active', guardianId), {}, { preserveScroll: true })
+    router.patch(route('admin.guardians.toggle-active', guardianId), {}, { preserveScroll: true })
   }
 
-  const columns: ColumnDef<MemberRow, unknown>[] = [
+  function resetGuardianPassword(guardianId: number) {
+    router.post(route('admin.guardians.reset-password', guardianId), {}, { preserveScroll: true })
+  }
+
+  const columns: ColumnDef<MemberRow>[] = [
     {
       accessorKey: 'member_number',
       header: 'No. Anggota',
-      meta: { align: 'center', className: 'w-20 shrink-0' },
       cell: ({ row }) => (
-        <span className="font-mono text-xs font-semibold text-content-muted whitespace-nowrap">{row.original.member_number}</span>
+        <div className="flex flex-col">
+          <span className="font-mono text-xs font-semibold text-content">{row.original.member_number}</span>
+          {row.original.active_card ? (
+            <span className="text-[10px] text-content-muted">Kartu: {row.original.active_card.card_number}</span>
+          ) : (
+            <span className="text-[10px] text-warning">Belum ada kartu</span>
+          )}
+        </div>
       ),
     },
     {
       accessorKey: 'name',
       header: 'Nama',
-      meta: { align: 'center', className: 'w-64 shrink-0' },
       cell: ({ row }) => (
-        <div className="max-w-[240px] text-left">
-          <span className="font-semibold text-content text-xs sm:text-sm line-clamp-1">{row.original.name}</span>
-          {row.original.nis && <span className="text-[10px] text-content-muted block font-mono">NIS: {row.original.nis}</span>}
+        <div className="flex flex-col">
+          <span className="font-medium text-content">{row.original.name}</span>
+          {row.original.nis && <span className="text-xs text-content-muted">NIS: {row.original.nis}</span>}
+          {row.original.phone && <span className="text-xs text-content-muted">{row.original.phone}</span>}
         </div>
       ),
     },
     {
-      id: 'type',
+      accessorKey: 'type',
       header: 'Tipe',
-      meta: { align: 'center', className: 'w-16 shrink-0' },
-      cell: ({ row }) => <Badge variant="outline" className="text-xs px-2 py-0.5 whitespace-nowrap">{TYPE_LABELS[row.original.type]}</Badge>,
+      cell: ({ row }) => <Badge variant="outline">{TYPE_LABELS[row.original.type] ?? row.original.type}</Badge>,
     },
     {
       id: 'class',
       header: 'Kelas/Jurusan',
-      meta: { align: 'center', className: 'w-24 shrink-0' },
-      cell: ({ row }) => (
-        <span className="text-xs text-content whitespace-nowrap">
-          {row.original.class_name ? `${row.original.class_name} · ${row.original.major ?? '-'}` : '—'}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const m = row.original
+        if (m.type !== 'santri') return <span className="text-content-muted">—</span>
+        return (
+          <span className="text-xs text-content">
+            {[m.class_name, m.major].filter(Boolean).join(' · ') || '—'}
+          </span>
+        )
+      },
     },
     {
-      id: 'level',
+      accessorKey: 'level',
       header: 'Level',
-      meta: { align: 'center', className: 'w-16 shrink-0' },
-      cell: ({ row }) => <span className="text-xs text-content whitespace-nowrap">{row.original.level?.name ?? '—'}</span>,
+      cell: ({ row }) => row.original.level?.name ?? <span className="text-content-muted">—</span>,
     },
     {
-      id: 'balance',
+      accessorKey: 'balance_cache',
       header: 'Saldo',
-      meta: { align: 'center', className: 'w-44 shrink-0' },
       cell: ({ row }) => (
-        <div className="text-left font-semibold text-xs text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+        <div className="flex items-center gap-1 font-bold text-emerald-800 dark:text-emerald-300">
           <Money amount={row.original.balance_cache} />
         </div>
       ),
     },
     {
-      id: 'status',
+      accessorKey: 'status',
       header: 'Status',
-      meta: { align: 'center', className: 'w-16 shrink-0' },
-      cell: ({ row }) => <Badge className={`text-xs px-2 py-0.5 whitespace-nowrap ${STATUS_BADGE[row.original.status] ?? ''}`}>{STATUS_LABELS[row.original.status] ?? row.original.status}</Badge>,
+      cell: ({ row }) => (
+        <Badge className={STATUS_BADGE[row.original.status] ?? 'bg-slate-500'}>
+          {STATUS_LABELS[row.original.status] ?? row.original.status}
+        </Badge>
+      ),
     },
     {
       id: 'actions',
       header: 'Aksi',
-      meta: { align: 'center' },
       cell: ({ row }) => (
-        <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
+        <div className="flex flex-wrap items-center gap-1.5 py-1">
           <Button
             variant="outline"
             size="xs"
@@ -414,14 +445,7 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
           <div className="flex gap-2">
             <Button
               variant="outline"
-              onClick={() => {
-                const firstMember = members.data[0]
-                if (firstMember) {
-                  openCardPreview(firstMember.id, firstMember.name)
-                } else {
-                  setSampleCardOpen(true)
-                }
-              }}
+              onClick={() => setSampleCardOpen(true)}
               className="gap-1.5 text-blue-700 bg-blue-50/60 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800 border-blue-200 font-semibold"
             >
               <CreditCard className="size-4 text-blue-600" />
@@ -435,6 +459,97 @@ export default function Index({ tab, members, levels, categories, filters }: Mem
         { key: 'members', label: 'Anggota', href: route('admin.members.index'), permission: 'member.view' },
         { key: 'points', label: 'Poin', href: route('admin.points.index'), permission: 'member.view' },
       ]} />
+
+      {/* KPI Stat Summary Cards */}
+      {stats && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Card 1: Total Anggota */}
+          <div className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Total Anggota
+              </span>
+              <div className="flex size-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400">
+                <Users className="size-5" />
+              </div>
+            </div>
+            <div className="mt-2">
+              <div className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                {stats.total_members.toLocaleString('id-ID')}
+                <span className="ml-1 text-xs font-normal text-slate-500 dark:text-slate-400">orang</span>
+              </div>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                <span className="font-semibold text-blue-600 dark:text-blue-400">{stats.total_santri}</span> Santri · <span className="font-semibold text-indigo-600 dark:text-indigo-400">{stats.total_fasilitator}</span> Fasilitator
+              </p>
+            </div>
+          </div>
+
+          {/* Card 2: Saldo Deposit */}
+          <div className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Total Saldo Deposit
+              </span>
+              <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
+                <Wallet className="size-5" />
+              </div>
+            </div>
+            <div className="mt-2">
+              <div className="text-2xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400">
+                Rp {Math.round(stats.total_deposit).toLocaleString('id-ID')}
+              </div>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Saldo aktif tersimpan e-money
+              </p>
+            </div>
+          </div>
+
+          {/* Card 3: Total Poin Reward */}
+          <div className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Poin Reward Beredar
+              </span>
+              <div className="flex size-9 items-center justify-center rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400">
+                <Coins className="size-5" />
+              </div>
+            </div>
+            <div className="mt-2">
+              <div className="text-2xl font-extrabold tracking-tight text-amber-600 dark:text-amber-400">
+                {stats.total_points.toLocaleString('id-ID')}
+                <span className="ml-1 text-xs font-normal text-slate-500 dark:text-slate-400">poin</span>
+              </div>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Akumulasi loyalty reward POS
+              </p>
+            </div>
+          </div>
+
+          {/* Card 4: Status Akun Aktif */}
+          <div className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Status Keaktifan
+              </span>
+              <div className="flex size-9 items-center justify-center rounded-lg bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400">
+                <CheckCircle2 className="size-5" />
+              </div>
+            </div>
+            <div className="mt-2">
+              <div className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                {stats.active_members.toLocaleString('id-ID')}
+                <span className="ml-1 text-xs font-normal text-slate-500 dark:text-slate-400">aktif</span>
+              </div>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                  {Math.round((stats.active_members / (stats.total_members || 1)) * 100)}%
+                </span>{' '}
+                anggota siap bertransaksi
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         <Input
