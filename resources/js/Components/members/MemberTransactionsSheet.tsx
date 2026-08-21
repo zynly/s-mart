@@ -103,7 +103,7 @@ export function MemberTransactionsSheet({ member, open, onOpenChange }: MemberTr
             <div className="text-right">
               <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Saldo Deposit</span>
               <p className="text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono">
-                Rp {displayMember.balance_cache.toLocaleString('id-ID')}
+                Rp {Number(displayMember.balance_cache ?? 0).toLocaleString('id-ID')}
               </p>
             </div>
           </div>

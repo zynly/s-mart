@@ -169,7 +169,7 @@ export default function Index({ tab, members, stats, levels, categories, filters
   const isFiltered = Boolean(search || (typeFilter && typeFilter !== 'all') || (statusFilter && statusFilter !== 'all'))
 
   function openCardPreview(memberId: number, memberName: string) {
-    const url = route('admin.members.cards.pdf', { ids: [memberId] })
+    const url = route('admin.members.preview-card', memberId)
     setPdfModal({
       open: true,
       url,
@@ -178,7 +178,7 @@ export default function Index({ tab, members, stats, levels, categories, filters
   }
 
   function printCards(ids: number[]) {
-    const url = route('admin.members.cards.pdf', { ids })
+    const url = route('admin.members.print-cards', { ids })
     window.open(url, '_blank')
   }
 
@@ -242,7 +242,7 @@ export default function Index({ tab, members, stats, levels, categories, filters
   function addGuardian() {
     if (!editing || !newGuardian.name.trim() || !newGuardian.phone.trim()) return
     router.post(
-      route('admin.members.guardians.link', editing.id),
+      route('admin.members.guardians.store', editing.id),
       newGuardian,
       {
         preserveScroll: true,
@@ -253,15 +253,15 @@ export default function Index({ tab, members, stats, levels, categories, filters
 
   function unlinkGuardian(guardianId: number) {
     if (!editing) return
-    router.delete(route('admin.members.guardians.unlink', [editing.id, guardianId]), { preserveScroll: true })
+    router.delete(route('admin.members.guardians.destroy', [editing.id, guardianId]), { preserveScroll: true })
   }
 
   function toggleGuardianActive(guardianId: number) {
-    router.patch(route('admin.guardians.toggle-active', guardianId), {}, { preserveScroll: true })
+    router.put(route('admin.guardians.toggle-active', guardianId), {}, { preserveScroll: true })
   }
 
   function resetGuardianPassword(guardianId: number) {
-    router.post(route('admin.guardians.reset-password', guardianId), {}, { preserveScroll: true })
+    router.put(route('admin.guardians.reset-password', guardianId), {}, { preserveScroll: true })
   }
 
   const columns: ColumnDef<MemberRow>[] = [
@@ -337,10 +337,15 @@ export default function Index({ tab, members, stats, levels, categories, filters
       cell: ({ row }) => (
         <div className="flex flex-wrap items-center gap-1.5 py-1">
           <Button
+            type="button"
             variant="outline"
             size="xs"
-            onClick={() => setHistoryTarget(row.original)}
-            className="h-7 text-xs px-2 gap-1 text-emerald-800 bg-emerald-100/80 hover:bg-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 font-bold border-emerald-300"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setHistoryTarget(row.original)
+            }}
+            className="h-7 text-xs px-2 gap-1 text-emerald-800 bg-emerald-100/80 hover:bg-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 font-bold border-emerald-300 shadow-2xs"
             title="Riwayat Mutasi Transaksi (Deposit, Belanja, Tarik Tunai)"
           >
             <Wallet className="size-3.5 text-emerald-700" />
@@ -348,10 +353,15 @@ export default function Index({ tab, members, stats, levels, categories, filters
           </Button>
 
           <Button
+            type="button"
             variant="outline"
             size="xs"
-            onClick={() => openCardPreview(row.original.id, row.original.name)}
-            className="h-7 text-xs px-2 gap-1 text-blue-700 bg-blue-50/50 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/50 border-blue-200 dark:border-blue-800"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              openCardPreview(row.original.id, row.original.name)
+            }}
+            className="h-7 text-xs px-2 gap-1 text-blue-700 bg-blue-50/50 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/50 border-blue-200 dark:border-blue-800 shadow-2xs"
             title="Pratinjau Kartu Santri PDF"
           >
             <CreditCard className="size-3.5 text-blue-600" />
@@ -359,10 +369,15 @@ export default function Index({ tab, members, stats, levels, categories, filters
           </Button>
 
           <Button
+            type="button"
             variant="outline"
             size="xs"
-            onClick={() => printCards([row.original.id])}
-            className="h-7 text-xs px-2 gap-1 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/50 border-emerald-200 dark:border-emerald-800"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              printCards([row.original.id])
+            }}
+            className="h-7 text-xs px-2 gap-1 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/50 border-emerald-200 dark:border-emerald-800 shadow-2xs"
             title="Cetak Kartu"
           >
             <Printer className="size-3.5 text-emerald-600" />
@@ -370,10 +385,15 @@ export default function Index({ tab, members, stats, levels, categories, filters
           </Button>
 
           <Button
+            type="button"
             variant="outline"
             size="xs"
-            onClick={() => openEdit(row.original)}
-            className="h-7 text-xs px-2 gap-1 text-amber-700 bg-amber-50/50 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-900/50 border-amber-200 dark:border-amber-800"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              openEdit(row.original)
+            }}
+            className="h-7 text-xs px-2 gap-1 text-amber-700 bg-amber-50/50 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-900/50 border-amber-200 dark:border-amber-800 shadow-2xs"
             title="Ubah Data Anggota"
           >
             <Pencil className="size-3.5 text-amber-600" />
@@ -381,21 +401,31 @@ export default function Index({ tab, members, stats, levels, categories, filters
           </Button>
 
           <Button
+            type="button"
             variant="outline"
             size="xs"
-            onClick={() => setReissueTarget(row.original)}
-            className="h-7 text-xs px-2 gap-1 text-purple-700 bg-purple-50/50 hover:bg-purple-100 dark:bg-purple-950/40 dark:text-purple-300 dark:hover:bg-purple-900/50 border-purple-200 dark:border-purple-800"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setReissueTarget(row.original)
+            }}
+            className="h-7 text-xs px-2 gap-1 text-sky-700 bg-sky-50/50 hover:bg-sky-100 dark:bg-sky-950/40 dark:text-sky-300 dark:hover:bg-sky-900/50 border-sky-200 dark:border-sky-800 shadow-2xs"
             title="Terbitkan Ulang Kartu"
           >
-            <RefreshCw className="size-3.5 text-purple-600" />
+            <RefreshCw className="size-3.5 text-sky-600" />
             Reissue
           </Button>
 
           <Button
+            type="button"
             variant="outline"
             size="xs"
-            onClick={() => setResetPinTarget(row.original)}
-            className="h-7 text-xs px-2 gap-1 text-cyan-700 bg-cyan-50/50 hover:bg-cyan-100 dark:bg-cyan-950/40 dark:text-cyan-300 dark:hover:bg-cyan-900/50 border-cyan-200 dark:border-cyan-800"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setResetPinTarget(row.original)
+            }}
+            className="h-7 text-xs px-2 gap-1 text-cyan-700 bg-cyan-50/50 hover:bg-cyan-100 dark:bg-cyan-950/40 dark:text-cyan-300 dark:hover:bg-cyan-900/50 border-cyan-200 dark:border-cyan-800 shadow-2xs"
             title="Reset PIN"
           >
             <KeyRound className="size-3.5 text-cyan-600" />
@@ -403,14 +433,17 @@ export default function Index({ tab, members, stats, levels, categories, filters
           </Button>
 
           <Button
+            type="button"
             variant="outline"
             size="xs"
-            onClick={() => {
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
               setAdjustPointTarget(row.original)
               setPointAdjustmentValue(row.original.point_balance ?? 0)
               setPointAdjustmentNote('')
             }}
-            className="h-7 text-xs px-2 gap-1 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/50 border-emerald-200 dark:border-emerald-800"
+            className="h-7 text-xs px-2 gap-1 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/50 border-emerald-200 dark:border-emerald-800 shadow-2xs"
             title="Sesuaikan / Reset Poin"
           >
             <Coins className="size-3.5 text-emerald-600" />
@@ -418,22 +451,34 @@ export default function Index({ tab, members, stats, levels, categories, filters
           </Button>
 
           <Button
+            type="button"
             variant="outline"
             size="xs"
-            onClick={() => { setSetPinTarget(row.original); setNewPin(''); setSetPinError(null) }}
-            className="h-7 text-xs px-2 gap-1 text-indigo-700 bg-indigo-50/50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-900/50 border-indigo-200 dark:border-indigo-800"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setSetPinTarget(row.original)
+              setNewPin('')
+              setSetPinError(null)
+            }}
+            className="h-7 text-xs px-2 gap-1 text-blue-700 bg-blue-50/50 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/50 border-blue-200 dark:border-blue-800 shadow-2xs"
             title="Buat / Ganti PIN"
           >
-            <Lock className="size-3.5 text-indigo-600" />
+            <Lock className="size-3.5 text-blue-600" />
             PIN
           </Button>
 
           {row.original.status === 'active' && (
             <Button
+              type="button"
               variant="outline"
               size="xs"
-              onClick={() => setDeactivateTarget(row.original)}
-              className="h-7 text-xs px-2 gap-1 text-rose-700 bg-rose-50/50 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-900/50 border-rose-200 dark:border-rose-800"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setDeactivateTarget(row.original)
+              }}
+              className="h-7 text-xs px-2 gap-1 text-rose-700 bg-rose-50/50 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-900/50 border-rose-200 dark:border-rose-800 shadow-2xs"
               title="Nonaktifkan Anggota"
             >
               <UserX className="size-3.5 text-rose-600" />
