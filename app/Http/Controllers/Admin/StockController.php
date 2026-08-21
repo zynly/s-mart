@@ -31,7 +31,7 @@ class StockController extends Controller
             ->with(['product:id,name,sku,min_stock,max_stock,category_id', 'product.category:id,name'])
             ->where('stocks.outlet_id', $outlet?->id)
             ->when($request->string('search')->toString(), fn ($q, $search) => $q->where(
-                fn ($sub) => $sub->where('products.name', 'like', "%{$search}%")->orWhere('products.sku', 'like', "%{$search}%")
+                fn ($sub) => $sub->where('products.name', 'ilike', "%{$search}%")->orWhere('products.sku', 'ilike', "%{$search}%")
             ))
             ->when($request->integer('category_id'), fn ($q, $categoryId) => $q->where('products.category_id', $categoryId))
             ->when($request->string('status')->toString(), function ($q, $status) {

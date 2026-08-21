@@ -70,7 +70,7 @@ class StorefrontService
 
         $query = Product::public()
             ->with(['category', 'brand', 'images'])
-            ->when($filters['search'] ?? null, fn ($q, $search) => $q->where('name', 'like', "%{$search}%"))
+            ->when($filters['search'] ?? null, fn ($q, $search) => $q->where('name', 'ilike', "%{$search}%"))
             ->when($filters['category_id'] ?? null, fn ($q, $id) => $q->where('category_id', $id))
             ->when($filters['brand_id'] ?? null, fn ($q, $id) => $q->where('brand_id', $id));
 

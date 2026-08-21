@@ -35,9 +35,9 @@ class MemberController extends Controller
         $members = Member::query()
             ->with(['level:id,name,color', 'activeCard', 'guardians:id,name,phone,is_active'])
             ->when($request->string('search')->toString(), fn ($q, $search) => $q->where(
-                fn ($sub) => $sub->where('name', 'like', "%{$search}%")
-                    ->orWhere('member_number', 'like', "%{$search}%")
-                    ->orWhere('nis', 'like', "%{$search}%")
+                fn ($sub) => $sub->where('name', 'ilike', "%{$search}%")
+                    ->orWhere('member_number', 'ilike', "%{$search}%")
+                    ->orWhere('nis', 'ilike', "%{$search}%")
             ))
             ->when($request->string('type')->toString(), fn ($q, $type) => $q->where('type', $type))
             ->when($request->string('status')->toString(), fn ($q, $status) => $q->where('status', $status))

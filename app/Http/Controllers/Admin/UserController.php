@@ -22,9 +22,9 @@ class UserController extends Controller
         $users = User::query()
             ->with('roles:id,name')
             ->when($request->string('search')->toString(), fn ($query, $search) => $query->where(
-                fn ($q) => $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('username', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
+                fn ($q) => $q->where('name', 'ilike', "%{$search}%")
+                    ->orWhere('username', 'ilike', "%{$search}%")
+                    ->orWhere('email', 'ilike', "%{$search}%")
             ))
             ->when($request->string('role')->toString(), fn ($query, $role) => $query->whereHas(
                 'roles',

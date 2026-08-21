@@ -40,9 +40,9 @@ class ProductController extends Controller
                 'images' => fn ($q) => $q->where('is_primary', true)->limit(1),
             ])
             ->when($request->string('search')->toString(), fn ($q, $search) => $q->where(
-                fn ($sub) => $sub->where('name', 'like', "%{$search}%")
-                    ->orWhere('sku', 'like', "%{$search}%")
-                    ->orWhereHas('barcodes', fn ($b) => $b->where('barcode', 'like', "%{$search}%"))
+                fn ($sub) => $sub->where('name', 'ilike', "%{$search}%")
+                    ->orWhere('sku', 'ilike', "%{$search}%")
+                    ->orWhereHas('barcodes', fn ($b) => $b->where('barcode', 'ilike', "%{$search}%"))
             ))
             ->when($request->integer('category_id'), fn ($q, $categoryId) => $q->where('category_id', $categoryId))
             ->when($request->integer('brand_id'), fn ($q, $brandId) => $q->where('brand_id', $brandId))

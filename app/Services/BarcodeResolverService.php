@@ -68,7 +68,7 @@ class BarcodeResolverService
         // 4. Fallback: Cari berdasar nama produk (pencarian fleksibel)
         $productByName = Product::with(['baseUnit'])
             ->where('is_active', true)
-            ->where('name', 'like', "%{$barcode}%")
+            ->where('name', 'ilike', "%{$barcode}%")
             ->first();
 
         if ($productByName !== null) {

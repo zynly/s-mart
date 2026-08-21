@@ -167,7 +167,7 @@ class SaleController extends Controller
             ->whereHas('stocks', fn ($q) => $q->where('outlet_id', $outlet->id)->where('qty', '>', 0))
             ->when($request->integer('category_id'), fn ($q, $catId) => $q->where('category_id', $catId))
             ->when($request->string('search')->toString(), fn ($q, $search) => $q->where(
-                fn ($sub) => $sub->where('name', 'like', "%{$search}%")->orWhere('sku', 'like', "%{$search}%")
+                fn ($sub) => $sub->where('name', 'ilike', "%{$search}%")->orWhere('sku', 'ilike', "%{$search}%")
             ))
             ->with(['category:id,name', 'baseUnit:id,code,name', 'images' => fn ($q) => $q->where('is_primary', true)->limit(1)])
             ->orderByDesc('is_favorite')
@@ -269,11 +269,11 @@ class SaleController extends Controller
 
         $matches = Member::where('status', 'active')
             ->where(function ($q) use ($query) {
-                $q->where('name', 'like', "%{$query}%")
-                  ->orWhere('member_number', 'like', "%{$query}%")
-                  ->orWhere('phone', 'like', "%{$query}%")
-                  ->orWhere('class_name', 'like', "%{$query}%")
-                  ->orWhereHas('cards', fn ($c) => $c->where('card_number', 'like', "%{$query}%"));
+                $q->where('name', 'ilike', "%{$query}%")
+                  ->orWhere('member_number', 'ilike', "%{$query}%")
+                  ->orWhere('phone', 'ilike', "%{$query}%")
+                  ->orWhere('class_name', 'ilike', "%{$query}%")
+                  ->orWhereHas('cards', fn ($c) => $c->where('card_number', 'ilike', "%{$query}%"));
             })
             ->with('level:id,name,color')
             ->limit(10)

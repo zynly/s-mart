@@ -32,7 +32,7 @@ class PurchaseController extends Controller
         $purchases = Purchase::query()
             ->with(['supplier:id,name', 'outlet:id,name'])
             ->when($request->string('search')->toString(), fn ($q, $search) => $q->where(
-                fn ($sub) => $sub->where('reference', 'like', "%{$search}%")->orWhere('invoice_no', 'like', "%{$search}%")
+                fn ($sub) => $sub->where('reference', 'ilike', "%{$search}%")->orWhere('invoice_no', 'ilike', "%{$search}%")
             ))
             ->when($request->integer('supplier_id'), fn ($q, $id) => $q->where('supplier_id', $id))
             ->orderByDesc('purchase_date')
