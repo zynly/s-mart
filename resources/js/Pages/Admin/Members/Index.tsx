@@ -75,6 +75,7 @@ type MembersIndexProps = {
   levels: Level[]
   categories: Ref[]
   majors?: string[]
+  classes?: string[]
   filters: { search?: string; type?: string; status?: string; class_name?: string; major?: string }
 }
 
@@ -131,9 +132,10 @@ const emptyForm = {
   joined_at: '',
 }
 
-export default function Index({ tab, members, stats, levels, categories, filters }: MembersIndexProps) {
+export default function Index({ tab, members, stats, levels, categories, classes, filters }: MembersIndexProps) {
   const [search, setSearch] = useState(filters.search ?? '')
   const [typeFilter, setTypeFilter] = useState(filters.type ?? '')
+  const [classFilter, setClassFilter] = useState(filters.class_name ?? '')
   const [majorFilter, setMajorFilter] = useState(filters.major ?? '')
   const [statusFilter, setStatusFilter] = useState(filters.status ?? '')
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -162,6 +164,7 @@ export default function Index({ tab, members, stats, levels, categories, filters
       {
         search: search || undefined,
         type: typeFilter || undefined,
+        class_name: classFilter || undefined,
         major: majorFilter || undefined,
         status: statusFilter || undefined,
       },
@@ -172,12 +175,19 @@ export default function Index({ tab, members, stats, levels, categories, filters
   function resetFilter() {
     setSearch('')
     setTypeFilter('')
+    setClassFilter('')
     setMajorFilter('')
     setStatusFilter('')
     router.get(route('admin.members.index'), {}, { preserveState: true })
   }
 
-  const isFiltered = Boolean(search || (typeFilter && typeFilter !== 'all') || (majorFilter && majorFilter !== 'all') || (statusFilter && statusFilter !== 'all'))
+  const isFiltered = Boolean(
+    search ||
+    (typeFilter && typeFilter !== 'all') ||
+    (classFilter && classFilter !== 'all') ||
+    (majorFilter && majorFilter !== 'all') ||
+    (statusFilter && statusFilter !== 'all')
+  )
 
   function openCardPreview(memberId: number, memberName: string) {
     const url = route('admin.members.preview-card', memberId)
@@ -705,7 +715,7 @@ export default function Index({ tab, members, stats, levels, categories, filters
           </div>
 
           {/* Type Filter */}
-          <div className="w-full sm:w-36 shrink-0">
+          <div className="w-full sm:w-32 shrink-0">
             <Select value={typeFilter || 'all'} onValueChange={(v) => setTypeFilter(v === 'all' ? '' : v)}>
               <SelectTrigger className="h-9 text-sm bg-slate-50/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
                 <SelectValue placeholder="Semua tipe" />
@@ -714,6 +724,21 @@ export default function Index({ tab, members, stats, levels, categories, filters
                 <SelectItem value="all">Semua Tipe</SelectItem>
                 {Object.entries(TYPE_LABELS).map(([value, label]) => (
                   <SelectItem key={value} value={value}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Class / Kelas Filter */}
+          <div className="w-full sm:w-36 shrink-0">
+            <Select value={classFilter || 'all'} onValueChange={(v) => setClassFilter(v === 'all' ? '' : v)}>
+              <SelectTrigger className="h-9 text-sm bg-slate-50/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
+                <SelectValue placeholder="Semua Kelas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Kelas</SelectItem>
+                {classes?.map((cls) => (
+                  <SelectItem key={cls} value={cls}>{cls}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

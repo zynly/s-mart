@@ -77,6 +77,7 @@ class MemberController extends Controller
             'levels' => \Illuminate\Support\Facades\Cache::remember('dropdown_member_levels', 3600, fn () => MemberLevel::where('is_active', true)->orderBy('name')->get(['id', 'name'])),
             'categories' => \Illuminate\Support\Facades\Cache::remember('dropdown_categories', 3600, fn () => Category::orderBy('name')->get(['id', 'name'])),
             'majors' => ['BD', 'PPLG', 'UPT', 'TKP'],
+            'classes' => \Illuminate\Support\Facades\Cache::remember('dropdown_classes', 3600, fn () => Member::whereNotNull('class_name')->where('class_name', '!=', '')->distinct()->orderBy('class_name')->pluck('class_name')),
             'filters' => $request->only('search', 'type', 'status', 'class_name', 'major'),
         ]);
     }
