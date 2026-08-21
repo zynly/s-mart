@@ -82,28 +82,14 @@ class RestoreMembersFromProfilingSeeder extends Seeder
                     'gender' => $gender,
                     'phone' => !empty($s['no_hp']) ? trim($s['no_hp']) : null,
                     'address' => !empty($s['alamat']) ? trim($s['alamat']) : null,
-                    'balance_cache' => $saldo,
-                    'point_balance' => 0,
+                    'balance_cache' => 0, // Default 0
+                    'point_balance' => 0, // Default 0
                     'receivable_limit' => 0, // SANTRI MUTLAK LIMIT 0 (DILARANG KREDIT)
                     'pin' => Hash::make('123456'), // DEFAULT PIN 123456
                     'status' => 'active',
                     'joined_at' => now()->toDateString(),
                 ]
             );
-
-            // Jika ada saldo awal e-money > 0 dan belum ada log transaksi deposit
-            if ($saldo > 0 && ! DepositTransaction::where('member_id', $member->id)->exists()) {
-                DepositTransaction::create([
-                    'idempotency_key' => (string) \Illuminate\Support\Str::uuid(),
-                    'member_id' => $member->id,
-                    'reference' => 'DEP-INIT-' . $member->id,
-                    'type' => 'topup',
-                    'amount' => $saldo,
-                    'balance_before' => 0,
-                    'balance_after' => $saldo,
-                    'note' => 'Saldo Awal Migrasi E-Money Profiling',
-                ]);
-            }
 
             $santriCount++;
         }
@@ -171,18 +157,13 @@ class RestoreMembersFromProfilingSeeder extends Seeder
                             'gender' => 'L',
                             'phone' => $oldPhone,
                             'balance_cache' => 0,
-                            'point_balance' => $oldPoints,
+                            'point_balance' => 0,
                             'receivable_limit' => 1000000,
                             'pin' => Hash::make('123456'),
                             'status' => 'active',
                             'joined_at' => now()->toDateString(),
                         ]);
                         $fasilCount++;
-                    } else {
-                        // Update point_balance jika sudah ada
-                        if ($oldPoints > 0 && $member->point_balance === 0) {
-                            $member->update(['point_balance' => $oldPoints]);
-                        }
                     }
                 }
             }
