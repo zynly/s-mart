@@ -27,7 +27,7 @@ class PromoController extends Controller
         return Inertia::render('Admin/Promos/Index', [
             'tab' => 'promos',
             'promos' => $promos,
-            'products' => Product::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'products' => Product::where('is_active', true)->with('category:id,name')->orderBy('name')->get(['id', 'name', 'sku', 'category_id']),
             'categories' => Category::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'filters' => $request->only('type'),
         ]);

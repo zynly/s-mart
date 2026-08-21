@@ -16,13 +16,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
 import { formatMoney } from '@/Lib/money'
 import type { Paginated } from '@/Types'
+import { Search, Filter, CheckSquare, RotateCcw, X, Plus, Trash2, Tag, Percent, Sparkles, Layers, ShoppingBag } from 'lucide-react'
 
-type Ref = { id: number; name: string }
+type Ref = {
+  id: number
+  name: string
+  sku?: string | null
+  category_id?: number | null
+  category?: { id: number; name: string } | null
+}
 
 type PromoRow = {
   id: number
   code: string
   name: string
+  description?: string | null
   type: string
   scope: string
   discount_type: string
@@ -59,15 +67,25 @@ type PromosIndexProps = {
 }
 
 const TYPE_LABELS: Record<string, string> = {
-  product: 'Diskon Produk',
-  category: 'Diskon Kategori',
-  member_level: 'Diskon Member Level',
-  bundle: 'Bundling',
-  buy_x_get_y: 'Beli X Gratis Y',
-  tiered_qty: 'Diskon Bertingkat',
-  happy_hour: 'Happy Hour',
-  clearance: 'Clearance',
-  birthday: 'Ulang Tahun',
+  product: '🏷️ Diskon Barang Tertentu',
+  category: '📂 Diskon Kategori Barang',
+  bundle: '📦 Paket Hemat (Bundling)',
+  buy_x_get_y: '🎁 Beli X Gratis Y (Buy 1 Get 1)',
+  tiered_qty: '📈 Makin Banyak Makin Murah (Grosir/Bertingkat)',
+  happy_hour: '⏰ Diskon Jam Tertentu (Flash Sale / Jam Khusus)',
+  clearance: '🏷️ Cuci Gudang (Habiskan Stok)',
+  member_level: 'Diskon Member Level (Sistem)',
+  birthday: 'Bonus Ulang Tahun (Sistem)',
+}
+
+const TYPE_DESCRIPTIONS: Record<string, string> = {
+  product: 'Potongan harga khusus untuk satu atau beberapa barang pilihan.',
+  category: 'Diskon untuk seluruh barang yang berada di dalam satu kategori terpilih.',
+  bundle: 'Beli minimal jumlah tertentu langsung dapat harga paket lebih hemat.',
+  buy_x_get_y: 'Beli sejumlah barang tertentu dan dapatkan gratis barang.',
+  tiered_qty: 'Tingkatan diskon makin tinggi seiring bertambahnya jumlah pembelian.',
+  happy_hour: 'Diskon yang hanya berlaku pada jam dan hari-hari tertentu.',
+  clearance: 'Potongan harga besar untuk mengosongkan dan menghabiskan stok lama.',
 }
 
 // Gap G-01: PromoEngine::matchesProduct() tidak pernah menerapkan tipe ini
@@ -125,21 +143,38 @@ export default function Index({ tab, promos, products, categories, filters }: Pr
   const [editing, setEditing] = useState<PromoRow | null>(null)
   const form = useForm<PromoForm>(emptyForm)
 
+  // Filter state for product selection
+  const [prodSearch, setProdSearch] = useState('')
+  const [prodCatFilter, setProdCatFilter] = useState('all')
+  const [prodFilterTab, setProdFilterTab] = useState<'all' | 'selected'>('all')
+
+  // Filter state for category selection
+  const [catSearch, setCatSearch] = useState('')
+
   function applyFilter(type: string) {
     setTypeFilter(type)
     router.get(route('admin.promos.index'), { type }, { preserveState: true, replace: true })
   }
 
+  function resetFilters() {
+    setProdSearch('')
+    setProdCatFilter('all')
+    setProdFilterTab('all')
+    setCatSearch('')
+  }
+
   function openCreate() {
     setEditing(null)
+    resetFilters()
     form.setData({ ...emptyForm })
     setFormOpen(true)
   }
 
   function openEdit(promo: PromoRow) {
     setEditing(promo)
+    resetFilters()
     form.setData({
-      code: promo.code, name: promo.name, description: '', type: promo.type, scope: promo.scope,
+      code: promo.code, name: promo.name, description: promo.description ?? '', type: promo.type, scope: promo.scope,
       discount_type: promo.discount_type, discount_value: promo.discount_value,
       max_discount: promo.max_discount ?? '', min_purchase: promo.min_purchase ?? '',
       min_qty: promo.min_qty ? Number(promo.min_qty) : '', buy_qty: promo.buy_qty ? Number(promo.buy_qty) : '',
@@ -155,14 +190,8 @@ export default function Index({ tab, promos, products, categories, filters }: Pr
     setFormOpen(true)
   }
 
-  // Gap G-01: tipe promo yang tidak diterapkan mesin diskon checkout —
-  // dipertahankan hanya agar promo LAMA bertipe ini tetap bisa dibuka/
-  // dinonaktifkan, bukan untuk dipilih pada promo baru (lihat SELECTABLE_TYPE_ENTRIES).
   const isLegacyType = LEGACY_TYPES.includes(form.data.type)
 
-  // Gap G-02: PromoEngine::tieredDiscountAmount() membaca `tiers`, bukan
-  // `min_qty` tunggal — beralih ke/dari tiered_qty menyesuaikan `tiers` agar
-  // form selalu konsisten dengan apa yang benar-benar dipakai mesin diskon.
   function handleTypeChange(value: string) {
     form.setData({
       ...form.data,
@@ -189,8 +218,57 @@ export default function Index({ tab, promos, products, categories, filters }: Pr
   const duplicateTierQty = useMemo(() => {
     const values = form.data.tiers.map((t) => t.min_qty).filter((v) => v !== '')
     return new Set(values).size !== values.length
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.data.tiers])
+
+  const filteredProducts = useMemo(() => {
+    return products.filter((p) => {
+      if (prodCatFilter !== 'all' && String(p.category_id) !== prodCatFilter) {
+        return false
+      }
+      if (prodFilterTab === 'selected' && !form.data.product_ids.includes(p.id)) {
+        return false
+      }
+      if (prodSearch.trim()) {
+        const q = prodSearch.toLowerCase()
+        const matchName = p.name.toLowerCase().includes(q)
+        const matchSku = p.sku ? p.sku.toLowerCase().includes(q) : false
+        const matchCat = p.category?.name ? p.category.name.toLowerCase().includes(q) : false
+        if (!matchName && !matchSku && !matchCat) return false
+      }
+      return true
+    })
+  }, [products, prodCatFilter, prodFilterTab, prodSearch, form.data.product_ids])
+
+  const filteredCategories = useMemo(() => {
+    if (!catSearch.trim()) return categories
+    const q = catSearch.toLowerCase()
+    return categories.filter((c) => c.name.toLowerCase().includes(q))
+  }, [categories, catSearch])
+
+  function selectAllFilteredProducts() {
+    const idsToAdd = filteredProducts.map((p) => p.id)
+    const newSet = new Set([...form.data.product_ids, ...idsToAdd])
+    form.setData('product_ids', Array.from(newSet))
+  }
+
+  function unselectAllFilteredProducts() {
+    const idsToRemove = new Set(filteredProducts.map((p) => p.id))
+    form.setData('product_ids', form.data.product_ids.filter((id) => !idsToRemove.has(id)))
+  }
+
+  function resetProductSelection() {
+    form.setData('product_ids', [])
+  }
+
+  function selectAllFilteredCategories() {
+    const idsToAdd = filteredCategories.map((c) => c.id)
+    const newSet = new Set([...form.data.category_ids, ...idsToAdd])
+    form.setData('category_ids', Array.from(newSet))
+  }
+
+  function resetCategorySelection() {
+    form.setData('category_ids', [])
+  }
 
   const submit: FormEventHandler = (e) => {
     e.preventDefault()
@@ -218,15 +296,17 @@ export default function Index({ tab, promos, products, categories, filters }: Pr
 
   const columns: ColumnDef<PromoRow, unknown>[] = useMemo(() => [
     { accessorKey: 'code', header: 'Kode' },
-    { accessorKey: 'name', header: 'Nama' },
-    { id: 'type', header: 'Tipe', cell: ({ row }) => TYPE_LABELS[row.original.type] ?? row.original.type },
+    { accessorKey: 'name', header: 'Nama Promo' },
+    { id: 'type', header: 'Jenis Promo', cell: ({ row }) => TYPE_LABELS[row.original.type] ?? row.original.type },
     {
       id: 'discount',
-      header: 'Diskon',
+      header: 'Potongan Diskon',
       cell: ({ row }) => {
         const p = row.original
         if (p.discount_type === 'percent') return `${p.discount_value}%`
         if (p.discount_type === 'amount') return formatMoney(p.discount_value)
+        if (p.discount_type === 'fixed_price') return `Harga Pas ${formatMoney(p.discount_value)}`
+        if (p.discount_type === 'free_item') return 'Gratis Barang'
         return p.discount_type
       },
     },
@@ -255,30 +335,34 @@ export default function Index({ tab, promos, products, categories, filters }: Pr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [])
 
+  const hasProductSelection = form.data.type === 'product' || form.data.type === 'buy_x_get_y' || form.data.type === 'bundle' || form.data.type === 'tiered_qty' || form.data.type === 'happy_hour'
+
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        title="Promo"
+        title="Promo & Diskon Kasir"
         breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Promo' }]}
-        actions={<Button onClick={openCreate}>Tambah Promo</Button>}
+        actions={<Button onClick={openCreate} className="gap-2"><Plus className="size-4" /> Tambah Promo Baru</Button>}
       />
       <PageTabs current={tab} tabs={[
-        { key: 'promos', label: 'Promo', href: route('admin.promos.index'), permission: 'promo.view' },
-        { key: 'coupons', label: 'Kupon', href: route('admin.coupons.index'), permission: 'coupon.view' },
+        { key: 'promos', label: 'Promo Toko', href: route('admin.promos.index'), permission: 'promo.view' },
+        { key: 'coupons', label: 'Kupon / Voucher', href: route('admin.coupons.index'), permission: 'coupon.view' },
       ]} />
 
-      <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-content-muted">
-        <b>Diskon Member Level</b> dan <b>Ulang Tahun</b> tidak tersedia untuk promo baru — keduanya tidak diterapkan mesin diskon saat checkout.
-        Diskon level anggota berjalan otomatis dari pengaturan Level Keanggotaan; bonus ulang tahun berjalan dari proses terjadwal tersendiri.
+      <div className="rounded-xl border border-border bg-muted/30 p-3 text-xs text-content-muted flex items-start gap-2.5">
+        <Sparkles className="size-4 text-primary shrink-0 mt-0.5" />
+        <div>
+          <b>Diskon Toko:</b> Promo yang aktif akan diterapkan secara otomatis oleh sistem mesin kasir POS saat barang yang sesuai dimasukkan ke keranjang belanja.
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
         <Select value={typeFilter || 'all'} onValueChange={(v) => applyFilter(v === 'all' ? '' : v)}>
-          <SelectTrigger className="w-56">
-            <SelectValue placeholder="Semua tipe" />
+          <SelectTrigger className="w-64">
+            <SelectValue placeholder="Semua Jenis Promo" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Semua tipe</SelectItem>
+            <SelectItem value="all">Semua Jenis Promo</SelectItem>
             {Object.entries(TYPE_LABELS).map(([value, label]) => (
               <SelectItem key={value} value={value}>{label}</SelectItem>
             ))}
@@ -298,261 +382,546 @@ export default function Index({ tab, promos, products, categories, filters }: Pr
         }}
       />
 
+      {/* Dialog Modal Tambah / Edit Promo (Lebar, Proporsional, Bersih) */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editing ? `Ubah Promo — ${editing.name}` : 'Tambah Promo'}</DialogTitle>
+        <DialogContent className="flex flex-col max-h-[90vh] max-w-3xl overflow-hidden p-0 rounded-2xl shadow-2xl border-border bg-card">
+          <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20">
+            <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+              <Tag className="size-5 text-primary" />
+              {editing ? `Ubah Promo — ${editing.name}` : 'Tambah Promo Baru'}
+            </DialogTitle>
           </DialogHeader>
-          <form onSubmit={submit} className="flex flex-col gap-4 px-1">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Kode</Label>
-                <Input value={form.data.code} onChange={(e) => form.setData('code', e.target.value.toUpperCase())} />
-                {form.errors.code && <p className="text-sm text-danger">{form.errors.code}</p>}
-              </div>
-              <div className="space-y-1.5">
-                <Label>Nama</Label>
-                <Input value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} />
-                {form.errors.name && <p className="text-sm text-danger">{form.errors.name}</p>}
-              </div>
-            </div>
 
-            <div className="space-y-1.5">
-              <Label>Deskripsi</Label>
-              <Textarea value={form.data.description} onChange={(e) => form.setData('description', e.target.value)} />
-            </div>
+          <form onSubmit={submit} className="flex flex-col flex-1 overflow-hidden">
+            {/* Scrollable Form Body */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+              
+              {/* Bagian 1: Identitas Promo */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Kode Promo</Label>
+                  <Input
+                    placeholder="Contoh: HEMAT10, B2G1"
+                    value={form.data.code}
+                    onChange={(e) => form.setData('code', e.target.value.toUpperCase())}
+                  />
+                  {form.errors.code && <p className="text-xs text-danger">{form.errors.code}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Nama Promo</Label>
+                  <Input
+                    placeholder="Contoh: Diskon Akhir Pekan Minuman"
+                    value={form.data.name}
+                    onChange={(e) => form.setData('name', e.target.value)}
+                  />
+                  {form.errors.name && <p className="text-xs text-danger">{form.errors.name}</p>}
+                </div>
+              </div>
 
-            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Tipe Promo</Label>
-                {isLegacyType ? (
-                  <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
-                    <span className="font-medium">{TYPE_LABELS[form.data.type]}</span> — tipe ini tidak lagi didukung mesin diskon checkout.
-                    Promo lama ini bisa dinonaktifkan, tapi tipenya tidak bisa diubah menjadi tipe ini lagi untuk promo baru.
-                  </div>
-                ) : (
-                  <Select value={form.data.type} onValueChange={handleTypeChange}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                <Label className="text-xs font-semibold">Keterangan / Deskripsi Promo (Opsional)</Label>
+                <Textarea
+                  rows={2}
+                  placeholder="Jelaskan syarat dan ketentuan promo ini secara ringkas..."
+                  value={form.data.description}
+                  onChange={(e) => form.setData('description', e.target.value)}
+                />
+              </div>
+
+              {/* Bagian 2: Tipe & Cakupan Promo */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3.5 rounded-xl border border-border/80 bg-muted/10">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Jenis Promo</Label>
+                  {isLegacyType ? (
+                    <div className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs">
+                      <span className="font-medium">{TYPE_LABELS[form.data.type]}</span> — tipe lama ini tidak lagi didukung pembuatan baru.
+                    </div>
+                  ) : (
+                    <Select value={form.data.type} onValueChange={handleTypeChange}>
+                      <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {SELECTABLE_TYPE_ENTRIES.map(([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            <div className="font-medium">{label}</div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {TYPE_DESCRIPTIONS[form.data.type] && (
+                    <p className="text-[11px] text-content-muted">{TYPE_DESCRIPTIONS[form.data.type]}</p>
+                  )}
+                  {form.errors.type && <p className="text-xs text-danger">{form.errors.type}</p>}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Cakupan Potongan</Label>
+                  <Select value={form.data.scope} onValueChange={(v) => form.setData('scope', v)}>
+                    <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {SELECTABLE_TYPE_ENTRIES.map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                      ))}
+                      <SelectItem value="item">📦 Per Barang (Item)</SelectItem>
+                      <SelectItem value="bill">🧾 Per Total Belanja (Nota Transaksi)</SelectItem>
                     </SelectContent>
                   </Select>
-                )}
-                {form.errors.type && <p className="text-sm text-danger">{form.errors.type}</p>}
-              </div>
-              <div className="space-y-1.5">
-                <Label>Cakupan</Label>
-                <Select value={form.data.scope} onValueChange={(v) => form.setData('scope', v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="item">Per Item</SelectItem>
-                    <SelectItem value="bill">Per Nota</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <Label>Jenis Diskon</Label>
-                <Select value={form.data.discount_type} onValueChange={(v) => form.setData('discount_type', v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="percent">Persen</SelectItem>
-                    <SelectItem value="amount">Nominal</SelectItem>
-                    <SelectItem value="fixed_price">Harga Tetap</SelectItem>
-                    <SelectItem value="free_item">Gratis</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Nilai Diskon</Label>
-                <Input type="number" value={form.data.discount_value} onChange={(e) => form.setData('discount_value', Number(e.target.value))} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Maks. Diskon (opsional)</Label>
-                <Input type="number" value={form.data.max_discount} onChange={(e) => form.setData('max_discount', e.target.value === '' ? '' : Number(e.target.value))} />
-              </div>
-            </div>
-
-            {(form.data.type === 'product' || form.data.type === 'buy_x_get_y' || form.data.type === 'bundle' || form.data.type === 'tiered_qty' || form.data.type === 'happy_hour') && (
-              <div className="space-y-1.5">
-                <Label>Produk Sasaran (kosongkan = semua produk)</Label>
-                <div className="max-h-40 overflow-y-auto rounded-md border border-border p-2">
-                  {products.map((p) => (
-                    <label key={p.id} className="flex items-center gap-2 py-1 text-sm">
-                      <Checkbox
-                        checked={form.data.product_ids.includes(p.id)}
-                        onCheckedChange={(checked) => form.setData('product_ids', checked ? [...form.data.product_ids, p.id] : form.data.product_ids.filter((id) => id !== p.id))}
-                      />
-                      {p.name}
-                    </label>
-                  ))}
+                  <p className="text-[11px] text-content-muted">
+                    {form.data.scope === 'item' ? 'Potongan dihitung per masing-masing barang yang dibeli.' : 'Potongan dihitung dari total akumulasi nota transaksi.'}
+                  </p>
                 </div>
               </div>
-            )}
 
-            {form.data.type === 'category' && (
-              <div className="space-y-1.5">
-                <Label>Kategori Sasaran</Label>
-                <div className="max-h-40 overflow-y-auto rounded-md border border-border p-2">
-                  {categories.map((c) => (
-                    <label key={c.id} className="flex items-center gap-2 py-1 text-sm">
-                      <Checkbox
-                        checked={form.data.category_ids.includes(c.id)}
-                        onCheckedChange={(checked) => form.setData('category_ids', checked ? [...form.data.category_ids, c.id] : form.data.category_ids.filter((id) => id !== c.id))}
-                      />
-                      {c.name}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {form.data.type === 'buy_x_get_y' && (
-              <div className="grid grid-cols-2 gap-3">
+              {/* Bagian 3: Nilai Diskon */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
-                  <Label>Beli Qty</Label>
-                  <Input type="number" value={form.data.buy_qty} onChange={(e) => form.setData('buy_qty', e.target.value === '' ? '' : Number(e.target.value))} />
+                  <Label className="text-xs font-semibold">Bentuk Potongan</Label>
+                  <Select value={form.data.discount_type} onValueChange={(v) => form.setData('discount_type', v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="percent">Potongan Persen (%)</SelectItem>
+                      <SelectItem value="amount">Potongan Nominal (Rp)</SelectItem>
+                      <SelectItem value="fixed_price">Jadi Harga Pas (Rp)</SelectItem>
+                      <SelectItem value="free_item">Gratis Barang</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Gratis Qty</Label>
-                  <Input type="number" value={form.data.get_qty} onChange={(e) => form.setData('get_qty', e.target.value === '' ? '' : Number(e.target.value))} />
+                  <Label className="text-xs font-semibold">
+                    {form.data.discount_type === 'percent' ? 'Besar Diskon (%)' : form.data.discount_type === 'amount' ? 'Nominal Potongan (Rp)' : form.data.discount_type === 'fixed_price' ? 'Harga Pas Jadi (Rp)' : 'Nilai'}
+                  </Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    placeholder="0"
+                    value={form.data.discount_value}
+                    onChange={(e) => form.setData('discount_value', Number(e.target.value))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Maks. Potongan Rp (Opsional)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    placeholder="Tak terbatas"
+                    value={form.data.max_discount}
+                    onChange={(e) => form.setData('max_discount', e.target.value === '' ? '' : Number(e.target.value))}
+                  />
                 </div>
               </div>
-            )}
 
-            {form.data.type === 'bundle' && (
-              <div className="space-y-1.5">
-                <Label>Minimal Qty</Label>
-                <Input type="number" value={form.data.min_qty} onChange={(e) => form.setData('min_qty', e.target.value === '' ? '' : Number(e.target.value))} />
-              </div>
-            )}
-
-            {form.data.type === 'tiered_qty' && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>Tingkatan Diskon (Tier)</Label>
-                  <Button type="button" size="sm" variant="outline" onClick={addTier}>+ Tambah Tier</Button>
-                </div>
-                <p className="text-xs text-content-muted">
-                  Tier dengan Minimal Qty tertinggi yang terpenuhi oleh qty pembelian yang dipakai — bukan akumulasi semua tier.
-                </p>
-
-                {form.data.tiers.length === 0 && (
-                  <p className="text-sm text-danger">Tambahkan minimal 1 tier — tanpa tier, promo ini tidak memberi diskon sama sekali.</p>
-                )}
-
-                <div className="space-y-2">
-                  {form.data.tiers.map((tier, index) => (
-                    <div key={index} className="flex items-end gap-2">
-                      <div className="flex-1 space-y-1">
-                        <Label className="text-xs">Minimal Qty</Label>
-                        <Input
-                          type="number" min={0} step="0.001" value={tier.min_qty}
-                          onChange={(e) => updateTier(index, 'min_qty', e.target.value === '' ? '' : Number(e.target.value))}
-                        />
-                      </div>
-                      <div className="flex-1 space-y-1">
-                        <Label className="text-xs">Diskon (%)</Label>
-                        <Input
-                          type="number" min={0} max={100} value={tier.discount}
-                          onChange={(e) => updateTier(index, 'discount', e.target.value === '' ? '' : Number(e.target.value))}
-                        />
-                      </div>
-                      <Button type="button" size="sm" variant="outline" onClick={() => removeTier(index)}>Hapus</Button>
+              {/* Bagian 4: Pemilihan Produk Sasaran (Super Lengkap dengan Filter Kategori & Search) */}
+              {hasProductSelection && (
+                <div className="space-y-2 rounded-xl border border-border bg-muted/10 p-3.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <Label className="text-xs font-bold flex items-center gap-1.5">
+                        <ShoppingBag className="size-4 text-primary" />
+                        Pilih Barang Sasaran Promo
+                      </Label>
+                      <p className="text-[11px] text-content-muted">
+                        Kosongkan pilihan jika promo ini otomatis berlaku untuk <b>semua barang</b>.
+                      </p>
                     </div>
-                  ))}
-                </div>
-
-                {duplicateTierQty && <p className="text-sm text-danger">Minimal Qty tidak boleh sama antar tier.</p>}
-                {form.errors.tiers && <p className="text-sm text-danger">{form.errors.tiers}</p>}
-              </div>
-            )}
-
-            {form.data.type === 'happy_hour' && (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label>Jam Mulai</Label>
-                    <Input type="time" value={form.data.start_time} onChange={(e) => form.setData('start_time', e.target.value)} />
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                      <span className="px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20">
+                        {form.data.product_ids.length} Barang Dipilih
+                      </span>
+                    </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>Jam Selesai</Label>
-                    <Input type="time" value={form.data.end_time} onChange={(e) => form.setData('end_time', e.target.value)} />
+
+                  {/* Toolbar Filter & Pencarian Produk */}
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-1">
+                    <div className="sm:col-span-4">
+                      <Select value={prodCatFilter} onValueChange={setProdCatFilter}>
+                        <SelectTrigger className="h-8 text-xs bg-background">
+                          <SelectValue placeholder="Semua Kategori" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">📂 Semua Kategori</SelectItem>
+                          {categories.map((c) => (
+                            <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="sm:col-span-8 relative">
+                      <Search className="size-3.5 absolute left-2.5 top-2.5 text-content-muted" />
+                      <Input
+                        className="h-8 pl-8 text-xs bg-background"
+                        placeholder="Ketik nama barang atau barcode..."
+                        value={prodSearch}
+                        onChange={(e) => setProdSearch(e.target.value)}
+                      />
+                      {prodSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setProdSearch('')}
+                          className="absolute right-2 top-2 text-content-muted hover:text-content"
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Hari</Label>
-                  <div className="flex gap-2">
-                    {DAY_LABELS.map((label, index) => {
-                      const day = index + 1
-                      return (
+
+                  {/* Filter Status & Tombol Aksi Cepat */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
+                    <div className="flex items-center gap-1 bg-background rounded-lg border border-border p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setProdFilterTab('all')}
+                        className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition ${prodFilterTab === 'all' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-content-muted hover:text-content'}`}
+                      >
+                        Semua ({products.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setProdFilterTab('selected')}
+                        className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition ${prodFilterTab === 'selected' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-content-muted hover:text-content'}`}
+                      >
+                        Hanya Terpilih ({form.data.product_ids.length})
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-[11px] px-2"
+                        onClick={selectAllFilteredProducts}
+                        disabled={filteredProducts.length === 0}
+                      >
+                        Pilih Semua yang Tampil ({filteredProducts.length})
+                      </Button>
+                      {form.data.product_ids.length > 0 && (
                         <Button
-                          key={day}
                           type="button"
                           size="sm"
-                          variant={form.data.days_of_week.includes(day) ? 'default' : 'outline'}
-                          onClick={() => toggleDay(day)}
+                          variant="ghost"
+                          className="h-7 text-[11px] px-2 text-danger hover:text-danger hover:bg-danger/10"
+                          onClick={resetProductSelection}
                         >
-                          {label}
+                          Reset Pilihan
                         </Button>
-                      )
-                    })}
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Kotak Daftar Produk */}
+                  <div className="max-h-48 overflow-y-auto rounded-lg border border-border bg-background p-2 divide-y divide-border/40">
+                    {filteredProducts.length === 0 ? (
+                      <div className="py-6 text-center text-xs text-content-muted">
+                        Tidak ada barang yang cocok dengan filter atau kata kunci pencarian.
+                      </div>
+                    ) : (
+                      filteredProducts.map((p) => {
+                        const isChecked = form.data.product_ids.includes(p.id)
+                        return (
+                          <label
+                            key={p.id}
+                            className={`flex items-center justify-between gap-2.5 py-2 px-2 rounded-md cursor-pointer transition ${isChecked ? 'bg-primary/5 hover:bg-primary/10' : 'hover:bg-muted/40'}`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <Checkbox
+                                checked={isChecked}
+                                onCheckedChange={(checked) =>
+                                  form.setData(
+                                    'product_ids',
+                                    checked
+                                      ? [...form.data.product_ids, p.id]
+                                      : form.data.product_ids.filter((id) => id !== p.id)
+                                  )
+                                }
+                              />
+                              <div className="truncate">
+                                <span className="font-medium text-xs text-content block truncate">{p.name}</span>
+                                {p.sku && <span className="text-[10px] text-content-muted font-mono">{p.sku}</span>}
+                              </div>
+                            </div>
+                            {p.category?.name && (
+                              <Badge variant="outline" className="text-[10px] shrink-0 font-normal">
+                                {p.category.name}
+                              </Badge>
+                            )}
+                          </label>
+                        )
+                      })
+                    )}
                   </div>
                 </div>
-              </>
-            )}
+              )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Tanggal Mulai (opsional)</Label>
-                <Input type="date" value={form.data.start_date} onChange={(e) => form.setData('start_date', e.target.value)} />
+              {/* Bagian 5: Kategori Sasaran (Jika Tipe Promo Kategori) */}
+              {form.data.type === 'category' && (
+                <div className="space-y-2 rounded-xl border border-border bg-muted/10 p-3.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <Label className="text-xs font-bold flex items-center gap-1.5">
+                        <Layers className="size-4 text-primary" />
+                        Pilih Kategori Sasaran Promo
+                      </Label>
+                      <p className="text-[11px] text-content-muted">
+                        Seluruh barang dalam kategori yang dicentang akan otomatis mendapat diskon ini.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-[11px]"
+                        onClick={selectAllFilteredCategories}
+                      >
+                        Pilih Semua
+                      </Button>
+                      {form.data.category_ids.length > 0 && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-[11px] text-danger"
+                          onClick={resetCategorySelection}
+                        >
+                          Reset
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="relative">
+                    <Search className="size-3.5 absolute left-2.5 top-2.5 text-content-muted" />
+                    <Input
+                      className="h-8 pl-8 text-xs bg-background"
+                      placeholder="Cari nama kategori..."
+                      value={catSearch}
+                      onChange={(e) => setCatSearch(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="max-h-40 overflow-y-auto rounded-lg border border-border bg-background p-2 grid grid-cols-1 sm:grid-cols-2 gap-1">
+                    {filteredCategories.map((c) => (
+                      <label key={c.id} className="flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-muted/40 text-xs cursor-pointer">
+                        <Checkbox
+                          checked={form.data.category_ids.includes(c.id)}
+                          onCheckedChange={(checked) =>
+                            form.setData(
+                              'category_ids',
+                              checked
+                                ? [...form.data.category_ids, c.id]
+                                : form.data.category_ids.filter((id) => id !== c.id)
+                            )
+                          }
+                        />
+                        <span className="truncate">{c.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Bagian 6: Konfigurasi Khusus (Buy X Get Y, Bundle, Tiered) */}
+              {form.data.type === 'buy_x_get_y' && (
+                <div className="grid grid-cols-2 gap-4 p-3.5 rounded-xl border border-primary/20 bg-primary/5">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Beli Sebanyak (Qty X)</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      placeholder="Contoh: 2"
+                      value={form.data.buy_qty}
+                      onChange={(e) => form.setData('buy_qty', e.target.value === '' ? '' : Number(e.target.value))}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Gratis Sebanyak (Qty Y)</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      placeholder="Contoh: 1"
+                      value={form.data.get_qty}
+                      onChange={(e) => form.setData('get_qty', e.target.value === '' ? '' : Number(e.target.value))}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {form.data.type === 'bundle' && (
+                <div className="space-y-1.5 p-3.5 rounded-xl border border-primary/20 bg-primary/5">
+                  <Label className="text-xs font-semibold">Minimal Pembelian (Qty) untuk Dapat Harga Paket</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    placeholder="Contoh: 3"
+                    value={form.data.min_qty}
+                    onChange={(e) => form.setData('min_qty', e.target.value === '' ? '' : Number(e.target.value))}
+                  />
+                </div>
+              )}
+
+              {form.data.type === 'tiered_qty' && (
+                <div className="space-y-2.5 p-3.5 rounded-xl border border-primary/20 bg-primary/5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-xs font-bold">Tingkatan Diskon (Makin Banyak Makin Murah)</Label>
+                      <p className="text-[11px] text-content-muted">
+                        Diskon otomatis mengambil tingkatan Qty tertinggi yang terpenuhi di keranjang.
+                      </p>
+                    </div>
+                    <Button type="button" size="sm" variant="outline" onClick={addTier} className="h-7 text-xs gap-1">
+                      <Plus className="size-3.5" /> Tambah Tier
+                    </Button>
+                  </div>
+
+                  {form.data.tiers.length === 0 && (
+                    <p className="text-xs text-danger font-medium">Tambahkan minimal 1 tingkatan tier.</p>
+                  )}
+
+                  <div className="space-y-2">
+                    {form.data.tiers.map((tier, index) => (
+                      <div key={index} className="flex items-end gap-2 bg-background p-2.5 rounded-lg border border-border">
+                        <div className="flex-1 space-y-1">
+                          <Label className="text-[11px]">Beli Minimal (Qty)</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            step="1"
+                            className="h-8 text-xs"
+                            value={tier.min_qty}
+                            onChange={(e) => updateTier(index, 'min_qty', e.target.value === '' ? '' : Number(e.target.value))}
+                          />
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <Label className="text-[11px]">Diskon (%)</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={100}
+                            className="h-8 text-xs"
+                            value={tier.discount}
+                            onChange={(e) => updateTier(index, 'discount', e.target.value === '' ? '' : Number(e.target.value))}
+                          />
+                        </div>
+                        <Button type="button" size="sm" variant="ghost" onClick={() => removeTier(index)} className="h-8 text-danger hover:text-danger hover:bg-danger/10">
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {duplicateTierQty && <p className="text-xs text-danger">Minimal Qty tidak boleh sama antar tier.</p>}
+                  {form.errors.tiers && <p className="text-xs text-danger">{form.errors.tiers}</p>}
+                </div>
+              )}
+
+              {/* Bagian 7: Waktu & Jadwal (Happy Hour & Periode) */}
+              {form.data.type === 'happy_hour' && (
+                <div className="space-y-3 p-3.5 rounded-xl border border-border bg-muted/10">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold">Jam Mulai</Label>
+                      <Input type="time" value={form.data.start_time} onChange={(e) => form.setData('start_time', e.target.value)} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold">Jam Selesai</Label>
+                      <Input type="time" value={form.data.end_time} onChange={(e) => form.setData('end_time', e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Hari Berlaku</Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {DAY_LABELS.map((label, index) => {
+                        const day = index + 1
+                        const active = form.data.days_of_week.includes(day)
+                        return (
+                          <Button
+                            key={day}
+                            type="button"
+                            size="sm"
+                            variant={active ? 'default' : 'outline'}
+                            className="h-7 text-xs px-2.5"
+                            onClick={() => toggleDay(day)}
+                          >
+                            {label}
+                          </Button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Bagian 8: Masa Berlaku & Batas Kuota */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Tanggal Mulai Berlaku (Opsional)</Label>
+                  <Input type="date" value={form.data.start_date} onChange={(e) => form.setData('start_date', e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Tanggal Berakhir (Opsional)</Label>
+                  <Input type="date" value={form.data.end_date} onChange={(e) => form.setData('end_date', e.target.value)} />
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label>Tanggal Selesai (opsional)</Label>
-                <Input type="date" value={form.data.end_date} onChange={(e) => form.setData('end_date', e.target.value)} />
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Batas Kuota Total</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    placeholder="Tak terbatas"
+                    value={form.data.quota_total}
+                    onChange={(e) => form.setData('quota_total', e.target.value === '' ? '' : Number(e.target.value))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Kuota per Anggota</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    placeholder="Tak terbatas"
+                    value={form.data.quota_per_member}
+                    onChange={(e) => form.setData('quota_per_member', e.target.value === '' ? '' : Number(e.target.value))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Prioritas Promo</Label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    value={form.data.priority}
+                    onChange={(e) => form.setData('priority', Number(e.target.value))}
+                  />
+                </div>
+              </div>
+
+              {/* Bagian 9: Opsi Tambahan */}
+              <div className="flex flex-wrap gap-6 p-3 rounded-xl border border-border bg-muted/20">
+                <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
+                  <Switch checked={form.data.is_stackable} onCheckedChange={(v) => form.setData('is_stackable', v)} />
+                  Bisa Ditumpuk dengan Diskon Lain
+                </label>
+                <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
+                  <Switch checked={form.data.is_public} onCheckedChange={(v) => form.setData('is_public', v)} />
+                  Tampilkan di Halaman Depan / Publik
+                </label>
+                <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
+                  <Switch checked={form.data.is_active} onCheckedChange={(v) => form.setData('is_active', v)} />
+                  Status Aktif
+                </label>
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <Label>Kuota Total (opsional)</Label>
-                <Input type="number" value={form.data.quota_total} onChange={(e) => form.setData('quota_total', e.target.value === '' ? '' : Number(e.target.value))} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Kuota per Anggota</Label>
-                <Input type="number" value={form.data.quota_per_member} onChange={(e) => form.setData('quota_per_member', e.target.value === '' ? '' : Number(e.target.value))} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Prioritas</Label>
-                <Input type="number" value={form.data.priority} onChange={(e) => form.setData('priority', Number(e.target.value))} />
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-6">
-              <label className="flex items-center gap-2 text-sm">
-                <Switch checked={form.data.is_stackable} onCheckedChange={(v) => form.setData('is_stackable', v)} />
-                Bisa ditumpuk
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <Switch checked={form.data.is_public} onCheckedChange={(v) => form.setData('is_public', v)} />
-                Tampil di storefront
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <Switch checked={form.data.is_active} onCheckedChange={(v) => form.setData('is_active', v)} />
-                Aktif
-              </label>
-            </div>
-
-            <DialogFooter>
+            {/* Sticky Fixed Footer */}
+            <DialogFooter className="px-6 py-3.5 border-t border-border bg-muted/20 flex sm:justify-between items-center gap-2">
+              <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
+                Batal
+              </Button>
               <Button
                 type="submit"
                 disabled={form.processing || (form.data.type === 'tiered_qty' && (form.data.tiers.length === 0 || duplicateTierQty))}
+                className="gap-2 font-semibold"
               >
-                {editing ? 'Simpan Perubahan' : 'Buat Promo'}
+                {editing ? 'Simpan Perubahan Promo' : 'Buat & Aktifkan Promo'}
               </Button>
             </DialogFooter>
           </form>
