@@ -126,14 +126,16 @@ class RestoreOriginalProductsSeeder extends Seeder
                 }
 
                 // RustFS Image
-                if ($imagePath && ! ProductImage::where('product_id', $product->id)->exists()) {
-                    ProductImage::create([
-                        'product_id' => $product->id,
-                        'path' => $imagePath,
-                        'alt' => $product->name,
-                        'sort_order' => 0,
-                        'is_primary' => true,
-                    ]);
+                if ($imagePath) {
+                    ProductImage::updateOrCreate(
+                        ['product_id' => $product->id],
+                        [
+                            'path' => $imagePath,
+                            'alt' => $product->name,
+                            'sort_order' => 0,
+                            'is_primary' => true,
+                        ]
+                    );
                     $imageCount++;
                 }
 
