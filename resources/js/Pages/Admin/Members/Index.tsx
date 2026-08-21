@@ -729,17 +729,17 @@ export default function Index({ tab, members, stats, levels, categories, classes
             </Select>
           </div>
 
-          {/* Class / Kelas Filter */}
-          <div className="w-full sm:w-36 shrink-0">
+          {/* Class / Kelas Filter (Tingkat X, XI, XII) */}
+          <div className="w-full sm:w-32 shrink-0">
             <Select value={classFilter || 'all'} onValueChange={(v) => setClassFilter(v === 'all' ? '' : v)}>
               <SelectTrigger className="h-9 text-sm bg-slate-50/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700">
                 <SelectValue placeholder="Semua Kelas" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Semua Kelas</SelectItem>
-                {classes?.map((cls) => (
-                  <SelectItem key={cls} value={cls}>{cls}</SelectItem>
-                ))}
+                <SelectItem value="X">Kelas X</SelectItem>
+                <SelectItem value="XI">Kelas XI</SelectItem>
+                <SelectItem value="XII">Kelas XII</SelectItem>
               </SelectContent>
             </Select>
           </div>
