@@ -13,8 +13,8 @@ class MemberPinService
     public const DEFAULT_PIN = '123456';
 
     private const WEAK_PINS = [
-        '1234', '0000', '1111', '2222', '3333', '4444',
-        '5555', '6666', '7777', '8888', '9999', '4321',
+        '123456', '000000', '111111', '222222', '333333', '444444',
+        '555555', '666666', '777777', '888888', '999999', '654321',
     ];
 
     public function set(Member $member, string $pin): void
@@ -32,11 +32,6 @@ class MemberPinService
 
     public function verify(Member $member, string $pin): bool
     {
-        // Audit Fase 7 (Temuan Rendah): sebelumnya baca pin_attempts/
-        // pin_locked_until lalu tulis TANPA lock — dua percobaan PIN
-        // konkuren pada anggota yang sama bisa membaca counter yang sama
-        // sebelum salah satu commit, memperlebar jendela percobaan
-        // sebelum lockout benar-benar aktif dibanding niat desainnya.
         return DB::transaction(function () use ($member, $pin) {
             $locked = Member::lockForUpdate()->findOrFail($member->id);
 
@@ -46,11 +41,6 @@ class MemberPinService
 
             if ($locked->pin === null || ! Hash::check($pin, $locked->pin)) {
                 $attempts = $locked->pin_attempts + 1;
-                // Temuan audit keamanan (code-quality #1/#8): sebelumnya
-                // hardcode 3/15, mengabaikan config('pos.pin_max_attempts')/
-                // ('pos.pin_lockout_minutes') yang sudah dipajang & bisa
-                // diubah owner lewat halaman Pengaturan (T-103) — owner ubah
-                // nilainya, toast sukses, tapi tidak berpengaruh sama sekali.
                 $isLocked = $attempts >= (int) config('pos.pin_max_attempts', 3);
 
                 $locked->update([
@@ -91,15 +81,15 @@ class MemberPinService
             throw WeakPinException::make();
         }
 
-        if (preg_match('/^(\d)\1{3}$/', $pin) === 1) {
+        if (preg_match('/^(\d)\1{5}$/', $pin) === 1) {
             throw WeakPinException::make();
         }
 
         if ($member->birth_date !== null) {
             $variants = [
-                $member->birth_date->format('dm'),
-                $member->birth_date->format('md'),
-                $member->birth_date->format('Y'),
+                $member->birth_date->format('dmy'),
+                $member->birth_date->format('ymd'),
+                $member->birth_date->format('dmY'),
             ];
 
             if (in_array($pin, $variants, true)) {

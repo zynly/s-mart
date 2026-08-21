@@ -152,12 +152,23 @@ class MemberController extends Controller
 
     public function printCards(Request $request): HttpResponse
     {
-        $data = $request->validate([
-            'ids' => ['required', 'array', 'min:1'],
-            'ids.*' => ['integer', 'exists:members,id'],
-        ]);
+        $ids = $request->input('ids');
+        if (is_string($ids)) {
+            $ids = array_filter(explode(',', $ids));
+        }
 
-        $members = Member::whereIn('id', $data['ids'])->get();
+        $query = Member::query();
+        if (!empty($ids) && is_array($ids)) {
+            $query->whereIn('id', $ids);
+        } else {
+            $query->where('status', 'active');
+        }
+
+        $members = $query->orderBy('name')->get();
+        if ($members->isEmpty()) {
+            abort(404, 'Tidak ada data anggota untuk dicetak.');
+        }
+
         $pdf = $this->cardPrintService->printCards($members);
 
         return response($pdf, 200, [
@@ -171,11 +182,7 @@ class MemberController extends Controller
      */
     public function previewCard(Member $member): HttpResponse
     {
-        try {
-            $pdf = $this->cardPrintService->previewCard($member);
-        } catch (\DomainException $e) {
-            abort(422, $e->getMessage());
-        }
+        $pdf = $this->cardPrintService->previewCard($member);
 
         return response($pdf, 200, [
             'Content-Type' => 'application/pdf',

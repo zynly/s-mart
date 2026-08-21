@@ -993,17 +993,20 @@ export default function Index({ tab, members, stats, levels, categories, filters
       </Dialog>
 
       <Dialog open={setPinTarget !== null} onOpenChange={(open) => !open && setSetPinTarget(null)}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Buat/Ganti PIN — {setPinTarget?.name}</DialogTitle>
+            <DialogTitle>Buat/Ganti PIN (Wajib 6 Angka) — {setPinTarget?.name}</DialogTitle>
           </DialogHeader>
-          <div className="flex flex-col items-center gap-3 py-2">
+          <div className="flex flex-col items-center gap-3 py-3">
+            <p className="text-xs text-muted-foreground text-center">
+              Masukkan 6 digit angka numerik untuk PIN autentikasi transaksi santri.
+            </p>
             <PinInput
-              length={4}
+              length={6}
               value={newPin}
               onChange={setNewPin}
               onComplete={(pin) => {
-                if (!setPinTarget) return
+                if (!setPinTarget || pin.length !== 6) return
                 setSettingPin(true)
                 setSetPinError(null)
                 router.put(route('admin.members.set-pin', setPinTarget.id), { pin }, {
@@ -1015,10 +1018,28 @@ export default function Index({ tab, members, stats, levels, categories, filters
               }}
               disabled={settingPin}
             />
-            {setPinError && <p className="text-sm text-danger">{setPinError}</p>}
+            {setPinError && <p className="text-sm font-semibold text-rose-600">{setPinError}</p>}
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex items-center justify-between sm:justify-between w-full">
             <Button variant="outline" onClick={() => setSetPinTarget(null)} disabled={settingPin}>Batal</Button>
+            <Button
+              type="button"
+              disabled={newPin.length !== 6 || settingPin}
+              onClick={() => {
+                if (!setPinTarget || newPin.length !== 6) return
+                setSettingPin(true)
+                setSetPinError(null)
+                router.put(route('admin.members.set-pin', setPinTarget.id), { pin: newPin }, {
+                  preserveScroll: true,
+                  onSuccess: () => setSetPinTarget(null),
+                  onError: (errors) => setSetPinError(errors.pin ?? 'Gagal menyimpan PIN.'),
+                  onFinish: () => setSettingPin(false),
+                })
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold"
+            >
+              {settingPin ? 'Menyimpan…' : 'Simpan PIN (6 Digit)'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

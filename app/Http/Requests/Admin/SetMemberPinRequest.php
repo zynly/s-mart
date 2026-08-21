@@ -22,11 +22,8 @@ class SetMemberPinRequest extends FormRequest
      */
     public function rules(): array
     {
-        // digits:4 — cocok dengan MemberPinService::WEAK_PINS/regex yang
-        // memang menganggap PIN anggota 4 digit (beda dari PIN staf 6
-        // digit di config('pos.pin_length'), konsep terpisah).
         return [
-            'pin' => ['required', 'digits:4'],
+            'pin' => ['required', 'string', 'digits:6'],
         ];
     }
 }

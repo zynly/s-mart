@@ -35,29 +35,21 @@ class CardPrintService
      */
     public function previewCard(Member $member): string
     {
-        $card = $member->cards()->where('status', 'active')->first();
-
-        if ($card === null) {
-            throw new DomainException("Anggota \"{$member->name}\" tidak punya kartu aktif untuk dipratinjau.");
-        }
+        $card = $this->getOrIssueActiveCard($member);
 
         return Pdf::loadView('pdf.member-card-preview', [
             'member' => $member,
             'card' => $card,
             'barcode' => $this->generateBarcode($card),
-        ])->output();
+        ])->setPaper('a4', 'portrait')->output();
     }
 
     /**
-     * @return array{member: Member, card: MemberCard, barcode: string}|null
+     * @return array{member: Member, card: MemberCard, barcode: string}
      */
-    private function buildCardItem(Member $member): ?array
+    private function buildCardItem(Member $member): array
     {
-        $card = $member->cards()->where('status', 'active')->first();
-
-        if ($card === null) {
-            return null;
-        }
+        $card = $this->getOrIssueActiveCard($member);
 
         $card->increment('print_count');
 
@@ -66,6 +58,23 @@ class CardPrintService
             'card' => $card,
             'barcode' => $this->generateBarcode($card),
         ];
+    }
+
+    public function getOrIssueActiveCard(Member $member): MemberCard
+    {
+        $card = $member->cards()->where('status', 'active')->first();
+
+        if ($card !== null) {
+            return $card;
+        }
+
+        return $member->cards()->create([
+            'card_number' => $member->member_number,
+            'type' => 'barcode',
+            'status' => 'active',
+            'issued_at' => now(),
+            'print_count' => 0,
+        ]);
     }
 
     private function generateBarcode(MemberCard $card): string
