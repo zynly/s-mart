@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { ShoppingBag, ShieldCheck } from 'lucide-react'
+import { ShieldCheck } from 'lucide-react'
 import { Link } from '@inertiajs/react'
 
 type GuestLayoutProps = {
@@ -23,15 +23,18 @@ export default function GuestLayout({ children }: GuestLayoutProps) {
         {/* Brand Header */}
         <div className="mb-6 flex flex-col items-center text-center">
           <Link href="/" className="group mb-3 flex flex-col items-center gap-2">
-            <div className="flex size-13 items-center justify-center rounded-2xl bg-navy-900 text-mustard-400 shadow-md border border-navy-800 transition-transform group-hover:scale-105">
-              <ShoppingBag className="size-6" />
-            </div>
+            <img
+              src="/logo/logo2.png"
+              alt="S-Mart Logo"
+              className="size-14 object-contain rounded-2xl bg-white border-2 border-amber-300 shadow-lg p-1 group-hover:scale-105 transition-transform"
+            />
             <div className="flex items-center gap-1">
               <span className="font-mono text-xl font-extrabold tracking-tight text-navy-900">
                 Skillage<span className="text-mustard-500">.Mart</span>
               </span>
             </div>
           </Link>
+
           <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-alt px-3 py-1 text-xs font-semibold text-content-muted shadow-2xs">
             <ShieldCheck className="size-3.5 text-emerald-600" />
             System Minimarket Santri

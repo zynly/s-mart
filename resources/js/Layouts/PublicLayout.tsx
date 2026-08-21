@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link, usePage } from '@inertiajs/react'
-import { ShoppingBag, ShieldCheck, Sparkles, UserCheck } from 'lucide-react'
+import { ShieldCheck, Sparkles, UserCheck } from 'lucide-react'
 
 type PublicLayoutProps = {
   children: ReactNode
@@ -31,9 +31,11 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
       <header className="sticky top-0 z-50 border-b border-border/80 bg-surface/90 backdrop-blur-md transition-all shadow-xs">
         <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="flex size-9 items-center justify-center rounded-xl bg-navy-900 text-mustard-400 shadow-md group-hover:scale-105 transition-transform border border-navy-800">
-              <ShoppingBag className="size-5" />
-            </div>
+            <img
+              src="/logo/logo2.png"
+              alt="S-Mart Logo"
+              className="size-9 object-contain rounded-xl bg-white border border-amber-300 shadow-sm p-0.5 group-hover:scale-105 transition-transform"
+            />
             <div className="flex flex-col">
               <span className="font-mono text-base font-extrabold tracking-tight text-navy-900 dark:text-navy-50">
                 Skillage<span className="text-mustard-500">.Mart</span>
@@ -41,6 +43,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
               <span className="text-[10px] font-medium text-content-muted leading-none">Minimarket Santri</span>
             </div>
           </Link>
+
 
           <nav className="hidden items-center gap-1 md:flex bg-surface-alt/60 p-1 rounded-full border border-border">
             {navItems.map((item) => {
@@ -85,7 +88,11 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
         <div className="mx-auto flex max-w-[1280px] flex-col justify-between gap-6 px-4 sm:px-6 lg:px-8 py-10 text-xs text-content-muted sm:flex-row sm:items-center">
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
-              <ShoppingBag className="size-4 text-primary" />
+              <img
+                src="/logo/logo2.png"
+                alt="S-Mart Logo"
+                className="size-6 object-contain rounded-lg bg-white border border-amber-300/60 p-0.5"
+              />
               <p className="font-bold text-content text-sm">Skillage Mart (S-Mart)</p>
             </div>
             <p>SMK Skill Village Islamic School — Jonggol, Kabupaten Bogor</p>

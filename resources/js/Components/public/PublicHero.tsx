@@ -6,6 +6,13 @@ export function PublicHero() {
   return (
     <div className="relative overflow-hidden rounded-2xl bg-navy-950 p-5 sm:p-7 text-white shadow-md border border-navy-800">
       <div className="relative z-10 flex flex-col items-center text-center max-w-2xl mx-auto gap-3.5">
+        {/* Logo */}
+        <img
+          src="/logo/logo2.png"
+          alt="S-Mart Logo"
+          className="size-16 sm:size-20 object-contain rounded-2xl bg-white border-2 border-amber-300 shadow-xl p-1.5"
+        />
+
         {/* Tag */}
         <div className="inline-flex items-center gap-1.5 rounded-full border border-mustard-400/30 bg-navy-900 px-3 py-1 text-[11px] font-semibold text-mustard-300 shadow-xs">
           <Sparkles className="size-3 text-mustard-400" />
@@ -16,6 +23,7 @@ export function PublicHero() {
         <h1 className="font-mono text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white leading-tight">
           Belanja Praktis & Transparan di <span className="text-mustard-400">Skillage Mart</span>
         </h1>
+
 
         {/* Hero Description */}
         <p className="text-xs sm:text-sm text-navy-200 max-w-lg font-normal leading-relaxed">
