@@ -2380,7 +2380,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
 
       {/* Dialog Lihat Promo Hari Ini */}
       <Dialog open={showPromosModal} onOpenChange={setShowPromosModal}>
-        <DialogContent className="max-h-[85vh] w-[92vw] max-w-2xl overflow-hidden flex flex-col p-0 rounded-2xl border-border bg-card shadow-2xl">
+        <DialogContent className="max-h-[85vh] w-[92vw] sm:max-w-2xl md:max-w-3xl overflow-hidden flex flex-col p-0 rounded-2xl border-border bg-card shadow-2xl">
           <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20">
             <DialogTitle className="flex items-center gap-2 text-base font-bold">
               <Sparkles className="size-4.5 text-amber-500" />

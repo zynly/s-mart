@@ -384,7 +384,7 @@ export default function Index({ tab, promos, products, categories, filters }: Pr
 
       {/* Dialog Modal Tambah / Edit Promo (Lebar, Proporsional, Bersih) */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="flex flex-col max-h-[92vh] w-[96vw] max-w-6xl overflow-hidden p-0 rounded-2xl shadow-2xl border-border bg-card">
+        <DialogContent className="flex flex-col max-h-[92vh] w-[96vw] sm:max-w-4xl md:max-w-5xl lg:max-w-6xl xl:max-w-7xl overflow-hidden p-0 rounded-2xl shadow-2xl border-border bg-card">
           <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20">
             <DialogTitle className="flex items-center gap-2 text-lg font-bold">
               <Tag className="size-5 text-primary" />
