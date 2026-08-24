@@ -165,8 +165,7 @@ function MethodCard({
   const hasSub = subChannels.length > 0
 
   return (
-    // h-[200px] agar semua 10 card SAMA tingginya
-    <div className={`flex h-[200px] flex-col rounded-2xl border p-3.5 transition-all
+    <div className={`flex flex-col rounded-2xl border p-3.5 transition-all
       ${m.is_active
         ? `${cfg.activeBg} ${cfg.activeBorder} shadow-md`
         : 'border-border/70 bg-white dark:bg-surface hover:shadow-sm'
@@ -344,7 +343,7 @@ export default function Index({
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col gap-5 pb-10">
+    <div className="flex flex-col gap-5 pb-2">
       <PageHeader
         title="Pusat Integrasi & Uji Koneksi"
         subtitle="Kelola channel kasir, diagnosa S3 RustFS, Midtrans, Pakasir, SMTP, dan Database"
