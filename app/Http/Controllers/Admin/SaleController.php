@@ -109,7 +109,7 @@ class SaleController extends Controller
             'session' => $session,
             'outlet' => $outlet,
             'paymentMethods' => PaymentMethod::where('is_active', true)->orderBy('sort_order')
-                ->get(['id', 'code', 'name', 'type', 'allows_change', 'requires_reference', 'mdr_percent', 'midtrans_code']),
+                ->get(['id', 'code', 'name', 'type', 'is_active', 'allows_change', 'requires_reference', 'mdr_percent', 'midtrans_code']),
             'savedEnabledChannels' => $savedEnabledChannels,
             'activeGateway' => $activeGateway,
             'midtransChannels' => $midtransChannels,

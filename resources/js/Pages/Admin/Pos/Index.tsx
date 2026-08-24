@@ -1765,7 +1765,7 @@ export default function Index({
                 <div className="grid grid-cols-2 gap-1.5">
                   {(() => {
                     const manualMethods = paymentMethods.filter(
-                      (pm) => pm.is_active && ['cash', 'deposit', 'transfer', 'card', 'credit', 'point', 'voucher', 'payroll'].includes(pm.type)
+                      (pm) => (pm.is_active ?? true) && ['cash', 'deposit', 'transfer', 'card', 'credit', 'point', 'voucher', 'payroll'].includes(pm.type)
                     )
 
                     if (manualMethods.length === 0) {
