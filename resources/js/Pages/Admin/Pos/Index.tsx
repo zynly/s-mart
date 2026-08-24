@@ -1763,9 +1763,20 @@ export default function Index({
                   <span className="text-[9px] font-mono text-content-muted font-bold">Toko / Internal</span>
                 </div>
                 <div className="grid grid-cols-2 gap-1.5">
-                  {paymentMethods
-                    .filter((pm) => pm.is_active && !pm.midtrans_code && ['cash', 'deposit', 'transfer', 'card', 'credit', 'point', 'voucher', 'payroll'].includes(pm.type))
-                    .map((pm) => {
+                  {(() => {
+                    const manualMethods = paymentMethods.filter(
+                      (pm) => pm.is_active && ['cash', 'deposit', 'transfer', 'card', 'credit', 'point', 'voucher', 'payroll'].includes(pm.type)
+                    )
+
+                    if (manualMethods.length === 0) {
+                      return (
+                        <div className="col-span-2 rounded-lg border border-blue-200/60 bg-blue-50/40 p-2.5 text-center text-[10px] text-blue-800 dark:border-blue-900/40 dark:bg-blue-950/20 dark:text-blue-300 font-medium">
+                          Tidak ada metode pembayaran manual yang aktif di Pusat Integrasi
+                        </div>
+                      )
+                    }
+
+                    return manualMethods.map((pm) => {
                       const isSelected = activeMethod?.id === pm.id
                       return (
                         <button
@@ -1789,7 +1800,8 @@ export default function Index({
                           )}
                         </button>
                       )
-                    })}
+                    })
+                  })()}
                 </div>
               </section>
 
@@ -1804,8 +1816,7 @@ export default function Index({
                 </div>
                 <div className="grid grid-cols-2 gap-1.5">
                   {(() => {
-                    const enabledSet = new Set(savedEnabledChannels ?? [])
-                    // Default fallback jika belum pernah set di settings
+                    // Default fallback jika belum ada data setting tersimpan di database
                     const defaultMidtransList = [
                       { code: 'qris', name: 'QRIS Dinamis', category: 'qris' },
                       { code: 'gopay', name: 'GoPay', category: 'ewallet' },
@@ -1821,14 +1832,15 @@ export default function Index({
                       ? midtransChannels
                       : defaultMidtransList
 
-                    const displayChannels = enabledSet.size > 0
-                      ? sourceList.filter(ch => enabledSet.has(ch.code))
+                    // Hanya tampilkan channel yang secara eksplisit di-centang oleh admin di menu Integrasi
+                    const displayChannels = Array.isArray(savedEnabledChannels)
+                      ? sourceList.filter(ch => savedEnabledChannels.includes(ch.code))
                       : sourceList
 
                     if (displayChannels.length === 0) {
                       return (
-                        <div className="col-span-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-center text-[10px] text-amber-800 font-medium">
-                          Tidak ada channel PG yang di-centang di Integrasi
+                        <div className="col-span-2 rounded-lg border border-amber-200/60 bg-amber-50/40 p-2.5 text-center text-[10px] text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300 font-medium">
+                          Tidak ada channel Midtrans yang di-centang di Pusat Integrasi
                         </div>
                       )
                     }
