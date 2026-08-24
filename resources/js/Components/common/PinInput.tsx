@@ -7,9 +7,10 @@ type PinInputProps = {
   onChange: (value: string) => void
   onComplete?: (value: string) => void
   disabled?: boolean
+  className?: string
 }
 
-export function PinInput({ length = 6, value, onChange, onComplete, disabled }: PinInputProps) {
+export function PinInput({ length = 6, value, onChange, onComplete, disabled, className }: PinInputProps) {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
   const digits = value.split('').concat(Array(length).fill('')).slice(0, length)
 
@@ -48,7 +49,7 @@ export function PinInput({ length = 6, value, onChange, onComplete, disabled }: 
   }
 
   return (
-    <div className="flex gap-2" onPaste={handlePaste}>
+    <div className={cn('flex items-center justify-center gap-2 w-full', className)} onPaste={handlePaste}>
       {digits.map((digit, index) => (
         <input
           key={index}

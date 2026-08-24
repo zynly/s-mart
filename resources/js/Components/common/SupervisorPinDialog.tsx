@@ -67,11 +67,11 @@ export function SupervisorPinDialog({
       }}
     >
       <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
+        <DialogHeader className="text-center sm:text-center">
+          <DialogTitle className="text-center">{title}</DialogTitle>
+          <DialogDescription className="text-center">{description}</DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col items-center gap-3 py-2">
+        <div className="flex flex-col items-center justify-center gap-3 py-2 w-full">
           <PinInput
             length={6}
             value={pin}
@@ -79,9 +79,9 @@ export function SupervisorPinDialog({
             onComplete={submit}
             disabled={submitting}
           />
-          {error && <p className="text-sm text-danger">{error}</p>}
+          {error && <p className="text-sm text-danger text-center">{error}</p>}
         </div>
-        <DialogFooter>
+        <DialogFooter className="sm:justify-center">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
             Batal
           </Button>
