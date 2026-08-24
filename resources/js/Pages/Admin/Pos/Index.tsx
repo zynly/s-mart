@@ -2307,8 +2307,8 @@ export default function Index({
       {/* Dialog Modal Input Metode Pembayaran */}
       <Dialog open={methodDialog !== null} onOpenChange={(open) => !open && setMethodDialog(null)}>
         <DialogContent className="bg-white dark:bg-surface text-gray-900 dark:text-content border border-gray-200 dark:border-border max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-gray-900 dark:text-content font-extrabold text-base">
+          <DialogHeader className="text-center sm:text-center">
+            <DialogTitle className="text-gray-900 dark:text-content font-extrabold text-base text-center">
               {methodDialog?.type === 'deposit' && 'Otentikasi PIN Deposit Member'}
               {methodDialog?.type === 'card' && 'Detail Transaksi Mesin EDC (Kartu)'}
               {methodDialog?.type === 'credit' && 'Konfirmasi Kredit / Tempo (Piutang)'}
@@ -2317,14 +2317,14 @@ export default function Index({
           </DialogHeader>
 
           {methodDialog?.type === 'deposit' && member && (
-            <div className="flex flex-col gap-3 py-1">
-              <div className="rounded-xl border border-navy-200 bg-navy-50/60 p-3 text-xs space-y-1">
+            <div className="flex flex-col items-center gap-3 py-1 text-center">
+              <div className="rounded-xl border border-navy-200 bg-navy-50/60 p-3 text-xs space-y-1 w-full text-center">
                 <p className="font-semibold text-navy-900">Anggota: <span className="font-bold">{member.name}</span> ({member.member_number})</p>
                 <p className="text-gray-600">Saldo Deposit: <span className="font-bold text-emerald-700">Rp {member.balance_cache.toLocaleString('id-ID')}</span></p>
                 <p className="text-gray-600">Total Belanja: <span className="font-bold text-navy-950">Rp {subtotal.toLocaleString('id-ID')}</span></p>
               </div>
-              <div className="space-y-1.5 text-center">
-                <Label className="text-xs text-gray-600 font-semibold">Masukkan PIN Anggota (6-digit)</Label>
+              <div className="flex flex-col items-center justify-center space-y-1.5 text-center w-full">
+                <Label className="text-xs text-gray-600 font-semibold text-center">Masukkan PIN Anggota (6-digit)</Label>
                 <PinInput value={depositPin} onChange={setDepositPin} length={6} />
               </div>
             </div>
@@ -2343,17 +2343,16 @@ export default function Index({
                     <SelectItem value="Mandiri">EDC Mandiri</SelectItem>
                     <SelectItem value="BRI">EDC BRI</SelectItem>
                     <SelectItem value="BNI">EDC BNI</SelectItem>
-                    <SelectItem value="CIMB">EDC CIMB Niaga</SelectItem>
-                    <SelectItem value="Lainnya">Mesin EDC Lainnya</SelectItem>
+                    <SelectItem value="Lainnya">Bank Lainnya</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-gray-600">No. Referensi / Trace EDC (Wajib)</Label>
+                <Label className="text-xs text-gray-600">Nomor Approval / Trace Number (Wajib)</Label>
                 <Input
                   value={edcRefNo}
                   onChange={(e) => setEdcRefNo(e.target.value)}
-                  placeholder="Contoh: 123456 (tertera di struk EDC)"
+                  placeholder="Contoh: 123456 / 889900"
                   className={posFieldClass}
                   autoFocus
                 />
@@ -2363,30 +2362,40 @@ export default function Index({
 
           {methodDialog?.type === 'credit' && member && (
             <div className="flex flex-col gap-3 py-1">
-              <div className="rounded-xl border border-navy-200 bg-navy-50/70 p-3 text-xs space-y-1.5">
-                <p className="font-semibold text-navy-950">Anggota: <span className="font-bold">{member.name}</span> ({member.member_number})</p>
-                <p className="text-navy-800">Limit Piutang: <span className="font-bold font-mono">Rp {methodDialog.limit.toLocaleString('id-ID')}</span></p>
-                <p className="text-navy-800">Piutang Aktif: <span className="font-bold font-mono">Rp {methodDialog.active.toLocaleString('id-ID')}</span></p>
-                <p className="text-navy-900 border-t border-navy-200 pt-1">Belanja Baru (Jatuh Tempo 30 Hari): <span className="font-bold text-emerald-700 font-mono">Rp {subtotal.toLocaleString('id-ID')}</span></p>
+              <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-xs space-y-1">
+                <p className="font-semibold text-amber-900">Pembeli: <span className="font-bold">{member.name}</span> ({member.member_number})</p>
+                <p className="text-amber-800">Total Piutang: <span className="font-bold">Rp {subtotal.toLocaleString('id-ID')}</span></p>
+                <p className="text-[11px] text-amber-700">Transaksi ini akan dicatat sebagai hutang tempo anggota.</p>
               </div>
             </div>
           )}
 
           {methodDialog?.type === 'transfer' && (
             <div className="flex flex-col gap-3 py-1">
-              <div className="rounded-xl border border-blue-200 bg-blue-50/70 dark:bg-blue-950/40 p-3 text-xs space-y-1">
-                <p className="font-extrabold text-blue-900 dark:text-blue-200">Rekening Tujuan Transfer Toko:</p>
-                <div className="font-mono text-slate-800 dark:text-slate-200 space-y-0.5">
-                  {bankAccounts.length > 0 ? (
-                    bankAccounts.map((b) => (
-                      <p key={b.id}><span className="font-bold">{b.bank_name}:</span> {b.account_number} a/n {b.account_holder}</p>
-                    ))
-                  ) : (
-                    <>
-                      <p><span className="font-bold">BCA:</span> 123-4567-890 a/n Skillage Mart</p>
-                      <p><span className="font-bold">Mandiri:</span> 900-00-1234567-8 a/n Skillage Mart</p>
-                    </>
-                  )}
+              {/* Info Bank Sekolah Tujuan Transfer */}
+              <div className="rounded-xl border border-blue-200/80 bg-blue-50/60 dark:border-blue-900/60 dark:bg-blue-950/30 p-3 space-y-2">
+                <div className="flex items-center justify-between border-b border-blue-200/60 dark:border-blue-900/60 pb-1.5">
+                  <span className="text-[11px] font-bold text-blue-900 dark:text-blue-200 uppercase tracking-wider flex items-center gap-1.5">
+                    <Building2 className="size-3.5 text-blue-600" />
+                    Rekening Bank Sekolah Tujuan
+                  </span>
+                  <Badge variant="outline" className="text-[9px] bg-blue-100 text-blue-800 border-blue-300 font-extrabold">
+                    Manual Toko
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-medium">Bank Tujuan</span>
+                    <strong className="text-slate-900 dark:text-white font-bold">{selectedBankRow?.bank_name ?? 'BSI (Bank Syariah Indonesia)'}</strong>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-medium">Nomor Rekening</span>
+                    <strong className="text-blue-700 dark:text-blue-300 font-mono font-bold">{selectedBankRow?.account_number ?? '7123456789'}</strong>
+                  </div>
+                  <div className="col-span-2 pt-1 border-t border-blue-200/40">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-medium">Atas Nama Rekening</span>
+                    <strong className="text-slate-900 dark:text-white font-bold">{selectedBankRow?.account_holder ?? 'SMK Skill Village Islamic School'}</strong>
+                  </div>
                 </div>
                 <p className="text-[11px] text-slate-600 dark:text-slate-300 pt-1.5 border-t border-blue-200/60 font-semibold flex items-center justify-between">
                   <span>Total Tagihan:</span>
@@ -2405,18 +2414,18 @@ export default function Index({
                 />
               </div>
 
-              <div className="space-y-1.5 text-center pt-1">
-                <Label className="text-xs text-gray-700 dark:text-gray-200 font-bold block">PIN Otorisasi Kasir / Supervisor (Wajib, 6 Digit)</Label>
+              <div className="flex flex-col items-center justify-center space-y-1.5 text-center pt-1 w-full">
+                <Label className="text-xs text-gray-700 dark:text-gray-200 font-bold block text-center">PIN Otorisasi Kasir / Supervisor (Wajib, 6 Digit)</Label>
                 <PinInput value={transferPin} onChange={setTransferPin} length={6} />
               </div>
             </div>
           )}
 
           {methodDialogError && (
-            <p className="text-xs text-red-600 font-semibold bg-red-50 p-2 rounded border border-red-200">{methodDialogError}</p>
+            <p className="text-xs text-red-600 font-semibold bg-red-50 p-2 rounded border border-red-200 text-center">{methodDialogError}</p>
           )}
 
-          <DialogFooter className="bg-gray-50 flex gap-2">
+          <DialogFooter className="bg-gray-50 flex justify-center sm:justify-center gap-2">
             <Button variant="outline" onClick={() => setMethodDialog(null)}>Batal</Button>
             <Button
               disabled={submitting}
