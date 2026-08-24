@@ -316,8 +316,44 @@ class SaleService
 
             $pointsEarned = $member !== null ? $this->pointService->earn($member, $grandTotal, $sale) : 0;
 
+            // Rekonsiliasi otomatis pembayaran bila grand_total disesuaikan oleh PromoEngine
+            // agar promo otomatis tidak menyebabkan PaymentMismatchException
+            $cartPayments = $cart['payments'];
+            $totalPaymentAmount = (int) array_sum(array_column($cartPayments, 'amount'));
+
+            if ($totalPaymentAmount !== $grandTotal && ! empty($cartPayments)) {
+                if (count($cartPayments) === 1) {
+                    if (! isset($cartPayments[0]['received_amount'])) {
+                        $cartPayments[0]['received_amount'] = $cartPayments[0]['amount'];
+                    }
+                    $cartPayments[0]['amount'] = $grandTotal;
+                } else {
+                    $diff = $totalPaymentAmount - $grandTotal;
+                    if ($diff > 0) {
+                        $cashIndex = null;
+                        foreach ($cartPayments as $idx => $p) {
+                            $pm = PaymentMethod::find($p['payment_method_id']);
+                            if ($pm && $pm->type === 'cash') {
+                                $cashIndex = $idx;
+                                break;
+                            }
+                        }
+
+                        if ($cashIndex !== null) {
+                            if (! isset($cartPayments[$cashIndex]['received_amount'])) {
+                                $cartPayments[$cashIndex]['received_amount'] = $cartPayments[$cashIndex]['amount'];
+                            }
+                            $cartPayments[$cashIndex]['amount'] = max(0, $cartPayments[$cashIndex]['amount'] - $diff);
+                        } else {
+                            $lastIdx = count($cartPayments) - 1;
+                            $cartPayments[$lastIdx]['amount'] = max(0, $cartPayments[$lastIdx]['amount'] - $diff);
+                        }
+                    }
+                }
+            }
+
             $grossProfit = $grandTotal - $totalCost;
-            $payments = $this->paymentService->process($sale, $cart['payments'], $member, $session, $outlet);
+            $payments = $this->paymentService->process($sale, $cartPayments, $member, $session, $outlet);
             $this->sessionService->recordSaleCompleted($session);
 
             $paidAmount = (int) $payments->sum(fn ($p) => $p->received_amount ?? $p->amount);
