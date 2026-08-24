@@ -32,7 +32,13 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --prefer-dist --no-scripts --no-autoloader --ignore-platform-reqs
+
+ENV COMPOSER_PROCESS_TIMEOUT=600
+ENV COMPOSER_MAX_PARALLEL_HTTP=5
+
+RUN composer config --global process-timeout 600 \
+ && (composer install --no-dev --prefer-dist --no-scripts --no-autoloader --ignore-platform-reqs --no-progress \
+  || composer install --no-dev --prefer-dist --no-scripts --no-autoloader --ignore-platform-reqs --no-progress)
 
 COPY . .
 RUN composer dump-autoload --optimize --no-dev --ignore-platform-reqs
