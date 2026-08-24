@@ -207,6 +207,18 @@ class IntegrationController extends Controller
         });
 
         // 2. Simpan enabled sub-channels ke settings
+        $enabledChannels = array_values($data['enabled_channels'] ?? []);
+        DB::table('settings')->updateOrInsert(
+            ['group' => 'midtrans', 'key' => 'enabled_channels'],
+            [
+                'value'      => json_encode($enabledChannels),
+                'type'       => 'json',
+                'label'      => 'Sub-Channel Midtrans Aktif',
+                'updated_at' => now(),
+                'created_at' => now(),
+            ]
+        );
+
         // 3. Simpan Wali TopUp Settings ke settings table
         $waliKeys = [
             'allow_wali_topup'           => ['type' => 'boolean', 'label' => 'Izinkan TopUp Wali Santri'],
