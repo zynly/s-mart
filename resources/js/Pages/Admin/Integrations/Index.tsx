@@ -156,28 +156,31 @@ function TestCard({
   )
 }
 
-// Midtrans category mapping
-const MT_CATEGORY: Record<string, string> = {
-  qris:     'qris',
-  ewallet:  'ewallet',
-  transfer: 'bank_transfer',
-}
+// ─── Default Channels Fallback jika API Sandbox belum mengembalikan list ────────
+const DEFAULT_MIDTRANS_CHANNELS: MidtransChannel[] = [
+  { code: 'qris', name: 'QRIS Dinamis (GoPay, OVO, ShopeePay, DANA, LinkAja)', category: 'qris', is_active: true },
+  { code: 'gopay', name: 'GoPay / QRIS', category: 'ewallet', is_active: true },
+  { code: 'shopeepay', name: 'ShopeePay', category: 'ewallet', is_active: true },
+  { code: 'bca_va', name: 'BCA Virtual Account', category: 'bank_transfer', is_active: true },
+  { code: 'bni_va', name: 'BNI Virtual Account', category: 'bank_transfer', is_active: true },
+  { code: 'bri_va', name: 'BRI Virtual Account', category: 'bank_transfer', is_active: true },
+  { code: 'mandiri_va', name: 'Mandiri Bill Payment', category: 'bank_transfer', is_active: true },
+  { code: 'cimb_va', name: 'CIMB Niaga Virtual Account', category: 'bank_transfer', is_active: true },
+  { code: 'permata_va', name: 'Permata Virtual Account', category: 'bank_transfer', is_active: true },
+  { code: 'credit_card', name: 'Kartu Kredit / Debit Online (3DS)', category: 'card', is_active: true },
+]
 
-// ─── MethodCard ───────────────────────────────────────────────────────────────
+// ─── MethodCard (Khusus 1. Pembayaran Manual Toko) ───────────────────────────
 function MethodCard({
-  m, onToggle, subChannels = [], enabledChannels, onToggleChannel,
+  m, onToggle,
 }: {
   m: PaymentMethod
   onToggle: (id: number, val: boolean) => void
-  subChannels?: MidtransChannel[]
-  enabledChannels: Set<string>
-  onToggleChannel: (code: string, val: boolean) => void
 }) {
   const cfg = TYPE_CONFIG[m.type] ?? FALLBACK_CONFIG!
-  const hasSub = subChannels.length > 0
 
   return (
-    <div className={`flex flex-col rounded-2xl border p-3.5 transition-all
+    <div className={`flex flex-col justify-between rounded-2xl border p-3.5 transition-all
       ${m.is_active
         ? `${cfg.activeBg} ${cfg.activeBorder} shadow-md`
         : 'border-border/70 bg-white dark:bg-surface hover:shadow-sm'
@@ -201,7 +204,7 @@ function MethodCard({
 
       {/* Name + code — clickable label */}
       <label htmlFor={`pm-${m.id}`} className="mt-2.5 cursor-pointer">
-        <p className={`text-xs font-extrabold leading-tight ${m.is_active ? 'text-white' : 'text-navy-950'}`}>
+        <p className={`text-xs font-extrabold leading-tight ${m.is_active ? 'text-white' : 'text-navy-950 dark:text-white'}`}>
           {m.name}
         </p>
         <p className={`mt-0.5 text-[10px] font-mono font-bold uppercase tracking-wide
@@ -210,55 +213,76 @@ function MethodCard({
         </p>
       </label>
 
-      {/* Badge Via Midtrans */}
-      {MT_CATEGORY[m.type] && (
-        <div className={`mt-1 inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide w-fit
-          ${m.is_active ? 'bg-white/15 text-white/80' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
-          <CreditCard className="size-2.5" />
-          Via Midtrans
-        </div>
-      )}
+      {/* Badge Manual Toko */}
+      <div className={`mt-2 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide w-fit
+        ${m.is_active ? 'bg-white/15 text-white/90' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
+        <Building2 className="size-2.5" />
+        Manual Toko
+      </div>
+    </div>
+  )
+}
 
-      {/* Sub-channels: grid 3 kolom agar rapi tanpa scrollbar */}
-      {hasSub && (
-        <div className={`mt-2 flex-1 border-t pt-2
-          ${m.is_active ? 'border-white/10' : 'border-border/50'}`}>
-          <div className="grid grid-cols-3 gap-1">
-            {subChannels.map(ch => {
-              const shortName = ch.name
-                .replace(' Virtual Account', ' VA')
-                .replace(' CIMB Niaga', ' CIMB')
-                .replace('QRIS (GoPay, OVO, ShopeePay, Dana, LinkAja)', 'QRIS')
-              const isEnabled = enabledChannels.has(ch.code)
-              return (
-                <label
-                  key={ch.code}
-                  htmlFor={`ch-${ch.code}`}
-                  className={`flex cursor-pointer items-center gap-1 rounded-md px-1 py-0.5 transition-colors
-                    ${m.is_active
-                      ? isEnabled ? 'bg-white/20' : 'hover:bg-white/10'
-                      : isEnabled ? 'bg-navy-50' : 'hover:bg-navy-50/60'
-                    }`}
-                >
-                  <Checkbox
-                    id={`ch-${ch.code}`}
-                    checked={isEnabled}
-                    onCheckedChange={(val) => onToggleChannel(ch.code, Boolean(val))}
-                    className={`size-3 shrink-0 ${m.is_active
-                      ? 'border-white/50 data-[state=checked]:bg-white data-[state=checked]:border-white data-[state=checked]:text-navy-900'
-                      : 'data-[state=checked]:border-emerald-600 data-[state=checked]:bg-emerald-600'
-                    }`}
-                  />
-                  <span className={`truncate text-[9px] font-semibold leading-none
-                    ${m.is_active ? 'text-white/90' : 'text-navy-800'}`}>
-                    {shortName}
-                  </span>
-                </label>
-              )
-            })}
-          </div>
+// ─── MidtransChannelCard (Khusus 2. Channel Payment Gateway Otomatis) ────────
+function MidtransChannelCard({
+  ch, enabledChannels, onToggleChannel,
+}: {
+  ch: MidtransChannel
+  enabledChannels: Set<string>
+  onToggleChannel: (code: string, val: boolean) => void
+}) {
+  const isEnabled = enabledChannels.has(ch.code)
+
+  const icon = ch.category === 'qris'
+    ? <QrCode className="size-5" />
+    : ch.category === 'ewallet'
+    ? <Smartphone className="size-5" />
+    : ch.category === 'bank_transfer'
+    ? <Building2 className="size-5" />
+    : <CreditCard className="size-5" />
+
+  return (
+    <div className={`flex flex-col justify-between rounded-2xl border p-3.5 transition-all ${
+      isEnabled
+        ? 'bg-amber-800 border-amber-600 shadow-md text-white'
+        : 'border-border/70 bg-white dark:bg-surface hover:shadow-sm'
+    }`}>
+      {/* Top: icon + checkbox */}
+      <div className="flex items-start justify-between gap-1">
+        <div className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${
+          isEnabled ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700'
+        }`}>
+          {icon}
         </div>
-      )}
+        <Checkbox
+          id={`ch-card-${ch.code}`}
+          checked={isEnabled}
+          onCheckedChange={(val) => onToggleChannel(ch.code, Boolean(val))}
+          className={isEnabled
+            ? 'border-white data-[state=checked]:bg-white data-[state=checked]:text-navy-900'
+            : 'data-[state=checked]:border-amber-600 data-[state=checked]:bg-amber-600'}
+        />
+      </div>
+
+      {/* Name + code — clickable label */}
+      <label htmlFor={`ch-card-${ch.code}`} className="mt-2.5 cursor-pointer">
+        <p className={`text-xs font-extrabold leading-tight ${isEnabled ? 'text-white' : 'text-navy-950 dark:text-white'}`}>
+          {ch.name}
+        </p>
+        <p className={`mt-0.5 text-[10px] font-mono font-bold uppercase tracking-wide ${
+          isEnabled ? 'text-white/60' : 'text-navy-400'
+        }`}>
+          {ch.code}
+        </p>
+      </label>
+
+      {/* Badge Via Midtrans */}
+      <div className={`mt-2 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide w-fit ${
+        isEnabled ? 'bg-white/15 text-white/90' : 'bg-amber-50 text-amber-700 border border-amber-200'
+      }`}>
+        <CreditCard className="size-2.5" />
+        Via Midtrans
+      </div>
     </div>
   )
 }
@@ -588,8 +612,6 @@ export default function Index({
                   key={m.id}
                   m={m}
                   onToggle={toggleMethod}
-                  enabledChannels={enabledChannels}
-                  onToggleChannel={toggleChannel}
                 />
               ))}
           </div>
@@ -620,23 +642,15 @@ export default function Index({
         </CardHeader>
 
         <CardContent className="pt-4">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-            {methods
-              .filter((m) => m.type === 'qris' || m.type === 'ewallet' || Boolean(m.midtrans_code))
-              .map((m) => {
-                const cat = MT_CATEGORY[m.type]
-                const subChannels = cat ? mtChannels.filter((ch) => ch.category === cat) : []
-                return (
-                  <MethodCard
-                    key={m.id}
-                    m={m}
-                    onToggle={toggleMethod}
-                    subChannels={subChannels}
-                    enabledChannels={enabledChannels}
-                    onToggleChannel={toggleChannel}
-                  />
-                )
-              })}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+            {(mtChannels.length > 0 ? mtChannels : DEFAULT_MIDTRANS_CHANNELS).map((ch) => (
+              <MidtransChannelCard
+                key={ch.code}
+                ch={ch}
+                enabledChannels={enabledChannels}
+                onToggleChannel={toggleChannel}
+              />
+            ))}
           </div>
 
           <p className="mt-4 flex items-center gap-1.5 text-[11px] text-content-muted">
