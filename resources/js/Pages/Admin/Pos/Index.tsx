@@ -302,35 +302,49 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
   const couponDiscount = couponValidationResult?.valid ? couponValidationResult.discount : 0
 
   const promoDiscount = useMemo(() => {
-    if (activePromos.length === 0 && !member?.level) return 0
+    if (activePromos.length === 0) return 0
     let totalDisc = 0
     for (const line of cart) {
       const lineSubtotal = line.qty * line.unit_price
       let maxLineDisc = 0
 
       for (const promo of activePromos) {
-        const matchProduct = promo.products?.some((p) => p.id === line.product_id)
-        const isItemScope = promo.scope === 'item' || promo.type === 'product' || promo.type === 'category' || promo.type === 'tiered_qty' || promo.type === 'clearance' || promo.type === 'happy_hour'
+        const hasProducts = Array.isArray(promo.products) && promo.products.length > 0
+        const hasCategories = Array.isArray(promo.categories) && promo.categories.length > 0
 
-        if (matchProduct || isItemScope) {
-          let disc = 0
-          if (promo.discount_type === 'percent') {
-            disc = Math.round(lineSubtotal * (promo.discount_value / 100))
-          } else if (promo.discount_type === 'amount') {
-            disc = promo.discount_value * line.qty
-          }
-          if (promo.max_discount && promo.max_discount > 0) {
-            disc = Math.min(disc, promo.max_discount)
-          }
-          if (disc > maxLineDisc) {
-            maxLineDisc = disc
-          }
+        let isEligible = false
+        if (promo.type === 'product' || promo.type === 'tiered_qty' || promo.type === 'happy_hour' || promo.type === 'buy_x_get_y' || promo.type === 'bundle') {
+          isEligible = hasProducts ? promo.products!.some((p) => p.id === line.product_id) : true
+        } else if (promo.type === 'category') {
+          isEligible = hasCategories ? promo.categories!.some((c) => c.id === (line as any).category_id) : true
+        } else if (promo.type === 'clearance') {
+          isEligible = hasProducts ? promo.products!.some((p) => p.id === line.product_id) : false
+        }
+
+        if (!isEligible) continue
+
+        if (promo.min_qty && line.qty < Number(promo.min_qty)) continue
+
+        let disc = 0
+        if (promo.discount_type === 'percent') {
+          disc = Math.round(lineSubtotal * (promo.discount_value / 100))
+        } else if (promo.discount_type === 'amount') {
+          disc = promo.discount_value * line.qty
+        } else if (promo.discount_type === 'fixed_price') {
+          disc = Math.max(0, lineSubtotal - promo.discount_value * line.qty)
+        }
+
+        if (promo.max_discount && promo.max_discount > 0) {
+          disc = Math.min(disc, promo.max_discount)
+        }
+        if (disc > maxLineDisc) {
+          maxLineDisc = disc
         }
       }
       totalDisc += Math.min(lineSubtotal, maxLineDisc)
     }
     return totalDisc
-  }, [cart, activePromos, member])
+  }, [cart, activePromos])
 
   const finalPayable = Math.max(0, subtotal - couponDiscount - promoDiscount)
 
