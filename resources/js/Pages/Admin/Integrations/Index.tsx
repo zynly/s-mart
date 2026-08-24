@@ -3,7 +3,7 @@ import {
   CheckCircle2, XCircle, RefreshCw, HardDrive, CreditCard,
   Mail, Database, ShieldCheck, Save, Banknote,
   Wallet, Ticket, Star, ClipboardList, Clock, QrCode,
-  Smartphone, Building2,
+  Smartphone, Building2, Users, Zap,
 } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
@@ -11,10 +11,21 @@ import { Button } from '@/Components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/Components/ui/card'
 import { Badge } from '@/Components/ui/badge'
 import { Checkbox } from '@/Components/ui/checkbox'
+import { Input } from '@/Components/ui/input'
+import { Label } from '@/Components/ui/label'
 import { apiPost } from '@/Lib/api'
 import { toast } from 'sonner'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
+
+type WaliSettings = {
+  allowWaliTopup: boolean
+  allowAutoTopup: boolean
+  allowManualTopup: boolean
+  manualBankName: string
+  manualBankAccountNumber: string
+  manualBankAccountName: string
+}
 
 type EnvSummary = {
   appName: string; appEnv: string; dbConnection: string; dbHost: string
@@ -45,6 +56,7 @@ type IndexProps = {
   paymentMethods: PaymentMethod[]
   midtransChannels: MidtransChannel[]
   savedEnabledChannels: string[]
+  waliSettings?: WaliSettings
 }
 
 
@@ -258,6 +270,7 @@ export default function Index({
   paymentMethods: initMethods = [],
   midtransChannels: initChannels = [],
   savedEnabledChannels = [],
+  waliSettings: initWali,
 }: IndexProps) {
   // Test states
   const [storageR, setStorageR] = useState<TestResult | null>(null)
@@ -283,6 +296,15 @@ export default function Index({
   const [enabledChannels, setEnabledChannels] = useState<Set<string>>(
     new Set(savedEnabledChannels ?? [])
   )
+
+  // Wali Settings state
+  const [allowWaliTopup, setAllowWaliTopup] = useState(initWali?.allowWaliTopup ?? true)
+  const [allowAutoTopup, setAllowAutoTopup] = useState(initWali?.allowAutoTopup ?? true)
+  const [allowManualTopup, setAllowManualTopup] = useState(initWali?.allowManualTopup ?? true)
+  const [manualBankName, setManualBankName] = useState(initWali?.manualBankName ?? 'BSI (Bank Syariah Indonesia)')
+  const [manualBankAccountNumber, setManualBankAccountNumber] = useState(initWali?.manualBankAccountNumber ?? '7123456789')
+  const [manualBankAccountName, setManualBankAccountName] = useState(initWali?.manualBankAccountName ?? 'SMK Skill Village Islamic School')
+
   const [saving, setSaving] = useState(false)
 
   // ── Generic test runner ───────────────────────────────────────────────────
@@ -331,6 +353,12 @@ export default function Index({
             id: m.id, is_active: m.is_active, midtrans_code: m.midtrans_code,
           })),
           enabled_channels: [...enabledChannels],
+          allow_wali_topup: allowWaliTopup,
+          allow_auto_topup: allowAutoTopup,
+          allow_manual_topup: allowManualTopup,
+          manual_bank_name: manualBankName,
+          manual_bank_account_number: manualBankAccountNumber,
+          manual_bank_account_name: manualBankAccountName,
         },
       )
       toast.success(res.message)
@@ -614,6 +642,151 @@ export default function Index({
           <p className="mt-4 flex items-center gap-1.5 text-[11px] text-content-muted">
             <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
             Perubahan baru berlaku setelah klik <strong>Simpan Semua</strong> dan kasir di-refresh.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* ── 3. Pengaturan Top-Up Portal Wali Santri ── */}
+      <Card className="rounded-2xl border border-teal-200/80 bg-surface shadow-sm">
+        <CardHeader className="border-b border-border/80 pb-3 bg-teal-50/40 dark:bg-teal-950/20">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-200 font-bold">
+                <Users className="size-4" />
+              </div>
+              <div>
+                <CardTitle className="text-sm font-extrabold text-navy-950 dark:text-white flex items-center gap-2">
+                  3. Pengaturan Top-Up Portal Wali Santri
+                  <Badge variant="outline" className="text-[10px] bg-teal-50 text-teal-700 border-teal-200 font-bold">
+                    Portal Wali
+                  </Badge>
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Atur visibilitas fitur Top-Up &amp; opsi pembayaran yang dapat diakses oleh Wali Santri
+                </CardDescription>
+              </div>
+            </div>
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              className="rounded-xl bg-teal-600 px-4 font-bold text-white hover:bg-teal-700"
+            >
+              <Save className={`mr-2 size-4 ${saving ? 'animate-pulse' : ''}`} />
+              {saving ? 'Menyimpan...' : 'Simpan Semua'}
+            </Button>
+          </div>
+        </CardHeader>
+
+        <CardContent className="pt-4 space-y-4">
+          {/* Main Toggle Fitur Wali TopUp */}
+          <div className="flex items-center justify-between rounded-xl border border-teal-200 bg-teal-50/60 dark:border-teal-900 dark:bg-teal-950/30 p-3.5">
+            <div className="flex items-center gap-3">
+              <Checkbox
+                id="allow-wali-topup"
+                checked={allowWaliTopup}
+                onCheckedChange={(val) => setAllowWaliTopup(Boolean(val))}
+              />
+              <label htmlFor="allow-wali-topup" className="cursor-pointer">
+                <p className="text-xs font-extrabold text-teal-950 dark:text-teal-200">
+                  Aktifkan Fitur Top-Up untuk Wali Santri
+                </p>
+                <p className="text-[11px] text-teal-800/80 dark:text-teal-300/80">
+                  Jika di-uncentang, seluruh menu &amp; pengajuan Top-Up di Portal Wali Santri akan di-hide (sembunyi).
+                </p>
+              </label>
+            </div>
+            <Badge className={allowWaliTopup ? 'bg-teal-600 text-white' : 'bg-slate-200 text-slate-700'}>
+              {allowWaliTopup ? 'Top-Up Wali Aktif' : 'Fitur Nonaktif'}
+            </Badge>
+          </div>
+
+          {/* Sub Toggles: Otomatis vs Manual */}
+          {allowWaliTopup && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+              {/* Opsi Otomatis Midtrans */}
+              <div className="rounded-xl border border-amber-200/80 bg-amber-50/30 dark:bg-amber-950/20 p-3.5 space-y-2">
+                <div className="flex items-center gap-2.5">
+                  <Checkbox
+                    id="allow-auto-topup"
+                    checked={allowAutoTopup}
+                    onCheckedChange={(val) => setAllowAutoTopup(Boolean(val))}
+                  />
+                  <label htmlFor="allow-auto-topup" className="cursor-pointer">
+                    <p className="text-xs font-extrabold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+                      <Zap className="size-3.5 text-amber-600 fill-amber-600" />
+                      1. Top-Up Otomatis (Payment Gateway)
+                    </p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      Wali Santri dapat membayar instan via QRIS, E-Wallet &amp; VA Bank (mengikuti centangan Midtrans).
+                    </p>
+                  </label>
+                </div>
+              </div>
+
+              {/* Opsi Transfer Manual */}
+              <div className="rounded-xl border border-blue-200/80 bg-blue-50/30 dark:bg-blue-950/20 p-3.5 space-y-2">
+                <div className="flex items-center gap-2.5">
+                  <Checkbox
+                    id="allow-manual-topup"
+                    checked={allowManualTopup}
+                    onCheckedChange={(val) => setAllowManualTopup(Boolean(val))}
+                  />
+                  <label htmlFor="allow-manual-topup" className="cursor-pointer">
+                    <p className="text-xs font-extrabold text-blue-900 dark:text-blue-300 flex items-center gap-1.5">
+                      <Building2 className="size-3.5 text-blue-600" />
+                      2. Transfer Manual + Upload Bukti
+                    </p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      Wali Santri transfer manual ke rekening bank sekolah &amp; mengunggah foto bukti transfer.
+                    </p>
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Form Rekening Bank Sekolah jika Manual Aktif */}
+          {allowWaliTopup && allowManualTopup && (
+            <div className="rounded-xl border border-border bg-slate-50/50 dark:bg-surface-alt p-4 space-y-3">
+              <h4 className="text-xs font-bold text-navy-950 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                <Building2 className="size-4 text-blue-600" />
+                Informasi Rekening Bank Sekolah (Tujuan Transfer Manual)
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div>
+                  <Label className="text-[11px] font-bold text-content-muted">Nama Bank</Label>
+                  <Input
+                    value={manualBankName}
+                    onChange={(e) => setManualBankName(e.target.value)}
+                    placeholder="Contoh: BSI (Bank Syariah Indonesia)"
+                    className="h-9 mt-1 font-bold text-xs"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[11px] font-bold text-content-muted">Nomor Rekening</Label>
+                  <Input
+                    value={manualBankAccountNumber}
+                    onChange={(e) => setManualBankAccountNumber(e.target.value)}
+                    placeholder="Contoh: 7123456789"
+                    className="h-9 mt-1 font-mono font-bold text-xs"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[11px] font-bold text-content-muted">Atas Nama Rekening</Label>
+                  <Input
+                    value={manualBankAccountName}
+                    onChange={(e) => setManualBankAccountName(e.target.value)}
+                    placeholder="Contoh: SMK Skill Village Islamic School"
+                    className="h-9 mt-1 font-bold text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <p className="mt-2 flex items-center gap-1.5 text-[11px] text-content-muted">
+            <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
+            Pengaturan visibilitas ini langsung memicu perubahan tampilan di Portal Wali Santri.
           </p>
         </CardContent>
       </Card>

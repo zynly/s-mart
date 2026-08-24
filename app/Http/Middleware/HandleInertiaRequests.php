@@ -105,6 +105,14 @@ class HandleInertiaRequests extends Middleware
             ],
             // Owner Wali Preview flag
             'ownerWaliPreview' => fn () => (bool) $request->session()->get('owner_wali_preview'),
+            // Visibilitas Top-Up Wali Santri dari settings
+            'allowWaliTopup' => function () {
+                try {
+                    $row = \Illuminate\Support\Facades\DB::table('settings')->where('group', 'pos')->where('key', 'allow_wali_topup')->first();
+                    if ($row !== null) return filter_var($row->value, FILTER_VALIDATE_BOOLEAN);
+                } catch (\Throwable) {}
+                return true;
+            },
         ];
     }
 }

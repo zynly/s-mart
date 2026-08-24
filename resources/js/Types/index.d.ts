@@ -68,4 +68,5 @@ export type PageProps<T extends Record<string, unknown> = Record<string, unknown
   }
   // Owner Wali Preview flag
   ownerWaliPreview: boolean
+  allowWaliTopup?: boolean
 }

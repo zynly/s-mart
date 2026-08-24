@@ -92,6 +92,27 @@ class IntegrationController extends Controller
             $activeGateway = 'midtrans';
         }
 
+        // Wali Settings dari DB
+        $getSetting = function (string $group, string $key, $default) {
+            try {
+                $row = DB::table('settings')->where('group', $group)->where('key', $key)->first();
+                if ($row !== null) {
+                    if ($row->type === 'boolean') return filter_var($row->value, FILTER_VALIDATE_BOOLEAN);
+                    return $row->value;
+                }
+            } catch (\Throwable) {}
+            return $default;
+        };
+
+        $waliSettings = [
+            'allowWaliTopup'          => (bool) $getSetting('pos', 'allow_wali_topup', true),
+            'allowAutoTopup'          => (bool) $getSetting('pos', 'allow_auto_topup', true),
+            'allowManualTopup'        => (bool) $getSetting('pos', 'allow_manual_topup', true),
+            'manualBankName'          => (string) $getSetting('pos', 'manual_bank_name', 'BSI (Bank Syariah Indonesia)'),
+            'manualBankAccountNumber' => (string) $getSetting('pos', 'manual_bank_account_number', '7123456789'),
+            'manualBankAccountName'   => (string) $getSetting('pos', 'manual_bank_account_name', 'SMK Skill Village Islamic School'),
+        ];
+
         return Inertia::render('Admin/Integrations/Index', [
             'envSummary' => [
                 'appName'              => (string) config('app.name'),
@@ -118,6 +139,7 @@ class IntegrationController extends Controller
             'paymentMethods'       => $paymentMethods,
             'midtransChannels'     => $midtransChannels,
             'savedEnabledChannels' => $savedEnabledChannels,
+            'waliSettings'         => $waliSettings,
         ]);
     }
 
@@ -125,18 +147,25 @@ class IntegrationController extends Controller
      * Simpan:
      * 1. is_active per payment_method → payment_methods table
      * 2. enabled_channels (sub-channel Midtrans) → settings table
+     * 3. waliSettings → settings table
      */
     public function updatePaymentMethods(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'active_gateway'         => ['sometimes', 'string', 'in:midtrans,pakasir'],
-            'midtrans_is_production' => ['sometimes', 'boolean'],
-            'methods'                => ['required', 'array'],
-            'methods.*.id'           => ['required', 'integer', 'exists:payment_methods,id'],
-            'methods.*.is_active'    => ['required', 'boolean'],
-            'methods.*.midtrans_code' => ['nullable', 'string', 'max:50'],
-            'enabled_channels'       => ['sometimes', 'array'],
-            'enabled_channels.*'     => ['string', 'max:50'],
+            'active_gateway'             => ['sometimes', 'string', 'in:midtrans,pakasir'],
+            'midtrans_is_production'     => ['sometimes', 'boolean'],
+            'methods'                    => ['required', 'array'],
+            'methods.*.id'               => ['required', 'integer', 'exists:payment_methods,id'],
+            'methods.*.is_active'        => ['required', 'boolean'],
+            'methods.*.midtrans_code'     => ['nullable', 'string', 'max:50'],
+            'enabled_channels'           => ['sometimes', 'array'],
+            'enabled_channels.*'         => ['string', 'max:50'],
+            'allow_wali_topup'           => ['sometimes', 'boolean'],
+            'allow_auto_topup'           => ['sometimes', 'boolean'],
+            'allow_manual_topup'         => ['sometimes', 'boolean'],
+            'manual_bank_name'           => ['nullable', 'string', 'max:100'],
+            'manual_bank_account_number' => ['nullable', 'string', 'max:100'],
+            'manual_bank_account_name'   => ['nullable', 'string', 'max:100'],
         ]);
 
         // 0. Update active gateway provider (Midtrans vs Pakasir)
@@ -178,17 +207,31 @@ class IntegrationController extends Controller
         });
 
         // 2. Simpan enabled sub-channels ke settings
-        $enabledChannels = array_values($data['enabled_channels'] ?? []);
-        DB::table('settings')->updateOrInsert(
-            ['group' => 'midtrans', 'key' => 'enabled_channels'],
-            [
-                'value'      => json_encode($enabledChannels),
-                'type'       => 'json',
-                'label'      => 'Sub-Channel Midtrans Aktif',
-                'updated_at' => now(),
-                'created_at' => now(),
-            ]
-        );
+        // 3. Simpan Wali TopUp Settings ke settings table
+        $waliKeys = [
+            'allow_wali_topup'           => ['type' => 'boolean', 'label' => 'Izinkan TopUp Wali Santri'],
+            'allow_auto_topup'           => ['type' => 'boolean', 'label' => 'Izinkan TopUp Otomatis Midtrans'],
+            'allow_manual_topup'         => ['type' => 'boolean', 'label' => 'Izinkan TopUp Transfer Manual'],
+            'manual_bank_name'           => ['type' => 'string',  'label' => 'Nama Bank Sekolah'],
+            'manual_bank_account_number' => ['type' => 'string',  'label' => 'No Rekening Bank Sekolah'],
+            'manual_bank_account_name'   => ['type' => 'string',  'label' => 'Atas Nama Rekening Sekolah'],
+        ];
+
+        foreach ($waliKeys as $k => $meta) {
+            if (array_key_exists($k, $data)) {
+                $val = $meta['type'] === 'boolean' ? ($data[$k] ? '1' : '0') : (string) $data[$k];
+                DB::table('settings')->updateOrInsert(
+                    ['group' => 'pos', 'key' => $k],
+                    [
+                        'value'      => $val,
+                        'type'       => $meta['type'],
+                        'label'      => $meta['label'],
+                        'updated_at' => now(),
+                        'created_at' => now(),
+                    ]
+                );
+            }
+        }
 
         $activeCount = collect($data['methods'])->where('is_active', true)->count();
         $gwLabel = strtoupper($data['active_gateway'] ?? 'midtrans');

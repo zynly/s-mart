@@ -23,17 +23,36 @@ class TopupController extends Controller
     {
         $guardian = $request->user('guardian');
 
+        $getSetting = function (string $key, $default) {
+            try {
+                $row = \Illuminate\Support\Facades\DB::table('settings')->where('group', 'pos')->where('key', $key)->first();
+                if ($row !== null) {
+                    if ($row->type === 'boolean') return filter_var($row->value, FILTER_VALIDATE_BOOLEAN);
+                    return $row->value;
+                }
+            } catch (\Throwable) {}
+            return $default;
+        };
+
+        $allowWaliTopup = (bool) $getSetting('allow_wali_topup', true);
+        $allowAutoTopup = (bool) $getSetting('allow_auto_topup', true);
+        $allowManualTopup = (bool) $getSetting('allow_manual_topup', true);
+        $manualBankName = (string) $getSetting('manual_bank_name', config('pos.manual_bank_name', 'BSI (Bank Syariah Indonesia)'));
+        $manualBankAccountNumber = (string) $getSetting('manual_bank_account_number', config('pos.manual_bank_account_number', '7123456789'));
+        $manualBankAccountName = (string) $getSetting('manual_bank_account_name', config('pos.manual_bank_account_name', 'SMK Skill Village Islamic School'));
+
         return Inertia::render('Wali/Topup/Create', [
             'members' => $guardian->members()->where('status', 'active')->get(['members.id', 'members.name', 'members.member_number']),
             'midtransClientKey' => config('services.midtrans.client_key'),
             'midtransIsProduction' => (bool) config('services.midtrans.is_production'),
             'activeGateway' => $this->paymentGatewayService->getActiveProvider(),
-            'minTopup' => (int) config('pos.deposit_min_topup'),
-            'allowAutoTopup' => (bool) config('pos.allow_auto_topup', true),
-            'allowManualTopup' => (bool) config('pos.allow_manual_topup', true),
-            'manualBankName' => (string) config('pos.manual_bank_name', 'BSI (Bank Syariah Indonesia)'),
-            'manualBankAccountNumber' => (string) config('pos.manual_bank_account_number', '7123456789'),
-            'manualBankAccountName' => (string) config('pos.manual_bank_account_name', 'SMK Skill Village Islamic School'),
+            'minTopup' => (int) config('pos.deposit_min_topup', 10000),
+            'allowWaliTopup' => $allowWaliTopup,
+            'allowAutoTopup' => $allowAutoTopup,
+            'allowManualTopup' => $allowManualTopup,
+            'manualBankName' => $manualBankName,
+            'manualBankAccountNumber' => $manualBankAccountNumber,
+            'manualBankAccountName' => $manualBankAccountName,
         ]);
     }
 

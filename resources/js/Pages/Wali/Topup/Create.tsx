@@ -25,6 +25,7 @@ type CreateProps = {
   midtransClientKey: string | null
   midtransIsProduction: boolean
   minTopup: number
+  allowWaliTopup?: boolean
   allowAutoTopup?: boolean
   allowManualTopup?: boolean
   manualBankName?: string
@@ -39,6 +40,7 @@ export default function Create({
   midtransClientKey,
   midtransIsProduction,
   minTopup,
+  allowWaliTopup = true,
   allowAutoTopup = true,
   allowManualTopup = true,
   manualBankName = 'BSI (Bank Syariah Indonesia)',
@@ -100,6 +102,15 @@ export default function Create({
     } finally {
       setGatewaySubmitting(false)
     }
+  }
+
+  if (!allowWaliTopup) {
+    return (
+      <EmptyState
+        title="Layanan Top-Up Sementara Nonaktif"
+        description="Fitur pengajuan top-up saldo via portal wali santri saat ini sedang dinonaktifkan oleh pihak sekolah/admin."
+      />
+    )
   }
 
   if (members.length === 0) {

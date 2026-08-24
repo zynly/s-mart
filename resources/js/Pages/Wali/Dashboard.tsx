@@ -46,7 +46,7 @@ type DashboardProps = {
 }
 
 export default function Dashboard({ members, kpi, recentActivities = [] }: DashboardProps) {
-  const { guardianAuth } = usePage<PageProps>().props
+  const { guardianAuth, allowWaliTopup = true } = usePage<PageProps>().props
   const guardianName = guardianAuth?.guardian?.name ?? 'Wali Santri'
 
   const totalBalance = kpi?.total_balance ?? members.reduce((sum, m) => sum + m.balance_cache, 0)
@@ -139,30 +139,32 @@ export default function Dashboard({ members, kpi, recentActivities = [] }: Dashb
         </Card>
       </div>
 
-      {/* Action Shortcut Bar */}
-      <Card className="border-slate-200/80 bg-gradient-to-r from-navy-900 via-navy-800 to-navy-950 text-white shadow-md">
-        <CardContent className="flex flex-col gap-4 p-4 sm:p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex size-11 items-center justify-center rounded-2xl bg-amber-500 text-navy-950 shadow-md">
-              <PlusCircle className="size-6 stroke-[2.5]" />
+      {/* Action Shortcut Bar (Hanya jika Top-Up diizinkan) */}
+      {allowWaliTopup && (
+        <Card className="border-slate-200/80 bg-gradient-to-r from-navy-900 via-navy-800 to-navy-950 text-white shadow-md">
+          <CardContent className="flex flex-col gap-4 p-4 sm:p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex size-11 items-center justify-center rounded-2xl bg-amber-500 text-navy-950 shadow-md">
+                <PlusCircle className="size-6 stroke-[2.5]" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Top-Up Saldo Instant</h3>
+                <p className="text-xs text-slate-300">Isi saldo dompet santri via QRIS, E-Wallet &amp; Bank Transfer</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-base font-bold text-white">Top-Up Saldo Instant</h3>
-              <p className="text-xs text-slate-300">Isi saldo dompet santri via QRIS, E-Wallet &amp; Bank Transfer</p>
-            </div>
-          </div>
-          <Button
-            asChild
-            size="lg"
-            className="w-full sm:w-auto gap-2 rounded-xl bg-amber-500 font-bold text-navy-950 shadow-md hover:bg-amber-400 active:scale-95 transition-all"
-          >
-            <Link href={route('wali.topup.create')}>
-              Top-Up Sekarang
-              <ChevronRight className="size-4" />
-            </Link>
-          </Button>
-        </CardContent>
-      </Card>
+            <Button
+              asChild
+              size="lg"
+              className="w-full sm:w-auto gap-2 rounded-xl bg-amber-500 font-bold text-navy-950 shadow-md hover:bg-amber-400 active:scale-95 transition-all"
+            >
+              <Link href={route('wali.topup.create')}>
+                Top-Up Sekarang
+                <ChevronRight className="size-4" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Santri / Child List */}
       <div className="flex flex-col gap-3">

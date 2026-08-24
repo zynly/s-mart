@@ -21,9 +21,11 @@ const bottomNav = [
 ] as const
 
 export default function WaliLayout({ children, active }: WaliLayoutProps) {
-  const { guardianAuth, ownerWaliPreview } = usePage<PageProps>().props
+  const { guardianAuth, ownerWaliPreview, allowWaliTopup = true } = usePage<PageProps>().props
   const url = usePage().url
   const { count, refresh } = useNotificationPoll(30000, 'wali.notifications.count')
+
+  const navItems = bottomNav.filter((item) => item.key !== 'topup' || allowWaliTopup)
 
   const currentActive = active ?? (
     url.startsWith('/wali/anak') ? 'anak' :
@@ -77,8 +79,11 @@ export default function WaliLayout({ children, active }: WaliLayoutProps) {
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 sm:px-6 py-6 pb-24">{children}</main>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95 shadow-lg">
-        <div className="mx-auto grid max-w-md grid-cols-4 px-2 py-1.5">
-          {bottomNav.map((item) => {
+        <div className={cn(
+          "mx-auto grid max-w-md px-2 py-1.5",
+          navItems.length === 3 ? "grid-cols-3" : "grid-cols-4"
+        )}>
+          {navItems.map((item) => {
             const Icon = item.icon
             const isActive = currentActive === item.key
 
