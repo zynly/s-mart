@@ -48,6 +48,9 @@ use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
 
+use Illuminate\Support\Facades\DB;
+use App\Models\CashAccount;
+
 class SaleController extends Controller
 {
     public function __construct(
@@ -68,11 +71,48 @@ class SaleController extends Controller
         $session = $this->sessionService->getActive($request->user());
         $outlet = $session?->outlet ?? Outlet::where('is_main', true)->first();
 
+        // 1. Ambil channel Midtrans yang dicentang di settings
+        $savedEnabledChannels = [];
+        try {
+            $row = DB::table('settings')
+                ->where('group', 'midtrans')
+                ->where('key', 'enabled_channels')
+                ->first();
+            $savedEnabledChannels = $row ? (json_decode($row->value, true) ?? []) : [];
+        } catch (\Throwable) {
+            $savedEnabledChannels = [];
+        }
+
+        // 2. Gateway Aktif
+        $activeGateway = 'midtrans';
+        try {
+            $row = DB::table('settings')
+                ->where('group', 'payment')
+                ->where('key', 'active_gateway')
+                ->first();
+            if ($row && $row->value) {
+                $activeGateway = $row->value;
+            }
+        } catch (\Throwable) {
+            $activeGateway = 'midtrans';
+        }
+
+        // 3. Midtrans Channels Meta
+        $midtransChannels = [];
+        try {
+            $midtransChannels = $this->midtransGateway->getActivePaymentChannels();
+        } catch (\Throwable) {
+            $midtransChannels = [];
+        }
+
         return Inertia::render('Admin/Pos/Index', [
             'session' => $session,
             'outlet' => $outlet,
             'paymentMethods' => PaymentMethod::where('is_active', true)->orderBy('sort_order')
                 ->get(['id', 'code', 'name', 'type', 'allows_change', 'requires_reference', 'mdr_percent', 'midtrans_code']),
+            'savedEnabledChannels' => $savedEnabledChannels,
+            'activeGateway' => $activeGateway,
+            'midtransChannels' => $midtransChannels,
             'bankAccounts' => CashAccount::where('type', 'bank')->where('is_active', true)->get(['id', 'bank_name', 'account_number', 'account_holder']),
             'catalog' => $this->catalogPayload($request, $outlet),
             'categories' => Category::where('is_active', true)->orderBy('name')->get(['id', 'name']),

@@ -424,7 +424,7 @@ export function SidebarContent({ collapsed }: { collapsed: boolean }) {
             )}
           </div>
         </div>
-        <nav className="flex-1 space-y-3.5 overflow-y-auto px-2.5 py-3.5">
+        <nav className="flex-1 space-y-3.5 overflow-y-auto overscroll-contain px-2.5 py-3.5">
           {navigation.map((group) => (
             <NavGroup key={group.group} group={group} collapsed={collapsed} />
           ))}
@@ -535,7 +535,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     <div className="flex h-screen overflow-hidden bg-bg">
       <aside
         className={cn(
-          'hidden shrink-0 transition-all duration-200 lg:block',
+          'hidden shrink-0 transition-all duration-200 lg:block h-screen sticky top-0 overflow-hidden',
           collapsed ? 'w-16' : 'w-[260px]',
         )}
       >
@@ -548,7 +548,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </SheetContent>
       </Sheet>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col h-screen overflow-hidden">
         {/* Masquerade Banner — only when testing mode is active */}
         {masquerade?.active && masquerade.label && (
           <MasqueradeBanner label={masquerade.label} />
@@ -649,7 +649,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto bg-bg p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="flex-1 overflow-y-auto overscroll-contain bg-bg p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
 
       <CommandDialog open={searchOpen} onOpenChange={setSearchOpen} title="Pencarian Navigasi" description="Pencarian cepat modul">

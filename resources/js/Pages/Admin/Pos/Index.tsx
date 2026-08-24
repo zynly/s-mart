@@ -148,10 +148,20 @@ type BankAccountRow = {
   account_holder: string
 }
 
+type MidtransChannelProp = {
+  code: string
+  name: string
+  category: string
+  is_active: boolean
+}
+
 type PosIndexProps = {
   session: SessionInfo
   outlet: OutletInfo
   paymentMethods: PaymentMethodRow[]
+  savedEnabledChannels?: string[]
+  activeGateway?: string
+  midtransChannels?: MidtransChannelProp[]
   bankAccounts?: BankAccountRow[]
   catalog: CatalogPage
   categories: CategoryRef[]
@@ -164,7 +174,24 @@ type PosIndexProps = {
   midtransIsProduction: boolean
 }
 
-export default function Index({ session, outlet, paymentMethods, bankAccounts = [], catalog, categories, holds, activePromos = [], activeCoupons = [], noPinThreshold, pointValue, midtransClientKey, midtransIsProduction }: PosIndexProps) {
+export default function Index({
+  session,
+  outlet,
+  paymentMethods,
+  savedEnabledChannels = [],
+  activeGateway = 'midtrans',
+  midtransChannels = [],
+  bankAccounts = [],
+  catalog,
+  categories,
+  holds,
+  activePromos = [],
+  activeCoupons = [],
+  noPinThreshold,
+  pointValue,
+  midtransClientKey,
+  midtransIsProduction,
+}: PosIndexProps) {
   const [selectedPosCategories, setSelectedPosCategories] = useState<number[]>([])
   const [modalSelectedCats, setModalSelectedCats] = useState<number[]>([])
   const [catalogSearch, setCatalogSearch] = useState('')
@@ -1724,37 +1751,127 @@ export default function Index({ session, outlet, paymentMethods, bankAccounts = 
               </div>
             </section>
 
-            {/* METODE PEMBAYARAN (Grid Selector Direct - Compact Aesthetic State) */}
-            <section>
-              <h3 className="mb-1.5 text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-content-muted">Metode Pembayaran</h3>
-              <div className="grid grid-cols-2 gap-1.5">
-                {paymentMethods.map((pm) => {
-                  const isSelected = activeMethod?.id === pm.id
-                  return (
-                    <button
-                      key={pm.id}
-                      type="button"
-                      onClick={() => setDirectMethodId(pm.id)}
-                      className={cn(
-                        'relative flex items-center justify-between rounded-lg border p-1.5 px-2.5 text-left transition-all duration-150 active:scale-95 shadow-2xs',
-                        isSelected
-                          ? 'border-amber-500 bg-amber-500 text-white shadow-md ring-1 ring-amber-400 scale-[1.01]'
-                          : 'border-gray-200 dark:border-border bg-white dark:bg-surface-alt text-gray-800 dark:text-content hover:border-amber-400 dark:hover:border-amber-400',
-                      )}
-                    >
-                      <span className={cn('text-[11px] font-bold leading-tight truncate', isSelected ? 'text-white' : 'text-gray-900 dark:text-content')}>
-                        {pm.name}
-                      </span>
-                      {isSelected && (
-                        <div className="flex size-3.5 items-center justify-center rounded-full bg-white text-amber-600 shadow-2xs shrink-0 ml-1">
-                          <Check className="size-2.5 stroke-[3]" />
+            {/* METODE PEMBAYARAN KASIR POS (2 KELOMPOK GRID UTAMA) */}
+            <div className="space-y-3">
+              {/* ── 1. KELOMPOK GRID PEMBAYARAN MANUAL TOKO ── */}
+              <section className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
+                    <Building2 className="size-3.5" />
+                    1. Pembayaran Manual Toko
+                  </h3>
+                  <span className="text-[9px] font-mono text-content-muted font-bold">Toko / Internal</span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {paymentMethods
+                    .filter((pm) => pm.is_active && !pm.midtrans_code && ['cash', 'deposit', 'transfer', 'card', 'credit', 'point', 'voucher', 'payroll'].includes(pm.type))
+                    .map((pm) => {
+                      const isSelected = activeMethod?.id === pm.id
+                      return (
+                        <button
+                          key={pm.id}
+                          type="button"
+                          onClick={() => setDirectMethodId(pm.id)}
+                          className={cn(
+                            'relative flex items-center justify-between rounded-lg border p-1.5 px-2.5 text-left transition-all duration-150 active:scale-95 shadow-2xs',
+                            isSelected
+                              ? 'border-blue-600 bg-blue-600 text-white shadow-md ring-1 ring-blue-400 scale-[1.01]'
+                              : 'border-gray-200 dark:border-border bg-white dark:bg-surface-alt text-gray-800 dark:text-content hover:border-blue-400 dark:hover:border-blue-400',
+                          )}
+                        >
+                          <span className={cn('text-[11px] font-bold leading-tight truncate', isSelected ? 'text-white' : 'text-gray-900 dark:text-content')}>
+                            {pm.name}
+                          </span>
+                          {isSelected && (
+                            <div className="flex size-3.5 items-center justify-center rounded-full bg-white text-blue-600 shadow-2xs shrink-0 ml-1">
+                              <Check className="size-2.5 stroke-[3]" />
+                            </div>
+                          )}
+                        </button>
+                      )
+                    })}
+                </div>
+              </section>
+
+              {/* ── 2. KELOMPOK GRID PEMBAYARAN OTOMATIS MIDTRANS / ONLINE PG ── */}
+              <section className="space-y-1.5 pt-1">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                    <QrCode className="size-3.5" />
+                    2. Payment Gateway ({activeGateway.toUpperCase()})
+                  </h3>
+                  <span className="text-[9px] font-mono text-amber-600 dark:text-amber-400 font-bold">Midtrans Otomatis</span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {(() => {
+                    const enabledSet = new Set(savedEnabledChannels ?? [])
+                    // Default fallback jika belum pernah set di settings
+                    const defaultMidtransList = [
+                      { code: 'qris', name: 'QRIS Dinamis', category: 'qris' },
+                      { code: 'gopay', name: 'GoPay', category: 'ewallet' },
+                      { code: 'shopeepay', name: 'ShopeePay', category: 'ewallet' },
+                      { code: 'bca_va', name: 'BCA VA', category: 'bank_transfer' },
+                      { code: 'bni_va', name: 'BNI VA', category: 'bank_transfer' },
+                      { code: 'bri_va', name: 'BRI VA', category: 'bank_transfer' },
+                      { code: 'cimb_va', name: 'CIMB VA', category: 'bank_transfer' },
+                      { code: 'permata_va', name: 'Permata VA', category: 'bank_transfer' },
+                    ]
+
+                    const sourceList = (midtransChannels && midtransChannels.length > 0)
+                      ? midtransChannels
+                      : defaultMidtransList
+
+                    const displayChannels = enabledSet.size > 0
+                      ? sourceList.filter(ch => enabledSet.has(ch.code))
+                      : sourceList
+
+                    if (displayChannels.length === 0) {
+                      return (
+                        <div className="col-span-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-center text-[10px] text-amber-800 font-medium">
+                          Tidak ada channel PG yang di-centang di Integrasi
                         </div>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
-            </section>
+                      )
+                    }
+
+                    return displayChannels.map((ch) => {
+                      const catType = ch.category === 'bank_transfer' ? 'transfer' : ch.category
+                      const matchingPm = paymentMethods.find(pm => pm.type === catType || (pm.midtrans_code && pm.midtrans_code === ch.code))
+                        ?? paymentMethods.find(pm => pm.type === 'qris')
+                        ?? paymentMethods[0]
+                      const isSelected = activeMethod?.id === matchingPm?.id
+
+                      return (
+                        <button
+                          key={ch.code}
+                          type="button"
+                          onClick={() => matchingPm && setDirectMethodId(matchingPm.id)}
+                          className={cn(
+                            'relative flex flex-col justify-between rounded-lg border p-1.5 px-2.5 text-left transition-all duration-150 active:scale-95 shadow-2xs',
+                            isSelected
+                              ? 'border-amber-500 bg-amber-500 text-white shadow-md ring-1 ring-amber-400 scale-[1.01]'
+                              : 'border-amber-200/80 dark:border-amber-900/60 bg-amber-50/40 dark:bg-amber-950/20 text-gray-800 dark:text-content hover:border-amber-400 dark:hover:border-amber-400',
+                          )}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className={cn('text-[11px] font-extrabold leading-tight truncate', isSelected ? 'text-white' : 'text-navy-950 dark:text-white')}>
+                              {ch.name.replace(' Virtual Account', ' VA').replace(' (GoPay, OVO, ShopeePay, Dana, LinkAja)', '')}
+                            </span>
+                            {isSelected && (
+                              <div className="flex size-3.5 items-center justify-center rounded-full bg-white text-amber-600 shadow-2xs shrink-0 ml-1">
+                                <Check className="size-2.5 stroke-[3]" />
+                              </div>
+                            )}
+                          </div>
+                          <span className={cn('text-[9px] font-mono mt-0.5', isSelected ? 'text-white/80' : 'text-amber-700 dark:text-amber-400')}>
+                            Via Midtrans
+                          </span>
+                        </button>
+                      )
+                    })
+                  })()}
+                </div>
+              </section>
+            </div>
 
             {/* FITUR KHUSUS CASH / TUNAI: Hitung Kembalian Otomatis */}
             {isCash && (
