@@ -537,7 +537,7 @@ export default function Index({
                   </Badge>
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Tunai, Saldo Deposit Member, Transfer Bank Manual Toko, Mesin EDC, Piutang/Tempo, &amp; Voucher Kasir.
+                  Pembayaran langsung toko: Tunai, Saldo Deposit, &amp; Transfer Bank Manual Toko.
                 </CardDescription>
               </div>
             </div>
