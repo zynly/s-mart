@@ -70,7 +70,8 @@ class MidtransGateway implements MidtransGatewayInterface
             : 'https://api.sandbox.midtrans.com';
 
         try {
-            $response = Http::withBasicAuth($serverKey, '')
+            $response = Http::timeout(2)
+                ->withBasicAuth($serverKey, '')
                 ->acceptJson()
                 ->get("{$baseUrl}/v2/merchant/payment_channels");
 

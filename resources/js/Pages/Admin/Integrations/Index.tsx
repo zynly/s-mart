@@ -521,70 +521,100 @@ export default function Index({
         />
       </div>
 
-      {/* ── Metode Pembayaran Kasir ── */}
-      <Card className="rounded-2xl border border-border/90 bg-surface shadow-sm">
-        <CardHeader className="border-b border-border/80 pb-3">
+      {/* ── 1. Metode Pembayaran Internal & Toko (Manual) ── */}
+      <Card className="rounded-2xl border border-blue-200/80 bg-surface shadow-sm">
+        <CardHeader className="border-b border-border/80 pb-3 bg-blue-50/40 dark:bg-blue-950/20">
           <div className="flex items-center justify-between gap-3">
-            <div>
-              <CardTitle className="text-sm font-extrabold text-navy-950 dark:text-white">
-                Metode Pembayaran Kasir POS
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Centang ☑ = muncul di kasir. Uncheck = tersembunyi. Badge <span className="font-bold text-amber-600">Via Midtrans</span> = diproses oleh payment gateway Midtrans.
-              </CardDescription>
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 font-bold">
+                <Building2 className="size-4" />
+              </div>
+              <div>
+                <CardTitle className="text-sm font-extrabold text-navy-950 dark:text-white flex items-center gap-2">
+                  1. Metode Pembayaran Internal &amp; Toko (Manual)
+                  <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200 font-bold">
+                    Internal / Toko
+                  </Badge>
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Tunai, Saldo Deposit Member, Transfer Bank Manual Toko, Mesin EDC, Piutang/Tempo, &amp; Voucher Kasir.
+                </CardDescription>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-content-muted">{activeCount}/{methods.length} aktif</span>
-              <Button
-                onClick={handleSave}
-                disabled={saving}
-                className="rounded-xl bg-emerald-600 px-4 font-bold text-white hover:bg-emerald-700"
-              >
-                <Save className={`mr-2 size-4 ${saving ? 'animate-pulse' : ''}`} />
-                {saving ? 'Menyimpan...' : 'Simpan'}
-              </Button>
-            </div>
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              className="rounded-xl bg-emerald-600 px-4 font-bold text-white hover:bg-emerald-700"
+            >
+              <Save className={`mr-2 size-4 ${saving ? 'animate-pulse' : ''}`} />
+              {saving ? 'Menyimpan...' : 'Simpan Semua'}
+            </Button>
           </div>
         </CardHeader>
 
-        <CardContent className="pt-5">
-          {/* Legenda singkat */}
-          <div className="mb-4 flex flex-wrap gap-3 text-[11px] text-content-muted">
-            <span className="flex items-center gap-1">
-              <span className="inline-block size-3 rounded border-2 border-emerald-600 bg-emerald-600" />
-              Centang atas = aktif di kasir
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 border border-amber-200">Via Midtrans</span>
-              = QRIS / E-Wallet / Transfer Bank
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="inline-block size-3 rounded border-2 border-emerald-600 bg-emerald-600" />
-              Centang bawah = sub-channel Midtrans yang diizinkan
-            </span>
-          </div>
-
-          {/* Grid 5 kolom, h-[200px] fixed per card = semua sama tinggi */}
+        <CardContent className="pt-4">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
-            {methods.map(m => {
-              const cat = MT_CATEGORY[m.type]
-              const subChannels = cat ? mtChannels.filter(ch => ch.category === cat) : []
-              return (
+            {methods
+              .filter((m) => m.type === 'cash' || m.type === 'deposit' || m.type === 'transfer' || m.type === 'card' || m.type === 'credit' || m.type === 'point' || m.type === 'payroll' || m.type === 'voucher')
+              .map((m) => (
                 <MethodCard
                   key={m.id}
                   m={m}
                   onToggle={toggleMethod}
-                  subChannels={subChannels}
                   enabledChannels={enabledChannels}
                   onToggleChannel={toggleChannel}
                 />
-              )
-            })}
+              ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── 2. Channel Payment Gateway Otomatis (Midtrans / Pakasir) ── */}
+      <Card className="rounded-2xl border border-amber-200/80 bg-surface shadow-sm">
+        <CardHeader className="border-b border-border/80 pb-3 bg-amber-50/40 dark:bg-amber-950/20">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-200 font-bold">
+                <QrCode className="size-4" />
+              </div>
+              <div>
+                <CardTitle className="text-sm font-extrabold text-navy-950 dark:text-white flex items-center gap-2">
+                  2. Channel Payment Gateway Otomatis (Online PG)
+                  <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200 font-bold">
+                    Via Gateway ({activeGw.toUpperCase()})
+                  </Badge>
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  QRIS Dinamis, E-Wallet (GoPay/ShopeePay), dan Virtual Account Bank Otomatis via Midtrans / Pakasir.
+                </CardDescription>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="pt-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            {methods
+              .filter((m) => m.type === 'qris' || m.type === 'ewallet' || Boolean(m.midtrans_code))
+              .map((m) => {
+                const cat = MT_CATEGORY[m.type]
+                const subChannels = cat ? mtChannels.filter((ch) => ch.category === cat) : []
+                return (
+                  <MethodCard
+                    key={m.id}
+                    m={m}
+                    onToggle={toggleMethod}
+                    subChannels={subChannels}
+                    enabledChannels={enabledChannels}
+                    onToggleChannel={toggleChannel}
+                  />
+                )
+              })}
           </div>
 
           <p className="mt-4 flex items-center gap-1.5 text-[11px] text-content-muted">
             <CheckCircle2 className="size-3.5 text-emerald-500 shrink-0" />
-            Perubahan baru berlaku setelah klik <strong>Simpan</strong> dan kasir di-refresh.
+            Perubahan baru berlaku setelah klik <strong>Simpan Semua</strong> dan kasir di-refresh.
           </p>
         </CardContent>
       </Card>
