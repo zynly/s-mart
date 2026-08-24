@@ -141,10 +141,18 @@ type ActiveCouponRow = {
   used_count: number
 }
 
+type BankAccountRow = {
+  id: number
+  bank_name: string
+  account_number: string
+  account_holder: string
+}
+
 type PosIndexProps = {
   session: SessionInfo
   outlet: OutletInfo
   paymentMethods: PaymentMethodRow[]
+  bankAccounts?: BankAccountRow[]
   catalog: CatalogPage
   categories: CategoryRef[]
   holds: HoldRow[]
@@ -156,7 +164,7 @@ type PosIndexProps = {
   midtransIsProduction: boolean
 }
 
-export default function Index({ session, outlet, paymentMethods, catalog, categories, holds, activePromos = [], activeCoupons = [], noPinThreshold, pointValue, midtransClientKey, midtransIsProduction }: PosIndexProps) {
+export default function Index({ session, outlet, paymentMethods, bankAccounts = [], catalog, categories, holds, activePromos = [], activeCoupons = [], noPinThreshold, pointValue, midtransClientKey, midtransIsProduction }: PosIndexProps) {
   const [selectedPosCategories, setSelectedPosCategories] = useState<number[]>([])
   const [modalSelectedCats, setModalSelectedCats] = useState<number[]>([])
   const [catalogSearch, setCatalogSearch] = useState('')
@@ -2240,8 +2248,16 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
               <div className="rounded-xl border border-blue-200 bg-blue-50/70 dark:bg-blue-950/40 p-3 text-xs space-y-1">
                 <p className="font-extrabold text-blue-900 dark:text-blue-200">Rekening Tujuan Transfer Toko:</p>
                 <div className="font-mono text-slate-800 dark:text-slate-200 space-y-0.5">
-                  <p><span className="font-bold">BCA:</span> 123-4567-890 a/n Skillage Mart</p>
-                  <p><span className="font-bold">Mandiri:</span> 900-00-1234567-8 a/n Skillage Mart</p>
+                  {bankAccounts.length > 0 ? (
+                    bankAccounts.map((b) => (
+                      <p key={b.id}><span className="font-bold">{b.bank_name}:</span> {b.account_number} a/n {b.account_holder}</p>
+                    ))
+                  ) : (
+                    <>
+                      <p><span className="font-bold">BCA:</span> 123-4567-890 a/n Skillage Mart</p>
+                      <p><span className="font-bold">Mandiri:</span> 900-00-1234567-8 a/n Skillage Mart</p>
+                    </>
+                  )}
                 </div>
                 <p className="text-[11px] text-slate-600 dark:text-slate-300 pt-1.5 border-t border-blue-200/60 font-semibold flex items-center justify-between">
                   <span>Total Tagihan:</span>

@@ -72,7 +72,8 @@ class SaleController extends Controller
             'session' => $session,
             'outlet' => $outlet,
             'paymentMethods' => PaymentMethod::where('is_active', true)->orderBy('sort_order')
-                ->get(['id', 'code', 'name', 'type', 'allows_change', 'requires_reference', 'mdr_percent']),
+                ->get(['id', 'code', 'name', 'type', 'allows_change', 'requires_reference', 'mdr_percent', 'midtrans_code']),
+            'bankAccounts' => CashAccount::where('type', 'bank')->where('is_active', true)->get(['id', 'bank_name', 'account_number', 'account_holder']),
             'catalog' => $this->catalogPayload($request, $outlet),
             'categories' => Category::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'holds' => $session !== null
