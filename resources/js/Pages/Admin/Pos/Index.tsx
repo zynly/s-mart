@@ -123,6 +123,8 @@ type ActivePromoRow = {
   start_time?: string | null
   end_time?: string | null
   days_of_week?: number[] | null
+  products?: { id: number }[]
+  categories?: { id: number }[]
 }
 
 type ActiveCouponRow = {
@@ -298,7 +300,39 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
 
   const subtotal = useMemo(() => cart.reduce((sum, line) => sum + line.qty * line.unit_price, 0), [cart])
   const couponDiscount = couponValidationResult?.valid ? couponValidationResult.discount : 0
-  const finalPayable = Math.max(0, subtotal - couponDiscount)
+
+  const promoDiscount = useMemo(() => {
+    if (activePromos.length === 0 && !member?.level) return 0
+    let totalDisc = 0
+    for (const line of cart) {
+      const lineSubtotal = line.qty * line.unit_price
+      let maxLineDisc = 0
+
+      for (const promo of activePromos) {
+        const matchProduct = promo.products?.some((p) => p.id === line.product_id)
+        const isItemScope = promo.scope === 'item' || promo.type === 'product' || promo.type === 'category' || promo.type === 'tiered_qty' || promo.type === 'clearance' || promo.type === 'happy_hour'
+
+        if (matchProduct || isItemScope) {
+          let disc = 0
+          if (promo.discount_type === 'percent') {
+            disc = Math.round(lineSubtotal * (promo.discount_value / 100))
+          } else if (promo.discount_type === 'amount') {
+            disc = promo.discount_value * line.qty
+          }
+          if (promo.max_discount && promo.max_discount > 0) {
+            disc = Math.min(disc, promo.max_discount)
+          }
+          if (disc > maxLineDisc) {
+            maxLineDisc = disc
+          }
+        }
+      }
+      totalDisc += Math.min(lineSubtotal, maxLineDisc)
+    }
+    return totalDisc
+  }, [cart, activePromos, member])
+
+  const finalPayable = Math.max(0, subtotal - couponDiscount - promoDiscount)
 
   const activeMethod = useMemo(() => {
     if (directMethodId) {
@@ -1631,6 +1665,12 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                   <span>Subtotal Belanja</span>
                   <Money amount={subtotal} size="sm" />
                 </div>
+                {promoDiscount > 0 && (
+                  <div className="flex justify-between text-amber-600 dark:text-amber-400 font-semibold">
+                    <span>Diskon Promo</span>
+                    <span>− <Money amount={promoDiscount} size="sm" /></span>
+                  </div>
+                )}
                 {couponDiscount > 0 && (
                   <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-semibold">
                     <span>Potongan Kupon/Voucher</span>
@@ -1689,7 +1729,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                   <span className="text-[11px] font-bold uppercase tracking-wider text-gray-600 dark:text-content-muted">Nominal Uang Bayar</span>
                   <button
                     type="button"
-                    onClick={() => setCashInput(subtotal)}
+                    onClick={() => setCashInput(finalPayable)}
                     className="text-[11px] font-bold text-amber-500 hover:underline"
                   >
                     Uang Pas
@@ -1700,15 +1740,15 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                 <div className="flex flex-wrap items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={() => setCashInput(subtotal)}
+                    onClick={() => setCashInput(finalPayable)}
                     className={`inline-flex items-center gap-1.5 rounded-lg border-2 px-3 py-1.5 text-xs font-bold shadow-sm transition-all active:scale-95 cursor-pointer ${
-                      cashInput === subtotal
+                      cashInput === finalPayable
                         ? 'border-emerald-600 bg-emerald-600 text-white'
                         : 'border-emerald-500 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-950/70'
                     }`}
                   >
                     <CheckCircle2 className="size-4 shrink-0" />
-                    <span>Uang Pas ({formatMoney(subtotal)})</span>
+                    <span>Uang Pas ({formatMoney(finalPayable)})</span>
                   </button>
                   {[10000, 20000, 50000, 100000].map((nominal) => (
                     <button
@@ -1739,7 +1779,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                 {/* Live Kembalian / Kekurangan Preview Box */}
                 {cashInput > 0 && (
                   <div>
-                    {cashInput >= subtotal ? (
+                    {cashInput >= finalPayable ? (
                       <div className="flex items-center justify-between rounded-lg border border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-950/40 p-2 text-xs text-green-900 dark:text-green-200 font-semibold">
                         <span>Kembalian:</span>
                         <span className="font-mono text-sm font-extrabold text-green-700 dark:text-green-300">
@@ -1769,13 +1809,13 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
             <button
               type="button"
               onClick={handleDirectSubmit}
-              disabled={cart.length === 0 || submitting || (isCash && cashInput > 0 && cashInput < subtotal)}
+              disabled={cart.length === 0 || submitting || (isCash && cashInput > 0 && cashInput < finalPayable)}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-success py-3 text-sm font-bold text-white transition-all duration-150 hover:bg-success/90 disabled:bg-gray-300 disabled:shadow-none shadow-md shadow-emerald-900/30 neu-btn-primary active:scale-95"
             >
               <Wallet className="size-4" />
               {submitting
                 ? 'Memproses…'
-                : `BAYAR Rp ${(subtotal).toLocaleString('id-ID')} (F9)`}
+                : `BAYAR Rp ${(finalPayable).toLocaleString('id-ID')} (F9)`}
             </button>
 
             {/* Cash Masuk / Cash Keluar */}

@@ -79,6 +79,7 @@ class SaleController extends Controller
                 ? SaleHold::where('cashier_session_id', $session->id)->orderByDesc('held_at')->get(['id', 'reference', 'item_count', 'total', 'held_at', 'member_id'])
                 : [],
             'activePromos' => Promo::where('is_active', true)
+                ->with(['products:id', 'categories:id'])
                 ->where(function ($q) {
                     $q->whereNull('start_date')->orWhere('start_date', '<=', now()->toDateString());
                 })
