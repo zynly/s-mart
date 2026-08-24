@@ -813,12 +813,15 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
     | { type: 'deposit' }
     | { type: 'card' }
     | { type: 'credit'; limit: number; active: number }
+    | { type: 'transfer' }
     | null
   >(null)
 
   const [depositPin, setDepositPin] = useState('')
   const [edcRefNo, setEdcRefNo] = useState('')
   const [edcBank, setEdcBank] = useState('BCA')
+  const [transferRefNo, setTransferRefNo] = useState('')
+  const [transferPin, setTransferPin] = useState('')
   const [methodDialogError, setMethodDialogError] = useState<string | null>(null)
 
   function executeSaleStore(extraPayload: {
@@ -993,8 +996,17 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
       return
     }
 
-    // 4. JIKA METODE NON-TUNAI (qris, ewallet, transfer): Panggil Gateway Inline Modal Overlay
-    if (activeMethod.type === 'qris' || activeMethod.type === 'ewallet' || activeMethod.type === 'transfer') {
+    // 4. Transfer Bank Manual
+    if (activeMethod.type === 'transfer' && !activeMethod.midtrans_code) {
+      setTransferRefNo('')
+      setTransferPin('')
+      setMethodDialogError(null)
+      setMethodDialog({ type: 'transfer' })
+      return
+    }
+
+    // 5. JIKA METODE NON-TUNAI ONLINE (qris, ewallet, midtrans transfer): Panggil Gateway Inline Modal Overlay
+    if (activeMethod.type === 'qris' || activeMethod.type === 'ewallet' || (activeMethod.type === 'transfer' && activeMethod.midtrans_code)) {
       try {
         const res = await apiPost<{ provider?: string; token?: string; payment_url?: string; order_id?: string }>(route('pos.midtrans.create-transaction'), {
           amount: finalPayable,
@@ -2163,6 +2175,7 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
               {methodDialog?.type === 'deposit' && 'Otentikasi PIN Deposit Member'}
               {methodDialog?.type === 'card' && 'Detail Transaksi Mesin EDC (Kartu)'}
               {methodDialog?.type === 'credit' && 'Konfirmasi Kredit / Tempo (Piutang)'}
+              {methodDialog?.type === 'transfer' && 'Otorisasi & Bukti Transfer Bank Manual'}
             </DialogTitle>
           </DialogHeader>
 
@@ -2222,6 +2235,38 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
             </div>
           )}
 
+          {methodDialog?.type === 'transfer' && (
+            <div className="flex flex-col gap-3 py-1">
+              <div className="rounded-xl border border-blue-200 bg-blue-50/70 dark:bg-blue-950/40 p-3 text-xs space-y-1">
+                <p className="font-extrabold text-blue-900 dark:text-blue-200">Rekening Tujuan Transfer Toko:</p>
+                <div className="font-mono text-slate-800 dark:text-slate-200 space-y-0.5">
+                  <p><span className="font-bold">BCA:</span> 123-4567-890 a/n Skillage Mart</p>
+                  <p><span className="font-bold">Mandiri:</span> 900-00-1234567-8 a/n Skillage Mart</p>
+                </div>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 pt-1.5 border-t border-blue-200/60 font-semibold flex items-center justify-between">
+                  <span>Total Tagihan:</span>
+                  <strong className="text-slate-900 dark:text-white font-mono text-sm font-black">Rp {finalPayable.toLocaleString('id-ID')}</strong>
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs text-gray-700 dark:text-gray-200 font-semibold">No. Referensi Bank / Nama Pengirim Transfer (Wajib)</Label>
+                <Input
+                  value={transferRefNo}
+                  onChange={(e) => setTransferRefNo(e.target.value)}
+                  placeholder="Contoh: TRF-BCA-987654 / Budi Santoso"
+                  className={posFieldClass}
+                  autoFocus
+                />
+              </div>
+
+              <div className="space-y-1.5 text-center pt-1">
+                <Label className="text-xs text-gray-700 dark:text-gray-200 font-bold block">PIN Otorisasi Kasir / Supervisor (Wajib, 6 Digit)</Label>
+                <PinInput value={transferPin} onChange={setTransferPin} length={6} />
+              </div>
+            </div>
+          )}
+
           {methodDialogError && (
             <p className="text-xs text-red-600 font-semibold bg-red-50 p-2 rounded border border-red-200">{methodDialogError}</p>
           )}
@@ -2245,6 +2290,16 @@ export default function Index({ session, outlet, paymentMethods, catalog, catego
                   executeSaleStore({ reference_no: `${edcBank}-${edcRefNo.trim()}` })
                 } else if (methodDialog?.type === 'credit') {
                   executeSaleStore()
+                } else if (methodDialog?.type === 'transfer') {
+                  if (!transferRefNo.trim()) {
+                    setMethodDialogError('Nomor referensi / pengirim transfer wajib diisi.')
+                    return
+                  }
+                  if (!transferPin.trim() || transferPin.length < 6) {
+                    setMethodDialogError('PIN otorisasi 6 digit wajib diisi.')
+                    return
+                  }
+                  executeSaleStore({ reference_no: transferRefNo.trim(), pin: transferPin.trim() })
                 }
               }}
               className="bg-emerald-600 hover:bg-emerald-700 font-bold text-white"
