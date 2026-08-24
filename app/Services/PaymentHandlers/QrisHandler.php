@@ -8,8 +8,10 @@ use App\Models\Outlet;
 use App\Models\PaymentMethod;
 use App\Models\Sale;
 use App\Models\SalePayment;
+use App\Models\User;
 use App\Services\CashierSessionService;
 use DomainException;
+use Illuminate\Support\Facades\Hash;
 
 /**
  * Dipakai untuk type qris, ewallet, dan transfer — ketiganya berbagi
@@ -31,6 +33,33 @@ class QrisHandler implements PaymentHandler
             throw new DomainException("Metode \"{$method->name}\" membutuhkan nomor referensi.");
         }
 
+        // Cek duplikasi nomor referensi agar tidak bisa pakai bukti transaksi tua
+        $duplicate = SalePayment::where('reference_no', $referenceNo)
+            ->where('status', '!=', 'refunded')
+            ->exists();
+        if ($duplicate) {
+            throw new DomainException("Nomor referensi \"{$referenceNo}\" telah pernah digunakan pada transaksi lain.");
+        }
+
+        $isGatewayConfirmed = in_array($payload['gateway_status'] ?? null, ['settlement', 'capture'], true);
+
+        // Validasi PIN Otorisasi Wajib khusus Transfer Manual (Non-Midtrans)
+        if ($method->type === 'transfer' && ! $isGatewayConfirmed) {
+            $pin = trim((string) ($payload['pin'] ?? ''));
+            if ($pin === '') {
+                throw new DomainException("Metode Transfer Manual membutuhkan PIN otorisasi.");
+            }
+
+            $validUser = User::whereNotNull('pin')
+                ->where('is_active', true)
+                ->get()
+                ->first(fn (User $u) => Hash::check($pin, $u->pin));
+
+            if ($validUser === null) {
+                throw new DomainException("PIN otorisasi untuk Transfer Manual tidak valid.");
+            }
+        }
+
         $amount = (int) $payload['amount'];
         $mdrPercent = (float) $method->mdr_percent;
         $mdrAmount = (int) round($amount * $mdrPercent / 100);
@@ -45,8 +74,6 @@ class QrisHandler implements PaymentHandler
         // 'pending' (mis. VA bank belum ditransfer) atau tidak ada
         // gateway_status sama sekali (reference_no diketik manual/EDC)
         // tetap 'pending' seperti semula.
-        $isGatewayConfirmed = in_array($payload['gateway_status'] ?? null, ['settlement', 'capture'], true);
-
         return SalePayment::create([
             'sale_id' => $sale->id,
             'payment_method_id' => $method->id,
