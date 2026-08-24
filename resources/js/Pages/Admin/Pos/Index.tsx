@@ -3,7 +3,7 @@ import { router, usePage } from '@inertiajs/react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { toast } from 'sonner'
 import {
-  AlertCircle, ArrowDownCircle, ArrowUpCircle, Check, CheckCircle2, CheckSquare, ChevronLeft, ChevronRight, Clock, Coins, Copy, CreditCard, Filter, Flame, Folder, Gift, Info, Layers, Lock, Pause, Percent, Phone, PlusCircle, Printer, Receipt, RotateCcw,
+  AlertCircle, ArrowDownCircle, ArrowUpCircle, Building2, Check, CheckCircle2, CheckSquare, ChevronLeft, ChevronRight, Clock, Coins, Copy, CreditCard, Filter, Flame, Folder, Gift, Info, Layers, Lock, Pause, Percent, Phone, PlusCircle, Printer, Receipt, RotateCcw,
   QrCode, ScanLine, Search, ShoppingCart, Sparkles, Store, Tag, Ticket, Trash2, UserCircle, Wallet, X, Zap,
 } from 'lucide-react'
 import PosLayout from '@/Layouts/PosLayout'
