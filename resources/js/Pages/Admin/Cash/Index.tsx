@@ -3,7 +3,7 @@ import { router, useForm } from '@inertiajs/react'
 import { toast } from 'sonner'
 import type { ColumnDef } from '@tanstack/react-table'
 import {
-  ArrowDownCircle, ArrowLeftRight, ArrowRight, ArrowUpCircle, Banknote,
+  AlertCircle, ArrowDownCircle, ArrowLeftRight, ArrowRight, ArrowUpCircle, Banknote,
   BookOpen, Building2, Check, CheckCircle2, Coins, Edit2, Info, Landmark,
   Lock, Plus, Power, Receipt, ShieldCheck, Store, Wallet, XCircle,
 } from 'lucide-react'

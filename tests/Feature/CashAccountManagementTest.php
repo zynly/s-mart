@@ -16,9 +16,10 @@ it('allows an admin to create a new cash drawer for an outlet', function () {
     $admin = User::role('admin')->firstOrFail();
     $outlet = Outlet::first();
 
+    $code = 'LACI-'.uniqid();
     $this->actingAs($admin)
         ->post(route('admin.cash-accounts.store'), [
-            'code' => 'LACI-2',
+            'code' => $code,
             'name' => 'Laci Kasir 2',
             'type' => 'cash',
             'outlet_id' => $outlet->id,
@@ -28,7 +29,7 @@ it('allows an admin to create a new cash drawer for an outlet', function () {
         ])
         ->assertSessionDoesntHaveErrors();
 
-    $this->assertDatabaseHas('cash_accounts', ['code' => 'LACI-2', 'outlet_id' => $outlet->id, 'is_drawer' => true]);
+    $this->assertDatabaseHas('cash_accounts', ['code' => $code, 'outlet_id' => $outlet->id, 'is_drawer' => true]);
 });
 
 it('refuses to deactivate a drawer that is currently used by an open cashier session', function () {

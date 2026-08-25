@@ -142,9 +142,9 @@ export function NotificationBell({
                 !n.read_at && 'bg-secondary/30',
               )}
             >
-              <p className="text-sm font-medium text-content">{n.data.title}</p>
-              <p className="text-xs text-content-muted">{n.data.message}</p>
-              <p className="text-[10px] text-content-muted">{timeAgo(n.created_at)}</p>
+              <p className="text-sm font-medium text-content">{n.data?.title || 'Notifikasi'}</p>
+              <p className="text-xs text-content-muted">{n.data?.message || (typeof n.data === 'string' ? n.data : '')}</p>
+              <p className="text-[10px] text-content-muted">{n.created_at ? timeAgo(n.created_at) : ''}</p>
             </button>
           ))}
         </div>

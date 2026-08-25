@@ -12,6 +12,7 @@ use App\Models\CashCategory;
 use App\Models\CashierSession;
 use App\Models\CashTransaction;
 use App\Models\Member;
+use App\Models\Outlet;
 use App\Services\CashierSessionService;
 use App\Services\CashService;
 use App\Services\DepositService;
