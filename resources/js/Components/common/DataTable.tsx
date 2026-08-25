@@ -9,7 +9,8 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { ChevronDown, ChevronUp, ChevronsUpDown, SlidersHorizontal } from 'lucide-react'
+import { ChevronDown, ChevronUp, ChevronsUpDown, Copy, SlidersHorizontal } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   Table,
   TableBody,
@@ -57,7 +58,7 @@ export function DataTable<TData>({
   columns,
   data,
   pagination,
-  enableRowSelection = false,
+  enableRowSelection = true,
   showNumberColumn = true,
   bulkActions,
   getRowId,
@@ -306,10 +307,24 @@ export function DataTable<TData>({
         </div>
       )}
 
-      {enableRowSelection && bulkActions && (
+      {enableRowSelection && (
         <BulkActionBar
           selectedCount={selectedRows.length}
-          actions={bulkActions}
+          actions={
+            bulkActions && bulkActions.length > 0
+              ? bulkActions
+              : [
+                  {
+                    label: 'Salin Data Terpilih',
+                    icon: <Copy className="size-3.5 mr-1" />,
+                    onClick: () => {
+                      const selectedData = selectedRows.map((r) => r.original)
+                      void navigator.clipboard.writeText(JSON.stringify(selectedData, null, 2))
+                      toast.success(`${selectedRows.length} baris data disalin ke clipboard.`)
+                    },
+                  },
+                ]
+          }
           onClear={() => setRowSelection({})}
         />
       )}
