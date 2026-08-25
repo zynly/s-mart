@@ -45,14 +45,12 @@ class DepositHandler implements PaymentHandler
             throw new DomainException($limitCheck['reason']);
         }
 
-        if ($amount >= (int) config('pos.no_pin_threshold', 0)) {
-            if ($member->pin === null) {
-                throw MemberPinNotSetException::make();
-            }
+        if ($member->pin === null) {
+            throw MemberPinNotSetException::make();
+        }
 
-            if (! $this->pinService->verify($member, (string) ($payload['pin'] ?? ''))) {
-                throw InvalidPinException::make();
-            }
+        if (! $this->pinService->verify($member, (string) ($payload['pin'] ?? ''))) {
+            throw InvalidPinException::make();
         }
 
         $trx = $this->depositService->charge(
