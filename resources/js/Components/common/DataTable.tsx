@@ -9,7 +9,16 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { ChevronDown, ChevronUp, ChevronsUpDown, Copy, SlidersHorizontal } from 'lucide-react'
+import {
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  ChevronsUpDown,
+  Copy,
+  Download,
+  SlidersHorizontal,
+  Trash2,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Table,
@@ -22,6 +31,14 @@ import {
 import { Checkbox } from '@/Components/ui/checkbox'
 import { Button } from '@/Components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/Components/ui/popover'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/Components/ui/dialog'
 import {
   Pagination,
   PaginationContent,
@@ -49,9 +66,37 @@ type DataTableProps<TData> = {
   enableRowSelection?: boolean
   showNumberColumn?: boolean
   bulkActions?: BulkAction[]
+  onBulkDelete?: (selectedRows: TData[], selectedIds: string[]) => void
   getRowId?: (row: TData) => string
   emptyTitle?: string
   emptyDescription?: string
+}
+
+function downloadCsv<TData>(data: TData[], filename = 'data-terpilih.csv') {
+  if (!data.length) return
+  const first = data[0] as Record<string, unknown>
+  const keys = Object.keys(first).filter((k) => typeof first[k] !== 'object' || first[k] === null)
+  const headerLine = keys.join(',')
+  const rows = data.map((row) => {
+    const r = row as Record<string, unknown>
+    return keys
+      .map((k) => {
+        const val = r[k]
+        const str = val === null || val === undefined ? '' : String(val)
+        return `"${str.replace(/"/g, '""')}"`
+      })
+      .join(',')
+  })
+  const csvContent = [headerLine, ...rows].join('\r\n')
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.setAttribute('href', url)
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
 }
 
 export function DataTable<TData>({
@@ -68,6 +113,7 @@ export function DataTable<TData>({
   const [sorting, setSorting] = useState<SortingState>([])
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
 
   const isAllRowsSelected = data.length > 0 && Object.keys(rowSelection).filter((k) => rowSelection[k]).length >= data.length
   const isSomeRowsSelected = !isAllRowsSelected && Object.keys(rowSelection).filter((k) => rowSelection[k]).length > 0
@@ -363,10 +409,10 @@ export function DataTable<TData>({
           selectedCount={selectedRows.length}
           actions={
             bulkActions && bulkActions.length > 0
-              ? bulkActions
-              : [
+              ? [
+                  ...bulkActions,
                   {
-                    label: 'Salin Data Terpilih',
+                    label: 'Salin',
                     icon: <Copy className="size-3.5 mr-1" />,
                     onClick: () => {
                       const selectedData = selectedRows.map((r) => r.original)
@@ -374,11 +420,117 @@ export function DataTable<TData>({
                       toast.success(`${selectedRows.length} baris data disalin ke clipboard.`)
                     },
                   },
+                  {
+                    label: 'Ekspor CSV',
+                    icon: <Download className="size-3.5 mr-1" />,
+                    onClick: () => {
+                      const selectedData = selectedRows.map((r) => r.original)
+                      downloadCsv(selectedData, `ekspor-${selectedRows.length}-data.csv`)
+                      toast.success(`${selectedRows.length} baris data diekspor ke CSV.`)
+                    },
+                  },
+                  ...(onBulkDelete
+                    ? [
+                        {
+                          label: 'Hapus Terpilih',
+                          icon: <Trash2 className="size-3.5 mr-1 text-red-500" />,
+                          variant: 'destructive' as const,
+                          onClick: () => setBulkDeleteOpen(true),
+                        },
+                      ]
+                    : []),
+                ]
+              : [
+                  {
+                    label: 'Salin Data',
+                    icon: <Copy className="size-3.5 mr-1" />,
+                    onClick: () => {
+                      const selectedData = selectedRows.map((r) => r.original)
+                      void navigator.clipboard.writeText(JSON.stringify(selectedData, null, 2))
+                      toast.success(`${selectedRows.length} baris data disalin ke clipboard.`)
+                    },
+                  },
+                  {
+                    label: 'Unduh CSV',
+                    icon: <Download className="size-3.5 mr-1" />,
+                    onClick: () => {
+                      const selectedData = selectedRows.map((r) => r.original)
+                      downloadCsv(selectedData, `ekspor-${selectedRows.length}-data.csv`)
+                      toast.success(`${selectedRows.length} baris data diekspor ke CSV.`)
+                    },
+                  },
+                  {
+                    label: 'Hapus Terpilih',
+                    icon: <Trash2 className="size-3.5 mr-1 text-red-500" />,
+                    variant: 'destructive' as const,
+                    onClick: () => setBulkDeleteOpen(true),
+                  },
                 ]
           }
           onClear={() => setRowSelection({})}
         />
       )}
+
+      {/* Modal Dialog Konfirmasi Hapus Masal */}
+      <Dialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <DialogContent className="max-w-md bg-white dark:bg-surface border border-red-200 dark:border-red-900/50 p-6 rounded-2xl shadow-xl">
+          <DialogHeader>
+            <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-950/50 text-red-600 mb-2">
+              <AlertTriangle className="size-6" />
+            </div>
+            <DialogTitle className="text-center text-lg font-bold text-slate-900 dark:text-white">
+              Konfirmasi Hapus {selectedRows.length} Data Terpilih
+            </DialogTitle>
+            <DialogDescription className="text-center text-xs text-slate-600 dark:text-slate-400 mt-1.5">
+              Apakah Anda yakin ingin memproses penghapusan data ini? Tindakan ini tidak dapat dibatalkan.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 p-3 my-2 text-xs space-y-1">
+            <div className="flex justify-between font-semibold">
+              <span className="text-slate-500">Jumlah data:</span>
+              <span className="text-slate-900 dark:text-white font-bold">{selectedRows.length} item</span>
+            </div>
+            <div className="flex justify-between text-slate-500">
+              <span>ID Terpilih:</span>
+              <span className="font-mono truncate max-w-[200px]">
+                {selectedRows.map((r) => (getRowId ? getRowId(r.original) : (r.original as { id?: number })?.id ?? r.index)).join(', ')}
+              </span>
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2 sm:justify-center mt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setBulkDeleteOpen(false)}
+              className="rounded-xl px-4 text-xs font-semibold"
+            >
+              Batalkan
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                const selectedData = selectedRows.map((r) => r.original)
+                const selectedIds = selectedRows.map((r) => (getRowId ? getRowId(r.original) : String((r.original as { id?: number })?.id ?? r.index)))
+                setBulkDeleteOpen(false)
+                if (onBulkDelete) {
+                  onBulkDelete(selectedData, selectedIds)
+                } else {
+                  toast.info(`Permintaan hapus ${selectedRows.length} data diproses.`)
+                }
+                setRowSelection({})
+              }}
+              className="rounded-xl px-4 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white"
+            >
+              Ya, Hapus Sekarang
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
