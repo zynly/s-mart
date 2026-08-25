@@ -215,7 +215,13 @@ class CashController extends Controller
         }
 
         // Cek saldo laci kasir
-        $drawer = $session->cashAccount;
+        $drawer = $session->cashAccount ?? CashAccount::find($session->cash_account_id);
+        if (! $drawer) {
+            throw ValidationException::withMessages([
+                'amount' => 'Akun kas / laci untuk sesi kasir ini tidak ditemukan.',
+            ]);
+        }
+
         if ($drawer->current_balance < $amount) {
             throw ValidationException::withMessages([
                 'amount' => "Saldo laci kasir (Rp " . number_format($drawer->current_balance, 0, ',', '.') . ") tidak mencukupi untuk mengeluarkan tunai Rp " . number_format($amount, 0, ',', '.') . ".",
@@ -230,27 +236,33 @@ class CashController extends Controller
             ['is_active' => true]
         );
 
-        DB::transaction(function () use ($member, $amount, $user, $session, $drawer, $category, $idempotencyKey, $validated) {
-            // 1. Potong saldo deposit anggota
-            $this->depositService->withdraw(
-                $member,
-                $amount,
-                $user,
-                $idempotencyKey,
-                $validated['note'] ?? "Tarik tunai deposit di kasir oleh {$member->name}",
-                $session->outlet_id,
-                $session->id
-            );
+        try {
+            DB::transaction(function () use ($member, $amount, $user, $session, $drawer, $category, $idempotencyKey, $validated) {
+                // 1. Potong saldo deposit anggota
+                $this->depositService->withdraw(
+                    $member,
+                    $amount,
+                    $user,
+                    $idempotencyKey,
+                    $validated['note'] ?? "Tarik tunai deposit di kasir oleh {$member->name}",
+                    $session->outlet_id,
+                    $session->id
+                );
 
-            // 2. Catat kas keluar dari laci kasir
-            $this->cashService->recordOut(
-                $drawer,
-                $amount,
-                $category->id,
-                "Tarik tunai deposit: {$member->name} ({$member->member_number})",
-                $session
-            );
-        });
+                // 2. Catat kas keluar dari laci kasir
+                $this->cashService->recordOut(
+                    $drawer,
+                    $amount,
+                    $category->id,
+                    "Tarik tunai deposit: {$member->name} ({$member->member_number})",
+                    $session
+                );
+            });
+        } catch (\Throwable $e) {
+            throw ValidationException::withMessages([
+                'amount' => 'Gagal memproses penarikan saldo: '.$e->getMessage(),
+            ]);
+        }
 
         if ($request->wantsJson() || $request->header('X-Inertia')) {
             return back()->with('success', "Tarik tunai Rp " . number_format($amount, 0, ',', '.') . " berhasil untuk {$member->name}.");

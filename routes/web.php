@@ -53,14 +53,25 @@ Route::post('/cek-saldo', [CheckBalanceController::class, 'check'])
     ->middleware('throttle:5,1')
     ->name('cek-saldo.check');
 
-// Media Proxy Streaming dari S3 (RustFS) dengan Browser Caching 7 Hari
+// Media Proxy Streaming dari S3 (RustFS) / Public Storage dengan Browser Caching 7 Hari
 Route::get('/media/{path}', function (string $path) {
-    if (! \Illuminate\Support\Facades\Storage::disk('s3')->exists($path)) {
+    $disk = null;
+    try {
+        if (\Illuminate\Support\Facades\Storage::disk('s3')->exists($path)) {
+            $disk = 's3';
+        }
+    } catch (\Throwable) {}
+
+    if (! $disk && \Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+        $disk = 'public';
+    }
+
+    if (! $disk) {
         abort(404);
     }
 
-    $mime = \Illuminate\Support\Facades\Storage::disk('s3')->mimeType($path) ?: 'image/png';
-    $stream = \Illuminate\Support\Facades\Storage::disk('s3')->readStream($path);
+    $mime = \Illuminate\Support\Facades\Storage::disk($disk)->mimeType($path) ?: 'image/png';
+    $stream = \Illuminate\Support\Facades\Storage::disk($disk)->readStream($path);
 
     return response()->stream(function () use ($stream) {
         fpassthru($stream);

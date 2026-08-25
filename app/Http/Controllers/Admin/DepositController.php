@@ -114,7 +114,7 @@ class DepositController extends Controller
             $member,
             (int) $request->validated('amount'),
             (int) $request->validated('payment_method_id'),
-            (string) $request->header('X-Idempotency-Key'),
+            (string) ($request->header('X-Idempotency-Key') ?: \Illuminate\Support\Str::uuid()),
             (int) $request->validated('outlet_id'),
         );
 
@@ -130,7 +130,7 @@ class DepositController extends Controller
                 $member,
                 (int) $request->validated('amount'),
                 $request->user(),
-                (string) $request->header('X-Idempotency-Key'),
+                (string) ($request->header('X-Idempotency-Key') ?: \Illuminate\Support\Str::uuid()),
                 $request->validated('note'),
             );
         } catch (InsufficientBalanceException $e) {
@@ -159,7 +159,7 @@ class DepositController extends Controller
                 (int) $request->validated('amount'),
                 $request->validated('reason'),
                 $request->user(),
-                (string) $request->header('X-Idempotency-Key'),
+                (string) ($request->header('X-Idempotency-Key') ?: \Illuminate\Support\Str::uuid()),
             );
         } catch (InsufficientBalanceException $e) {
             throw ValidationException::withMessages(['amount' => $e->getMessage()]);

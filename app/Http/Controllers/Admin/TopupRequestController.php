@@ -50,18 +50,26 @@ class TopupRequestController extends Controller
             ->groupBy('amount', 'transfer_date')
             ->havingRaw('COUNT(*) > 1')
             ->get()
-            // Eloquent tetap menerapkan cast 'transfer_date' => 'date' pada
-            // hasil selectRaw() ini (jadi Carbon, bukan string mentah) —
-            // WAJIB format toDateString() eksplisit di sini juga supaya
-            // kuncinya persis sama dengan yang dibandingkan di bawah,
-            // bukan tergantung __toString() default Carbon (yang
-            // menyertakan jam:menit:detik dan tidak akan pernah cocok).
-            ->map(fn ($row) => $row->amount.'|'.$row->transfer_date->toDateString())
+            ->map(function ($row) {
+                $dateStr = $row->transfer_date instanceof \Carbon\CarbonInterface
+                    ? $row->transfer_date->toDateString()
+                    : (is_string($row->transfer_date) ? substr($row->transfer_date, 0, 10) : '');
+
+                return $dateStr !== '' ? $row->amount.'|'.$dateStr : null;
+            })
+            ->filter()
+            ->values()
             ->all();
 
         $topupRequests->getCollection()->transform(function (TopupRequest $tr) use ($duplicateKeys) {
-            $tr->setAttribute('is_possible_duplicate', $tr->transfer_date !== null
-                && in_array($tr->amount.'|'.$tr->transfer_date->toDateString(), $duplicateKeys, true));
+            $dateStr = $tr->transfer_date instanceof \Carbon\CarbonInterface
+                ? $tr->transfer_date->toDateString()
+                : (is_string($tr->transfer_date) ? substr($tr->transfer_date, 0, 10) : '');
+
+            $tr->setAttribute(
+                'is_possible_duplicate',
+                $dateStr !== '' && in_array($tr->amount.'|'.$dateStr, $duplicateKeys, true)
+            );
 
             return $tr;
         });

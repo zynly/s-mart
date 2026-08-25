@@ -216,74 +216,80 @@ class CashierSessionController extends Controller
 
     public function show(CashierSession $cashierSession)
     {
-        $session = $cashierSession->load([
-            'user:id,name,username',
-            'cashAccount:id,name,code',
-            'outlet:id,name',
-            'cashTransactions' => fn ($q) => $q->with('cashCategory:id,name')->orderByDesc('id'),
-            'sales' => function ($query) {
-                $query->with([
-                    'items.product:id,name,code,sku,unit',
-                    'payments.paymentMethod:id,name,code',
-                ])->orderByDesc('id');
-            },
-        ]);
+        try {
+            $session = $cashierSession->load([
+                'user:id,name,username',
+                'cashAccount:id,name',
+                'outlet:id,name',
+                'cashTransactions' => fn ($q) => $q->with('cashCategory:id,name')->orderByDesc('id'),
+                'sales' => function ($query) {
+                    $query->with([
+                        'items.product:id,name,sku',
+                        'payments.paymentMethod:id,name,code,type',
+                    ])->orderByDesc('id');
+                },
+            ]);
 
-        return response()->json([
-            'session' => [
-                'id' => $session->id,
-                'reference' => $session->reference,
-                'status' => $session->status,
-                'user_name' => $session->user?->name ?? 'Kasir',
-                'drawer_name' => $session->cashAccount?->name ?? 'Laci Kasir',
-                'outlet_name' => $session->outlet?->name ?? '',
-                'opened_at' => $session->opened_at?->toIso8601String(),
-                'closed_at' => $session->closed_at?->toIso8601String(),
-                'opening_cash' => $session->opening_cash,
-                'total_sales_cash' => $session->total_sales_cash ?? 0,
-                'total_sales_noncash' => $session->total_sales_noncash ?? 0,
-                'total_sales_deposit' => $session->total_sales_deposit ?? 0,
-                'total_sales_credit' => $session->total_sales_credit ?? 0,
-                'total_topup_cash' => $session->total_topup_cash ?? 0,
-                'total_receivable_cash' => $session->total_receivable_cash ?? 0,
-                'total_cash_in' => $session->total_cash_in ?? 0,
-                'total_cash_out' => $session->total_cash_out ?? 0,
-                'expected_cash' => $session->expected_cash,
-                'actual_cash' => $session->actual_cash,
-                'difference' => $session->difference,
-                'difference_reason' => $session->difference_reason ?? $session->note,
-                'notes' => $session->note,
-            ],
-            'cash_transactions' => $session->cashTransactions->map(fn ($trx) => [
-                'id' => $trx->id,
-                'reference' => $trx->reference,
-                'type' => $trx->type,
-                'amount' => $trx->amount,
-                'category_name' => $trx->cashCategory?->name ?? ($trx->type === 'in' ? 'Kas Masuk' : 'Kas Keluar'),
-                'description' => $trx->description,
-                'created_at' => $trx->created_at?->toIso8601String(),
-            ]),
-            'sales' => $session->sales->map(fn ($sale) => [
-                'id' => $sale->id,
-                'reference' => $sale->reference,
-                'sale_date' => $sale->sale_date?->toIso8601String(),
-                'grand_total' => $sale->grand_total,
-                'status' => $sale->status,
-                'items' => $sale->items->map(fn ($item) => [
-                    'id' => $item->id,
-                    'product_name' => $item->product?->name ?? 'Produk',
-                    'product_sku' => $item->product?->sku ?? $item->product?->code ?? '-',
-                    'quantity' => $item->quantity,
-                    'unit_price' => $item->unit_price,
-                    'subtotal' => $item->subtotal,
+            return response()->json([
+                'session' => [
+                    'id' => $session->id,
+                    'reference' => $session->reference,
+                    'status' => $session->status,
+                    'user_name' => $session->user?->name ?? 'Kasir',
+                    'drawer_name' => $session->cashAccount?->name ?? 'Laci Kasir',
+                    'outlet_name' => $session->outlet?->name ?? '',
+                    'opened_at' => $session->opened_at?->toIso8601String(),
+                    'closed_at' => $session->closed_at?->toIso8601String(),
+                    'opening_cash' => $session->opening_cash,
+                    'total_sales_cash' => $session->total_sales_cash ?? 0,
+                    'total_sales_noncash' => $session->total_sales_noncash ?? 0,
+                    'total_sales_deposit' => $session->total_sales_deposit ?? 0,
+                    'total_sales_credit' => $session->total_sales_credit ?? 0,
+                    'total_topup_cash' => $session->total_topup_cash ?? 0,
+                    'total_receivable_cash' => $session->total_receivable_cash ?? 0,
+                    'total_cash_in' => $session->total_cash_in ?? 0,
+                    'total_cash_out' => $session->total_cash_out ?? 0,
+                    'expected_cash' => $session->expected_cash,
+                    'actual_cash' => $session->actual_cash,
+                    'difference' => $session->difference,
+                    'difference_reason' => $session->difference_reason ?? $session->note,
+                    'notes' => $session->note,
+                ],
+                'cash_transactions' => $session->cashTransactions->map(fn ($trx) => [
+                    'id' => $trx->id,
+                    'reference' => $trx->reference,
+                    'type' => $trx->type,
+                    'amount' => $trx->amount,
+                    'category_name' => $trx->cashCategory?->name ?? ($trx->type === 'in' ? 'Kas Masuk' : 'Kas Keluar'),
+                    'description' => $trx->description,
+                    'created_at' => $trx->created_at?->toIso8601String(),
                 ]),
-                'payments' => $sale->payments->map(fn ($pm) => [
-                    'method_name' => $pm->paymentMethod?->name ?? 'Pembayaran',
-                    'method_code' => $pm->paymentMethod?->code ?? 'CASH',
-                    'method_type' => $pm->paymentMethod?->type ?? 'cash',
-                    'amount' => $pm->amount,
+                'sales' => $session->sales->map(fn ($sale) => [
+                    'id' => $sale->id,
+                    'reference' => $sale->reference,
+                    'sale_date' => $sale->sale_date?->toIso8601String(),
+                    'grand_total' => $sale->grand_total,
+                    'status' => $sale->status,
+                    'items' => $sale->items->map(fn ($item) => [
+                        'id' => $item->id,
+                        'product_name' => $item->product?->name ?? 'Produk',
+                        'product_sku' => $item->product?->sku ?? '-',
+                        'quantity' => $item->qty,
+                        'unit_price' => $item->unit_price,
+                        'subtotal' => $item->subtotal,
+                    ]),
+                    'payments' => $sale->payments->map(fn ($pm) => [
+                        'method_name' => $pm->paymentMethod?->name ?? 'Pembayaran',
+                        'method_code' => $pm->paymentMethod?->code ?? 'CASH',
+                        'method_type' => $pm->paymentMethod?->type ?? 'cash',
+                        'amount' => $pm->amount,
+                    ]),
                 ]),
-            ]),
-        ]);
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Gagal memuat detail sesi: '.$e->getMessage(),
+            ], 500);
+        }
     }
 }
