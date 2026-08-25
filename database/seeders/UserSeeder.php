@@ -10,10 +10,7 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         $password = env('SEEDER_DEFAULT_PASSWORD', 'password');
-        $pin = env('SEEDER_DEFAULT_PIN', '200601');
-        if (empty($pin) || $pin === '123456') {
-            $pin = '200601';
-        }
+        $pin = env('SEEDER_DEFAULT_PIN', '123456');
 
         $this->makeUser('owner', 'Owner Skillage Mart', $password, $pin);
         $this->makeUser('admin', 'Admin Skillage Mart', $password, $pin);
