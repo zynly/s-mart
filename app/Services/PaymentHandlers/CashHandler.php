@@ -25,16 +25,18 @@ class CashHandler implements PaymentHandler
     {
         $pin = trim((string) ($payload['pin'] ?? ''));
         if ($pin === '') {
-            $pin = '123456';
+            throw new DomainException('Pembayaran Tunai membutuhkan PIN kasir.');
         }
 
-        // Cek PIN terhadap user sesi kasir, user yang login, atau user aktif yang berhak
+        // Cek PIN murni terhadap kolom 'pin' di database (users.pin)
         $activeUser = $session->user ?? auth()->user();
         $isPinValid = false;
 
-        if ($activeUser && $activeUser->pin !== null && Hash::check($pin, $activeUser->pin)) {
-            $isPinValid = true;
-        } else {
+        if ($activeUser && ! empty($activeUser->pin)) {
+            $isPinValid = Hash::check($pin, $activeUser->pin);
+        }
+
+        if (! $isPinValid) {
             $isPinValid = User::whereNotNull('pin')
                 ->where('is_active', true)
                 ->get()

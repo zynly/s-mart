@@ -44,13 +44,13 @@ class CreditHandler implements PaymentHandler
         $hasApprovalToken = ! empty($payload['credit_approval_token']);
 
         if (! $hasApprovalToken) {
-            if ($member->pin === null) {
-                throw MemberPinNotSetException::make();
-            }
-
             $pin = trim((string) ($payload['pin'] ?? ''));
             if ($pin === '') {
-                $pin = '123456';
+                throw new DomainException('Metode Kredit/Tempo membutuhkan PIN anggota.');
+            }
+
+            if ($member->pin === null) {
+                throw MemberPinNotSetException::make();
             }
 
             if (! $this->pinService->verify($member, $pin)) {

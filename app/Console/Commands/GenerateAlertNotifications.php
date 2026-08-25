@@ -150,7 +150,10 @@ class GenerateAlertNotifications extends Command
 
         foreach ($users as $user) {
             $alreadyNotified = $user->unreadNotifications()
-                ->where('data->dedupe_key', $dedupeKey)
+                ->where(function ($q) use ($dedupeKey) {
+                    $q->where('data', 'like', '%"dedupe_key":"'.$dedupeKey.'"%')
+                      ->orWhere('data', 'like', '%"dedupe_key": "'.$dedupeKey.'"%');
+                })
                 ->exists();
 
             if ($alreadyNotified) {

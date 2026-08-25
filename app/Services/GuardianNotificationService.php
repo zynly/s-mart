@@ -133,7 +133,12 @@ class GuardianNotificationService
             'sent_at' => $sent ? now() : null,
         ]);
 
-        $alreadyNotified = $guardian->unreadNotifications()->where('data->dedupe_key', $dedupeKey)->exists();
+        $alreadyNotified = $guardian->unreadNotifications()
+            ->where(function ($q) use ($dedupeKey) {
+                $q->where('data', 'like', '%"dedupe_key":"'.$dedupeKey.'"%')
+                  ->orWhere('data', 'like', '%"dedupe_key": "'.$dedupeKey.'"%');
+            })
+            ->exists();
 
         if (! $alreadyNotified) {
             $guardian->notify(new AlertNotification($title, $message, $url, $dedupeKey));
