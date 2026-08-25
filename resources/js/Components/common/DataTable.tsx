@@ -69,23 +69,53 @@ export function DataTable<TData>({
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
 
+  const isAllRowsSelected = data.length > 0 && Object.keys(rowSelection).filter((k) => rowSelection[k]).length >= data.length
+  const isSomeRowsSelected = !isAllRowsSelected && Object.keys(rowSelection).filter((k) => rowSelection[k]).length > 0
+
+  const toggleSelectAllRows = (checked: boolean) => {
+    if (checked) {
+      const nextSelection: RowSelectionState = {}
+      data.forEach((row, idx) => {
+        const id = getRowId ? getRowId(row) : String(idx)
+        nextSelection[id] = true
+      })
+      setRowSelection(nextSelection)
+    } else {
+      setRowSelection({})
+    }
+  }
+
+  const showAllColumns = () => {
+    const allVis: VisibilityState = {}
+    table.getAllColumns().forEach((col) => {
+      allVis[col.id] = true
+    })
+    setColumnVisibility(allVis)
+  }
+
+  const resetColumns = () => {
+    setColumnVisibility({})
+  }
+
   const selectionColumn: ColumnDef<TData, unknown> = {
     id: 'select',
-    header: ({ table }) => (
-      <div className="flex items-center justify-center">
+    header: () => (
+      <div className="flex items-center justify-center p-0.5">
         <Checkbox
-          checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          checked={isAllRowsSelected ? true : isSomeRowsSelected ? 'indeterminate' : false}
+          onCheckedChange={(value) => toggleSelectAllRows(!!value)}
           aria-label="Pilih semua baris"
+          className="size-4 cursor-pointer rounded data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
         />
       </div>
     ),
     cell: ({ row }) => (
-      <div className="flex items-center justify-center">
+      <div className="flex items-center justify-center p-0.5">
         <Checkbox
           checked={row.getIsSelected()}
           onCheckedChange={(value) => row.toggleSelected(!!value)}
           aria-label="Pilih baris"
+          className="size-4 cursor-pointer rounded data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
         />
       </div>
     ),
@@ -134,7 +164,7 @@ export function DataTable<TData>({
 
   return (
     <div className="flex flex-col gap-3 flex-1 min-h-[450px] w-full">
-      {/* Toolbar Tampilkan Kolom dengan Kontrol Lengkap (Opsi B: Rata Kiri-Kanan) */}
+      {/* Toolbar Tampilkan Kolom dengan Kontrol Lengkap */}
       {table.getAllColumns().some((c) => c.getCanHide()) && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs dark:border-slate-800 dark:bg-slate-900 w-full text-xs">
           {/* Kolom Checkboxes di Sisi Kiri */}
@@ -165,7 +195,10 @@ export function DataTable<TData>({
                   >
                     <Checkbox
                       checked={isVisible}
-                      onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                      onCheckedChange={(value) => {
+                        column.toggleVisibility(!!value)
+                        setColumnVisibility((prev) => ({ ...prev, [column.id]: !!value }))
+                      }}
                       className="size-3.5 rounded data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                     />
                     <span className={cn(!isVisible && 'line-through')}>{headerLabel}</span>
@@ -186,23 +219,21 @@ export function DataTable<TData>({
               type="button"
               variant="outline"
               size="xs"
-              onClick={() => table.toggleAllColumnsVisible(true)}
-              className="h-7 text-xs font-semibold text-blue-700 bg-blue-50/50 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+              onClick={showAllColumns}
+              className="h-7 text-xs font-semibold text-blue-700 bg-blue-50/50 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-800 cursor-pointer"
               title="Aktifkan seluruh kolom tabel"
             >
-              Pilih Semua
+              Pilih Semua Kolom
             </Button>
             <Button
               type="button"
               variant="outline"
               size="xs"
-              onClick={() => {
-                setColumnVisibility({})
-              }}
-              className="h-7 text-xs font-semibold text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border-slate-200 dark:border-slate-700"
+              onClick={resetColumns}
+              className="h-7 text-xs font-semibold text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border-slate-200 dark:border-slate-700 cursor-pointer"
               title="Kembalikan tampilan kolom standar"
             >
-              Reset
+              Reset Kolom
             </Button>
           </div>
         </div>
