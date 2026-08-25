@@ -133,7 +133,9 @@ export function NotificationBell({
               type="button"
               onClick={() => {
                 if (!n.read_at) void markAsRead(n.id)
-                router.visit(n.data.url)
+                if (n.data?.url) {
+                  router.visit(n.data.url)
+                }
               }}
               className={cn(
                 'flex w-full flex-col gap-0.5 border-b border-border px-3 py-2 text-left last:border-0 hover:bg-secondary/50',

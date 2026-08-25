@@ -58,7 +58,7 @@ class TopupRequestService
             }
         }
 
-        return TopupRequest::create([
+        $topupRequest = TopupRequest::create([
             'reference' => ReferenceGenerator::generate('TRQ', 0),
             'member_id' => $member->id,
             'guardian_id' => $guardian->id,
@@ -71,6 +71,23 @@ class TopupRequestService
             'status' => 'pending',
             'payment_provider' => 'manual',
         ]);
+
+        try {
+            $formattedAmount = number_format($amount, 0, ',', '.');
+            $title = "Pengajuan Top-Up Baru: {$member->name}";
+            $message = "Wali {$guardian->name} mengajukan top-up deposit sebesar Rp {$formattedAmount} untuk {$member->name} ({$member->member_number}).";
+            $url = route('admin.topup-requests.index');
+            $dedupeKey = "topup-request-{$topupRequest->id}";
+
+            $admins = User::where('is_active', true)->get();
+            foreach ($admins as $admin) {
+                $admin->notify(new \App\Notifications\AlertNotification($title, $message, $url, $dedupeKey));
+            }
+        } catch (\Throwable) {
+            // Ignore notification error to ensure submission succeeds
+        }
+
+        return $topupRequest;
     }
 
     /**

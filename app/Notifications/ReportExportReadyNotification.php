@@ -34,8 +34,10 @@ class ReportExportReadyNotification extends Notification
     {
         return [
             'title' => "Ekspor \"{$this->reportTitle}\" selesai",
+            'message' => "Laporan \"{$this->reportTitle}\" ({$this->rowCount} baris) siap diunduh.",
             'report_title' => $this->reportTitle,
             'download_url' => $this->downloadUrl,
+            'url' => $this->downloadUrl,
             'row_count' => $this->rowCount,
         ];
     }

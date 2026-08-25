@@ -138,6 +138,16 @@ class NavigationService
             }
         }
 
+        $badge = $item['badge'] ?? null;
+        if (($item['key'] === 'deposit' || $item['route'] === 'admin.deposit.index') && $badge === null) {
+            try {
+                $pendingCount = \App\Models\TopupRequest::where('status', 'pending')->count();
+                if ($pendingCount > 0) {
+                    $badge = (string) $pendingCount;
+                }
+            } catch (\Throwable) {}
+        }
+
         return [
             'key' => $item['key'],
             'label' => $item['label'],
@@ -145,7 +155,7 @@ class NavigationService
             'icon' => $item['icon'],
             'highlight' => $item['highlight'] ?? false,
             'active' => $isActive,
-            'badge' => $item['badge'] ?? null,
+            'badge' => $badge,
         ];
     }
 }
