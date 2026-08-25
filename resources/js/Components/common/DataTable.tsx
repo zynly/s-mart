@@ -164,80 +164,100 @@ export function DataTable<TData>({
 
   return (
     <div className="flex flex-col gap-3 flex-1 min-h-[450px] w-full">
-      {/* Toolbar Tampilkan Kolom dengan Kontrol Lengkap */}
-      {table.getAllColumns().some((c) => c.getCanHide()) && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs dark:border-slate-800 dark:bg-slate-900 w-full text-xs">
-          {/* Kolom Checkboxes di Sisi Kiri */}
-          <div className="flex flex-wrap items-center gap-2 flex-1">
-            <span className="font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300 mr-1 flex items-center gap-1.5 shrink-0">
-              <SlidersHorizontal className="size-3.5 text-blue-600 dark:text-blue-400" />
-              <span>Tampilkan Kolom:</span>
-            </span>
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => {
-                const isVisible = column.getIsVisible()
-                const headerLabel =
-                  typeof column.columnDef.header === 'string'
-                    ? column.columnDef.header
-                    : getLabel(column.id)
-
-                return (
-                  <label
-                    key={column.id}
-                    className={cn(
-                      'flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer select-none',
-                      isVisible
-                        ? 'border-blue-200 bg-blue-50/60 text-blue-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200 shadow-2xs'
-                        : 'border-slate-200/60 bg-slate-100/60 text-slate-400 dark:border-slate-800 dark:bg-slate-800/40 opacity-50',
-                    )}
-                  >
-                    <Checkbox
-                      checked={isVisible}
-                      onCheckedChange={(value) => {
-                        column.toggleVisibility(!!value)
-                        setColumnVisibility((prev) => ({ ...prev, [column.id]: !!value }))
-                      }}
-                      className="size-3.5 rounded data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
-                    />
-                    <span className={cn(!isVisible && 'line-through')}>{headerLabel}</span>
-                  </label>
-                )
-              })}
-          </div>
-
-          {/* Kontrol Aksi Cepat & Indikator di Sisi Kanan */}
-          <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 border-t sm:border-t-0 sm:border-l border-slate-200 dark:border-slate-800 pt-2.5 sm:pt-0 sm:pl-3">
-            <span className="inline-flex items-center rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:text-slate-300">
-              <strong className="text-blue-600 dark:text-blue-400 mr-0.5">
-                {table.getAllColumns().filter((c) => c.getCanHide() && c.getIsVisible()).length}
-              </strong>
-              /{table.getAllColumns().filter((c) => c.getCanHide()).length} Kolom Aktif
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              size="xs"
-              onClick={showAllColumns}
-              className="h-7 text-xs font-semibold text-blue-700 bg-blue-50/50 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-800 cursor-pointer"
-              title="Aktifkan seluruh kolom tabel"
-            >
-              Pilih Semua Kolom
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="xs"
-              onClick={resetColumns}
-              className="h-7 text-xs font-semibold text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white border-slate-200 dark:border-slate-700 cursor-pointer"
-              title="Kembalikan tampilan kolom standar"
-            >
-              Reset Kolom
-            </Button>
-          </div>
+      {/* Toolbar Tabel: Info Seleksi Data di Kiri & Dropdown Atur Kolom di Kanan */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 px-0.5">
+        {/* Kiri: Status & Aksi Seleksi Baris */}
+        <div className="flex items-center gap-2">
+          {Object.keys(rowSelection).filter((k) => rowSelection[k]).length > 0 ? (
+            <div className="flex items-center gap-2 rounded-lg bg-blue-50/80 px-3 py-1.5 text-xs font-bold text-blue-900 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-200 dark:border-blue-800">
+              <span className="flex size-2 rounded-full bg-blue-600 animate-pulse" />
+              <span>{Object.keys(rowSelection).filter((k) => rowSelection[k]).length} dari {data.length} baris dipilih</span>
+              <button
+                type="button"
+                onClick={() => toggleSelectAllRows(false)}
+                className="ml-1 text-[11px] font-semibold text-blue-700 hover:text-blue-950 dark:text-blue-300 dark:hover:text-white underline cursor-pointer"
+              >
+                Batal
+              </button>
+            </div>
+          ) : (
+            <div className="text-xs text-slate-500 font-medium">
+              Centang checkbox untuk aksi masal data
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Kanan: Tombol Popover Atur Kolom yang Ringkas & Rapi */}
+        {table.getAllColumns().some((c) => c.getCanHide()) && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs hover:bg-slate-50"
+              >
+                <SlidersHorizontal className="size-3.5 text-blue-600 dark:text-blue-400" />
+                <span>Atur Kolom ({table.getAllColumns().filter((c) => c.getCanHide() && c.getIsVisible()).length}/{table.getAllColumns().filter((c) => c.getCanHide()).length})</span>
+                <ChevronDown className="size-3 opacity-60 ml-0.5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-64 p-3 bg-white dark:bg-surface border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2 mb-2">
+                <span className="text-xs font-bold text-slate-900 dark:text-white">Tampilkan Kolom</span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={showAllColumns}
+                    className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                  >
+                    Semua
+                  </button>
+                  <span className="text-slate-300">|</span>
+                  <button
+                    type="button"
+                    onClick={resetColumns}
+                    className="text-[11px] font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-1 max-h-60 overflow-y-auto pr-1">
+                {table
+                  .getAllColumns()
+                  .filter((column) => column.getCanHide())
+                  .map((column) => {
+                    const isVisible = column.getIsVisible()
+                    const headerLabel =
+                      typeof column.columnDef.header === 'string'
+                        ? column.columnDef.header
+                        : getLabel(column.id)
+
+                    return (
+                      <label
+                        key={column.id}
+                        className={cn(
+                          'flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60 select-none',
+                          isVisible ? 'text-slate-900 dark:text-slate-100 font-semibold' : 'text-slate-400 dark:text-slate-500 line-through',
+                        )}
+                      >
+                        <Checkbox
+                          checked={isVisible}
+                          onCheckedChange={(value) => {
+                            column.toggleVisibility(!!value)
+                            setColumnVisibility((prev) => ({ ...prev, [column.id]: !!value }))
+                          }}
+                          className="size-3.5 rounded data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                        />
+                        <span>{headerLabel}</span>
+                      </label>
+                    )
+                  })}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+      </div>
 
       <div className="relative flex-1 min-h-[380px] w-full overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900">
         <Table className="w-full text-xs">
