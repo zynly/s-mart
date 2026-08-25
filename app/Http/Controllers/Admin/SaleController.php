@@ -69,6 +69,9 @@ class SaleController extends Controller
     public function index(Request $request): Response
     {
         $session = $this->sessionService->getActive($request->user());
+        if ($session) {
+            $session->load(['cashAccount:id,name,current_balance', 'outlet:id,name']);
+        }
         $outlet = $session?->outlet ?? Outlet::where('is_main', true)->first();
 
         // 1. Ambil channel Midtrans yang dicentang di settings

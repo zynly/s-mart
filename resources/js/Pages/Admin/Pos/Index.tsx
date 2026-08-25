@@ -62,7 +62,14 @@ type CatalogProduct = {
 type CatalogPage = { data: CatalogProduct[]; current_page: number; last_page: number; total: number }
 type CategoryRef = { id: number; name: string }
 type HoldRow = { id: number; reference: string; item_count: number; total: number; held_at: string; member_id: number | null }
-type SessionInfo = { id: number; reference: string; opened_at: string; cash_account_id: number } | null
+type SessionInfo = {
+  id: number
+  reference: string
+  opened_at: string
+  cash_account_id: number
+  cashAccount?: { id: number; name: string; current_balance: number } | null
+  cash_account?: { id: number; name: string; current_balance: number } | null
+} | null
 type OutletInfo = { id: number; name: string } | null
 
 type MemberResult = {
@@ -580,40 +587,57 @@ export default function Index({
       return
     }
 
-    if (cashDialog === 'out' && cashOutMode === 'member_withdraw') {
-      if (!withdrawMember) {
-        setCashError('Pilih anggota terlebih dahulu.')
-        return
-      }
-      if (cashAmount > withdrawMember.balance_cache) {
-        setCashError(`Saldo deposit anggota (Rp ${withdrawMember.balance_cache.toLocaleString('id-ID')}) tidak mencukupi.`)
+    const drawerBalance = session.cash_account?.current_balance ?? session.cashAccount?.current_balance ?? 0
+
+    if (cashDialog === 'out') {
+      if (cashAmount > drawerBalance) {
+        setInsufficientCashModal({
+          open: true,
+          title: 'Transaksi Kas Keluar Ditolak!',
+          requestedAmount: cashAmount,
+          currentBalance: drawerBalance,
+          shortage: cashAmount - drawerBalance,
+          message: 'Nominal pengeluaran kas melebihi saldo kas yang ada di laci kasir. Transaksi tidak dapat diproses.',
+        })
+        toast.error('Kas Keluar Ditolak: Cash on hand tidak mencukupi!')
         return
       }
 
-      setCashSubmitting(true)
-      setCashError(null)
+      if (cashOutMode === 'member_withdraw') {
+        if (!withdrawMember) {
+          setCashError('Pilih anggota terlebih dahulu.')
+          return
+        }
+        if (cashAmount > withdrawMember.balance_cache) {
+          setCashError(`Saldo deposit anggota (Rp ${withdrawMember.balance_cache.toLocaleString('id-ID')}) tidak mencukupi.`)
+          return
+        }
 
-      router.post(
-        route('admin.cash.member-withdraw'),
-        {
-          member_id: withdrawMember.id,
-          amount: cashAmount,
-          note: cashDescription || `Tarik tunai deposit di kasir oleh ${withdrawMember.name}`,
-        },
-        {
-          preserveScroll: true,
-          onSuccess: () => {
-            setCashDialog(null)
-            toast.success(`Tarik tunai Rp ${cashAmount.toLocaleString('id-ID')} berhasil untuk ${withdrawMember.name}.`)
-            if (member?.id === withdrawMember.id) {
-              setMember((prev) => (prev ? { ...prev, balance_cache: prev.balance_cache - cashAmount } : null))
-            }
+        setCashSubmitting(true)
+        setCashError(null)
+
+        router.post(
+          route('admin.cash.member-withdraw'),
+          {
+            member_id: withdrawMember.id,
+            amount: cashAmount,
+            note: cashDescription || `Tarik tunai deposit di kasir oleh ${withdrawMember.name}`,
           },
-          onError: (errors) => setCashError(Object.values(errors)[0] ?? 'Gagal memproses tarik tunai.'),
-          onFinish: () => setCashSubmitting(false),
-        },
-      )
-      return
+          {
+            preserveScroll: true,
+            onSuccess: () => {
+              setCashDialog(null)
+              toast.success(`Tarik tunai Rp ${cashAmount.toLocaleString('id-ID')} berhasil untuk ${withdrawMember.name}.`)
+              if (member?.id === withdrawMember.id) {
+                setMember((prev) => (prev ? { ...prev, balance_cache: prev.balance_cache - cashAmount } : null))
+              }
+            },
+            onError: (errors) => setCashError(Object.values(errors)[0] ?? 'Gagal memproses tarik tunai.'),
+            onFinish: () => setCashSubmitting(false),
+          },
+        )
+        return
+      }
     }
 
     if (!cashDescription.trim()) {
@@ -801,6 +825,30 @@ export default function Index({
   function submitPayment() {
     if (!session || !outlet || paymentLines.length === 0 || remaining > 0) return
 
+    // Validasi PIN di setiap payment line
+    for (const line of paymentLines) {
+      if (line.type === 'cash' && (!line.pin || line.pin.length < 6)) {
+        setPaymentError('Pembayaran Tunai memerlukan PIN kasir 6-digit.')
+        toast.error('PIN Kasir 6-digit wajib diisi pada baris pembayaran Tunai.')
+        return
+      }
+      if (line.type === 'deposit' && (!line.pin || line.pin.length < 6)) {
+        setPaymentError('Pembayaran Saldo Deposit memerlukan PIN anggota 6-digit.')
+        toast.error('PIN Anggota 6-digit wajib diisi pada baris Saldo Deposit.')
+        return
+      }
+      if (line.type === 'credit' && (!line.pin || line.pin.length < 6)) {
+        setPaymentError('Pembayaran Kredit / Tempo memerlukan PIN anggota 6-digit.')
+        toast.error('PIN Anggota 6-digit wajib diisi pada baris Kredit / Tempo.')
+        return
+      }
+      if (line.type === 'transfer' && (!line.reference_no || !line.pin || line.pin.length < 6)) {
+        setPaymentError('Pembayaran Transfer Manual memerlukan No. Referensi & PIN otorisasi 6-digit.')
+        toast.error('No. Referensi & PIN otorisasi wajib diisi pada baris Transfer Manual.')
+        return
+      }
+    }
+
     setSubmitting(true)
     setPaymentError(null)
 
@@ -843,8 +891,19 @@ export default function Index({
     )
   }
 
+  // Modal Validasi Cash on Hand Kas Keluar
+  const [insufficientCashModal, setInsufficientCashModal] = useState<{
+    open: boolean
+    title: string
+    requestedAmount: number
+    currentBalance: number
+    shortage: number
+    message: string
+  } | null>(null)
+
   // Dialog State untuk Metode Internal/Offline
   const [methodDialog, setMethodDialog] = useState<
+    | { type: 'cash' }
     | { type: 'deposit' }
     | { type: 'card' }
     | { type: 'credit'; limit: number; active: number }
@@ -852,7 +911,9 @@ export default function Index({
     | null
   >(null)
 
+  const [cashPin, setCashPin] = useState('')
   const [depositPin, setDepositPin] = useState('')
+  const [creditPin, setCreditPin] = useState('')
   const [edcRefNo, setEdcRefNo] = useState('')
   const [edcBank, setEdcBank] = useState('BCA')
   const [transferRefNo, setTransferRefNo] = useState('')
@@ -887,7 +948,6 @@ export default function Index({
             received_amount: activeMethod.allows_change ? finalReceived : finalPayable,
             reference_no: extraPayload.reference_no ?? null,
             pin: extraPayload.pin ?? null,
-            point_used: extraPayload.point_used ?? null,
           },
         ],
       },
@@ -922,6 +982,11 @@ export default function Index({
           setAppliedCoupon('')
           setCouponValidationResult(null)
           setCashInput(0)
+          setCashPin('')
+          setDepositPin('')
+          setCreditPin('')
+          setTransferPin('')
+          setTransferRefNo('')
           setPaymentError(null)
           setMethodDialog(null)
           idempotencyKeyRef.current = newIdempotencyKey()
@@ -965,7 +1030,15 @@ export default function Index({
       }, 100)
     }
 
-    // 1. Saldo Deposit
+    // 0. Tunai (Cash) -> Wajib Verifikasi PIN Kasir
+    if (activeMethod.type === 'cash') {
+      setCashPin('')
+      setMethodDialogError(null)
+      setMethodDialog({ type: 'cash' })
+      return
+    }
+
+    // 1. Saldo Deposit -> Wajib Verifikasi PIN Customer (selalu)
     if (activeMethod.type === 'deposit') {
       if (!member) {
         requireMember('Saldo Deposit')
@@ -984,12 +1057,10 @@ export default function Index({
         })
         return
       }
-      if (finalPayable >= noPinThreshold && member.has_pin) {
-        setDepositPin('')
-        setMethodDialogError(null)
-        setMethodDialog({ type: 'deposit' })
-        return
-      }
+      setDepositPin('')
+      setMethodDialogError(null)
+      setMethodDialog({ type: 'deposit' })
+      return
     }
 
     // 2. Kartu Debit / EDC
@@ -1001,7 +1072,7 @@ export default function Index({
       return
     }
 
-    // 3. Kredit / Tempo
+    // 3. Kredit / Tempo -> Wajib PIN Customer
     if (activeMethod.type === 'credit') {
       if (!member) {
         requireMember('Kredit / Tempo')
@@ -1013,6 +1084,7 @@ export default function Index({
         toast.error(msg)
         return
       }
+      setCreditPin('')
       try {
         const res = await fetch(`${route('pos.credit-check')}?member_id=${member.id}&amount=${finalPayable}`)
         const data = await res.json()
@@ -1031,7 +1103,7 @@ export default function Index({
       return
     }
 
-    // 4. Transfer Bank Manual
+    // 4. Transfer Bank Manual -> Wajib PIN Kasir + No Ref
     if (activeMethod.type === 'transfer' && !activeMethod.midtrans_code) {
       setTransferRefNo('')
       setTransferPin('')
@@ -2074,21 +2146,25 @@ export default function Index({
                             </Button>
                           ))}
                         </div>
+                        <div className="flex flex-col gap-1 pt-1">
+                          <Label className="text-xs text-gray-600 font-semibold">PIN Kasir (6-digit)</Label>
+                          <PinInput value={line.pin ?? ''} onChange={(v) => updatePaymentLine(line.key, { pin: v })} length={6} />
+                        </div>
                       </div>
                     )}
                     {line.type === 'deposit' && member && (
                       <div className="flex flex-col gap-1.5">
                         <p className="text-xs text-gray-500">Saldo anggota: <Money amount={member.balance_cache} size="sm" /></p>
-                        {line.amount >= noPinThreshold && (
-                          <>
-                            <Label className="text-xs text-gray-600">PIN Anggota {!member.has_pin && '(belum dibuat)'}</Label>
-                            <PinInput value={line.pin ?? ''} onChange={(v) => updatePaymentLine(line.key, { pin: v })} />
-                          </>
-                        )}
+                        <Label className="text-xs text-gray-600 font-semibold">PIN Anggota (6-digit)</Label>
+                        <PinInput value={line.pin ?? ''} onChange={(v) => updatePaymentLine(line.key, { pin: v })} length={6} />
                       </div>
                     )}
-                    {line.type === 'credit' && creditWarning && (
-                      <p className="text-xs text-danger">{creditWarning}</p>
+                    {line.type === 'credit' && member && (
+                      <div className="flex flex-col gap-1.5">
+                        {creditWarning && <p className="text-xs text-danger">{creditWarning}</p>}
+                        <Label className="text-xs text-gray-600 font-semibold">PIN Anggota (6-digit)</Label>
+                        <PinInput value={line.pin ?? ''} onChange={(v) => updatePaymentLine(line.key, { pin: v })} length={6} />
+                      </div>
                     )}
                     {line.type === 'card' && (
                       <div className="flex flex-col gap-1.5">
@@ -2304,24 +2380,52 @@ export default function Index({
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Modal Input Metode Pembayaran */}
+      {/* Dialog Modal Input Metode Pembayaran & Verifikasi PIN */}
       <Dialog open={methodDialog !== null} onOpenChange={(open) => !open && setMethodDialog(null)}>
         <DialogContent className="bg-white dark:bg-surface text-gray-900 dark:text-content border border-gray-200 dark:border-border max-w-md">
           <DialogHeader className="text-center sm:text-center">
             <DialogTitle className="text-gray-900 dark:text-content font-extrabold text-base text-center">
+              {methodDialog?.type === 'cash' && 'Otorisasi PIN Kasir (Pembayaran Tunai)'}
               {methodDialog?.type === 'deposit' && 'Otentikasi PIN Deposit Member'}
               {methodDialog?.type === 'card' && 'Detail Transaksi Mesin EDC (Kartu)'}
-              {methodDialog?.type === 'credit' && 'Konfirmasi Kredit / Tempo (Piutang)'}
+              {methodDialog?.type === 'credit' && 'Otentikasi PIN Anggota (Kredit / Tempo)'}
               {methodDialog?.type === 'transfer' && 'Otorisasi & Bukti Transfer Bank Manual'}
             </DialogTitle>
           </DialogHeader>
+
+          {methodDialog?.type === 'cash' && (
+            <div className="flex flex-col items-center gap-3 py-1 text-center">
+              <div className="rounded-xl border border-blue-200 bg-blue-50/70 dark:border-blue-900/50 dark:bg-blue-950/30 p-3 text-xs space-y-1.5 w-full text-center">
+                <div className="flex justify-between text-slate-700 dark:text-slate-300">
+                  <span>Total Belanja:</span>
+                  <strong className="text-slate-900 dark:text-white font-bold">Rp {finalPayable.toLocaleString('id-ID')}</strong>
+                </div>
+                <div className="flex justify-between text-slate-700 dark:text-slate-300">
+                  <span>Uang Diterima:</span>
+                  <strong className="text-slate-900 dark:text-white font-bold">Rp {(cashInput > 0 ? cashInput : finalPayable).toLocaleString('id-ID')}</strong>
+                </div>
+                {cashInput > finalPayable && (
+                  <div className="flex justify-between text-emerald-700 dark:text-emerald-400 font-bold border-t border-blue-200/60 pt-1">
+                    <span>Kembalian:</span>
+                    <span>Rp {(cashInput - finalPayable).toLocaleString('id-ID')}</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col items-center justify-center space-y-1.5 text-center w-full">
+                <Label className="text-xs text-gray-700 dark:text-gray-200 font-bold text-center">
+                  Masukkan PIN Kasir (6-digit)
+                </Label>
+                <PinInput value={cashPin} onChange={setCashPin} length={6} />
+              </div>
+            </div>
+          )}
 
           {methodDialog?.type === 'deposit' && member && (
             <div className="flex flex-col items-center gap-3 py-1 text-center">
               <div className="rounded-xl border border-navy-200 bg-navy-50/60 p-3 text-xs space-y-1 w-full text-center">
                 <p className="font-semibold text-navy-900">Anggota: <span className="font-bold">{member.name}</span> ({member.member_number})</p>
                 <p className="text-gray-600">Saldo Deposit: <span className="font-bold text-emerald-700">Rp {member.balance_cache.toLocaleString('id-ID')}</span></p>
-                <p className="text-gray-600">Total Belanja: <span className="font-bold text-navy-950">Rp {subtotal.toLocaleString('id-ID')}</span></p>
+                <p className="text-gray-600">Total Belanja: <span className="font-bold text-navy-950">Rp {finalPayable.toLocaleString('id-ID')}</span></p>
               </div>
               <div className="flex flex-col items-center justify-center space-y-1.5 text-center w-full">
                 <Label className="text-xs text-gray-600 font-semibold text-center">Masukkan PIN Anggota (6-digit)</Label>
@@ -2361,11 +2465,17 @@ export default function Index({
           )}
 
           {methodDialog?.type === 'credit' && member && (
-            <div className="flex flex-col gap-3 py-1">
-              <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-xs space-y-1">
+            <div className="flex flex-col gap-3 py-1 text-center items-center">
+              <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-xs space-y-1 w-full text-left">
                 <p className="font-semibold text-amber-900">Pembeli: <span className="font-bold">{member.name}</span> ({member.member_number})</p>
-                <p className="text-amber-800">Total Piutang: <span className="font-bold">Rp {subtotal.toLocaleString('id-ID')}</span></p>
+                <p className="text-amber-800">Total Piutang: <span className="font-bold">Rp {finalPayable.toLocaleString('id-ID')}</span></p>
                 <p className="text-[11px] text-amber-700">Transaksi ini akan dicatat sebagai hutang tempo anggota.</p>
+              </div>
+              <div className="flex flex-col items-center justify-center space-y-1.5 text-center w-full">
+                <Label className="text-xs text-gray-700 dark:text-gray-200 font-bold text-center">
+                  Masukkan PIN Anggota (6-digit)
+                </Label>
+                <PinInput value={creditPin} onChange={setCreditPin} length={6} />
               </div>
             </div>
           )}
@@ -2430,12 +2540,18 @@ export default function Index({
             <Button
               disabled={submitting}
               onClick={() => {
-                if (methodDialog?.type === 'deposit') {
-                  if (subtotal >= noPinThreshold && depositPin.length < 6) {
-                    setMethodDialogError('PIN harus 6 digit angka.')
+                if (methodDialog?.type === 'cash') {
+                  if (cashPin.length < 6) {
+                    setMethodDialogError('PIN kasir harus 6 digit angka.')
                     return
                   }
-                  executeSaleStore({ pin: depositPin })
+                  executeSaleStore({ pin: cashPin.trim() })
+                } else if (methodDialog?.type === 'deposit') {
+                  if (depositPin.length < 6) {
+                    setMethodDialogError('PIN anggota harus 6 digit angka.')
+                    return
+                  }
+                  executeSaleStore({ pin: depositPin.trim() })
                 } else if (methodDialog?.type === 'card') {
                   if (!edcRefNo.trim()) {
                     setMethodDialogError('Nomor referensi / approval EDC wajib diisi.')
@@ -2443,7 +2559,11 @@ export default function Index({
                   }
                   executeSaleStore({ reference_no: `${edcBank}-${edcRefNo.trim()}` })
                 } else if (methodDialog?.type === 'credit') {
-                  executeSaleStore()
+                  if (creditPin.length < 6) {
+                    setMethodDialogError('PIN anggota harus 6 digit angka.')
+                    return
+                  }
+                  executeSaleStore({ pin: creditPin.trim() })
                 } else if (methodDialog?.type === 'transfer') {
                   if (!transferRefNo.trim()) {
                     setMethodDialogError('Nomor referensi / pengirim transfer wajib diisi.')
@@ -2459,6 +2579,51 @@ export default function Index({
               className="bg-emerald-600 hover:bg-emerald-700 font-bold text-white"
             >
               {submitting ? 'Memproses…' : 'Konfirmasi & Bayar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Peringatan Penolakan Kas Keluar (Cash on Hand Kurang) */}
+      <Dialog open={insufficientCashModal !== null} onOpenChange={(open) => !open && setInsufficientCashModal(null)}>
+        <DialogContent className="bg-white dark:bg-surface text-gray-900 dark:text-content border border-red-200 dark:border-red-900/50 max-w-md text-center p-6 rounded-2xl shadow-xl">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400 shadow-md">
+            <AlertCircle className="size-8 stroke-[2.5]" />
+          </div>
+          <div className="mt-3 space-y-2">
+            <h3 className="text-lg font-extrabold text-red-600 dark:text-red-400">
+              {insufficientCashModal?.title ?? 'Transaksi Kas Keluar Ditolak!'}
+            </h3>
+            <p className="text-xs text-gray-600 dark:text-gray-300">
+              {insufficientCashModal?.message}
+            </p>
+
+            <div className="rounded-xl border border-red-200 bg-red-50/70 dark:border-red-900/40 dark:bg-red-950/30 p-3 text-xs space-y-1.5 text-left mt-3">
+              <div className="flex justify-between">
+                <span className="text-gray-600 dark:text-gray-400">Nominal Diajukan:</span>
+                <strong className="text-gray-900 dark:text-white font-bold">
+                  Rp {(insufficientCashModal?.requestedAmount ?? 0).toLocaleString('id-ID')}
+                </strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600 dark:text-gray-400">Cash On Hand (Laci):</span>
+                <strong className="text-emerald-700 dark:text-emerald-400 font-bold">
+                  Rp {(insufficientCashModal?.currentBalance ?? 0).toLocaleString('id-ID')}
+                </strong>
+              </div>
+              <div className="flex justify-between border-t border-red-200/60 pt-1 text-red-700 dark:text-red-400 font-bold">
+                <span>Selisih Kekurangan:</span>
+                <span>Rp {(insufficientCashModal?.shortage ?? 0).toLocaleString('id-ID')}</span>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="mt-4 sm:justify-center">
+            <Button
+              onClick={() => setInsufficientCashModal(null)}
+              className="bg-navy-900 text-white font-bold hover:bg-navy-950 dark:bg-amber-500 dark:text-navy-950 w-full"
+            >
+              Paham &amp; Tutup
             </Button>
           </DialogFooter>
         </DialogContent>

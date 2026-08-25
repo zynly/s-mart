@@ -205,14 +205,51 @@ export default function Index({
     router.get(route('admin.cash.index'), { cash_account_id: accountId }, { preserveState: true, replace: true })
   }
 
+  const [cashRejectModal, setCashRejectModal] = useState<{
+    open: boolean
+    accountName: string
+    requested: number
+    balance: number
+    shortage: number
+  } | null>(null)
+
   const submitIn: FormEventHandler = (e) => {
     e.preventDefault()
-    inForm.post(route('admin.cash.in'), { preserveScroll: true, onSuccess: () => inForm.reset() })
+    inForm.post(route('admin.cash.in'), {
+      preserveScroll: true,
+      onSuccess: () => {
+        inForm.reset()
+        toast.success('Kas masuk berhasil dicatat.')
+      },
+      onError: (errors) => toast.error(Object.values(errors)[0] ?? 'Gagal mencatat kas masuk.'),
+    })
   }
 
   const submitOut: FormEventHandler = (e) => {
     e.preventDefault()
-    outForm.post(route('admin.cash.out'), { preserveScroll: true, onSuccess: () => outForm.reset() })
+    const targetAccount = safeAccounts.find((a) => String(a.id) === String(outForm.data.cash_account_id))
+    const currentBalance = targetAccount?.current_balance ?? 0
+
+    if (outForm.data.amount > currentBalance) {
+      setCashRejectModal({
+        open: true,
+        accountName: targetAccount?.name ?? 'Akun Kas',
+        requested: outForm.data.amount,
+        balance: currentBalance,
+        shortage: outForm.data.amount - currentBalance,
+      })
+      toast.error('Kas Keluar Ditolak: Nominal melebihi saldo kas yang tersedia!')
+      return
+    }
+
+    outForm.post(route('admin.cash.out'), {
+      preserveScroll: true,
+      onSuccess: () => {
+        outForm.reset()
+        toast.success('Kas keluar berhasil dicatat.')
+      },
+      onError: (errors) => toast.error(Object.values(errors)[0] ?? 'Gagal mencatat kas keluar.'),
+    })
   }
 
   const submitTransfer: FormEventHandler = (e) => {
@@ -1045,6 +1082,51 @@ export default function Index({
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Peringatan Penolakan Kas Keluar (Cash on Hand Kurang) */}
+      <Dialog open={cashRejectModal !== null} onOpenChange={(open) => !open && setCashRejectModal(null)}>
+        <DialogContent className="bg-white dark:bg-surface text-gray-900 dark:text-content border border-red-200 dark:border-red-900/50 max-w-md text-center p-6 rounded-2xl shadow-xl">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400 shadow-md">
+            <AlertCircle className="size-8 stroke-[2.5]" />
+          </div>
+          <div className="mt-3 space-y-2">
+            <h3 className="text-lg font-extrabold text-red-600 dark:text-red-400">
+              Transaksi Kas Keluar Ditolak!
+            </h3>
+            <p className="text-xs text-gray-600 dark:text-gray-300">
+              Nominal pengeluaran kas melebihi saldo kas yang tersedia pada akun <strong>{cashRejectModal?.accountName}</strong>. Transaksi tidak dapat diproses.
+            </p>
+
+            <div className="rounded-xl border border-red-200 bg-red-50/70 dark:border-red-900/40 dark:bg-red-950/30 p-3 text-xs space-y-1.5 text-left mt-3">
+              <div className="flex justify-between">
+                <span className="text-gray-600 dark:text-gray-400">Nominal Diajukan:</span>
+                <strong className="text-gray-900 dark:text-white font-bold">
+                  Rp {(cashRejectModal?.requested ?? 0).toLocaleString('id-ID')}
+                </strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600 dark:text-gray-400">Saldo Akun Kas:</span>
+                <strong className="text-emerald-700 dark:text-emerald-400 font-bold">
+                  Rp {(cashRejectModal?.balance ?? 0).toLocaleString('id-ID')}
+                </strong>
+              </div>
+              <div className="flex justify-between border-t border-red-200/60 pt-1 text-red-700 dark:text-red-400 font-bold">
+                <span>Selisih Kekurangan:</span>
+                <span>Rp {(cashRejectModal?.shortage ?? 0).toLocaleString('id-ID')}</span>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="mt-4 sm:justify-center">
+            <Button
+              onClick={() => setCashRejectModal(null)}
+              className="bg-navy-900 text-white font-bold hover:bg-navy-950 dark:bg-amber-500 dark:text-navy-950 w-full"
+            >
+              Paham &amp; Tutup
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
