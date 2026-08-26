@@ -71,6 +71,7 @@ class SaleController extends Controller
         $session = $this->sessionService->getActive($request->user());
         if ($session) {
             $session->load(['cashAccount:id,name,current_balance', 'outlet:id,name']);
+            $session->expected_cash = $this->sessionService->calculateExpected($session);
         }
         $outlet = $session?->outlet ?? Outlet::where('is_main', true)->first();
 

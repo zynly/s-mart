@@ -66,6 +66,15 @@ type SessionInfo = {
   id: number
   reference: string
   opened_at: string
+  opening_cash?: number
+  total_sales_cash?: number
+  total_topup_cash?: number
+  total_receivable_cash?: number
+  total_cash_in?: number
+  total_cash_out?: number
+  total_drop?: number
+  total_refund_cash?: number
+  expected_cash?: number
   cash_account_id: number
   cashAccount?: { id: number; name: string; current_balance: number } | null
   cash_account?: { id: number; name: string; current_balance: number } | null
@@ -587,7 +596,15 @@ export default function Index({
       return
     }
 
-    const drawerBalance = session.cash_account?.current_balance ?? session.cashAccount?.current_balance ?? 0
+    const drawerBalance = session.expected_cash 
+      ?? ((session.opening_cash ?? 0)
+        + (session.total_sales_cash ?? 0)
+        + (session.total_topup_cash ?? 0)
+        + (session.total_receivable_cash ?? 0)
+        + (session.total_cash_in ?? 0)
+        - (session.total_cash_out ?? 0)
+        - (session.total_drop ?? 0)
+        - (session.total_refund_cash ?? 0))
 
     if (cashDialog === 'out') {
       if (cashAmount > drawerBalance) {
