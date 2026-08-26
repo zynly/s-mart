@@ -43,10 +43,28 @@ class CashController extends Controller
             ->paginate(20)
             ->withQueryString();
 
+        $activeSession = $this->sessionService->getActive($request->user());
+        $expectedCash = $activeSession ? $this->sessionService->calculateExpected($activeSession) : null;
+
+        $accounts = CashAccount::where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'type', 'current_balance', 'is_drawer'])
+            ->map(function ($acc) use ($activeSession, $expectedCash) {
+                return [
+                    'id' => $acc->id,
+                    'name' => $acc->name,
+                    'type' => $acc->type,
+                    'current_balance' => ($acc->is_drawer && $activeSession && $activeSession->cash_account_id === $acc->id)
+                        ? $expectedCash
+                        : $acc->current_balance,
+                    'is_drawer' => $acc->is_drawer,
+                ];
+            });
+
         return Inertia::render('Admin/Cash/Index', [
             'tab' => 'cash',
             'transactions' => $transactions,
-            'accounts' => CashAccount::where('is_active', true)->orderBy('name')->get(['id', 'name', 'type', 'current_balance', 'is_drawer']),
+            'accounts' => $accounts,
             'categories' => CashCategory::where('is_active', true)->orderBy('name')->get(['id', 'name', 'type']),
             // REVISI-R1-v2.md §1.7 — Kelola Laci: SEMUA akun kas (termasuk
             // yang nonaktif, supaya bisa diaktifkan kembali), lintas outlet
