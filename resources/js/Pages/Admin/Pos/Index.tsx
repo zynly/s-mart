@@ -311,7 +311,18 @@ export default function Index({
 
   useEffect(() => {
     if (pageProps.flash?.completed_sale_id && pageProps.flash?.completed_sale_ref) {
-      setCompletedSale({ id: pageProps.flash.completed_sale_id, ref: pageProps.flash.completed_sale_ref })
+      setTxResultModal((prev) => {
+        if (prev?.open) return prev
+        return {
+          open: true,
+          type: 'success',
+          title: 'Transaksi Berhasil!',
+          message: `Transaksi kasir No. Nota ${pageProps.flash.completed_sale_ref} telah sukses disimpan.`,
+          saleId: pageProps.flash?.completed_sale_id ?? null,
+          saleRef: pageProps.flash?.completed_sale_ref ?? null,
+          methodName: 'POS Kasir',
+        }
+      })
     }
   }, [pageProps.flash?.completed_sale_id, pageProps.flash?.completed_sale_ref])
 
@@ -655,6 +666,14 @@ export default function Index({
               if (member?.id === withdrawMember.id) {
                 setMember((prev) => (prev ? { ...prev, balance_cache: prev.balance_cache - cashAmount } : null))
               }
+              setTxResultModal({
+                open: true,
+                type: 'success',
+                title: 'Tarik Tunai Berhasil!',
+                message: `Tarik tunai deposit senilai Rp ${cashAmount.toLocaleString('id-ID')} berhasil diproses untuk ${withdrawMember.name}.`,
+                amount: cashAmount,
+                methodName: 'Tarik Tunai Deposit',
+              })
             },
             onError: (errors) => setCashError(Object.values(errors)[0] ?? 'Gagal memproses tarik tunai.'),
             onFinish: () => setCashSubmitting(false),
@@ -672,6 +691,9 @@ export default function Index({
     setCashSubmitting(true)
     setCashError(null)
 
+    const isOut = cashDialog === 'out'
+    const desc = cashDescription
+
     router.post(
       route(cashDialog === 'in' ? 'admin.cash.in' : 'admin.cash.out'),
       {
@@ -682,7 +704,18 @@ export default function Index({
       },
       {
         preserveScroll: true,
-        onSuccess: () => setCashDialog(null),
+        onSuccess: () => {
+          setCashDialog(null)
+          toast.success(isOut ? 'Kas keluar berhasil dicatat.' : 'Kas masuk berhasil dicatat.')
+          setTxResultModal({
+            open: true,
+            type: 'success',
+            title: isOut ? 'Kas Keluar Berhasil!' : 'Kas Masuk Berhasil!',
+            message: `${isOut ? 'Pengeluaran' : 'Setoran'} kas laci senilai Rp ${cashAmount.toLocaleString('id-ID')} (${desc}) berhasil dicatat.`,
+            amount: cashAmount,
+            methodName: isOut ? 'Kas Keluar Laci' : 'Kas Masuk Laci',
+          })
+        },
         onError: (errors) => setCashError(Object.values(errors)[0] ?? 'Gagal menyimpan transaksi kas.'),
         onFinish: () => setCashSubmitting(false),
       },
@@ -1181,10 +1214,26 @@ export default function Index({
             },
             {
               headers: { 'X-Idempotency-Key': idempotencyKeyRef.current },
-              onSuccess: () => {
+              onSuccess: (page) => {
+                const flash = (page.props as any).flash
+                const saleId = flash?.completed_sale_id
+                const saleRef = flash?.completed_sale_ref
+
                 toast.success('Pembayaran Online Berhasil!', {
                   description: 'Transaksi telah berhasil dicatat ke sistem.',
                 })
+
+                setTxResultModal({
+                  open: true,
+                  type: 'success',
+                  title: 'Pembayaran Online Berhasil!',
+                  message: `Pembayaran online senilai Rp ${finalPayable.toLocaleString('id-ID')} berhasil diverifikasi dan dicatat.`,
+                  saleId: saleId ?? null,
+                  saleRef: saleRef ?? null,
+                  amount: finalPayable,
+                  methodName: activeMethod?.name ?? 'Midtrans / Online PG',
+                })
+
                 setCart([])
                 setMember(null)
                 setAppliedCoupon('')
