@@ -216,6 +216,7 @@ export default function Index({
   cashAccounts = [],
   outlets = [],
   activeSales = [],
+  recentSessions = [],
 }: CashierSessionIndexProps) {
   const pageProps = usePage<PageProps>().props
   const currentUserId = pageProps.auth?.user?.id
