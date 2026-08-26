@@ -2397,15 +2397,18 @@ export default function Index({
             )}
 
             {cashDialog === 'out' && (
-              <div>
-                <Label className="text-gray-600 dark:text-gray-300 text-xs font-bold uppercase tracking-wider">PIN Otorisasi / Kasir</Label>
+              <div className="space-y-1.5 pt-1">
+                <Label className="text-gray-700 dark:text-gray-300 text-xs font-extrabold uppercase tracking-wider flex items-center justify-between">
+                  <span>PIN Otorisasi Kasir / Supervisor <span className="text-red-500">*</span></span>
+                  <span className="text-[10px] text-gray-400 font-normal">Wajib diisi</span>
+                </Label>
                 <Input
                   type="password"
                   maxLength={6}
                   value={cashPin}
                   onChange={(e) => setCashPin(e.target.value)}
-                  placeholder="Masukkan PIN Kasir / Supervisor"
-                  className={posFieldClass}
+                  placeholder="Masukkan 6 Digit PIN Kasir / Supervisor"
+                  className={cn(posFieldClass, 'font-mono text-center tracking-widest text-lg font-bold border-amber-400 focus:border-amber-600')}
                 />
               </div>
             )}
