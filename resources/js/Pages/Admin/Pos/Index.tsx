@@ -1833,14 +1833,13 @@ export default function Index({
 
             {/* METODE PEMBAYARAN KASIR POS (2 KELOMPOK GRID UTAMA) */}
             <div className="space-y-3">
-              {/* ── 1. KELOMPOK GRID PEMBAYARAN MANUAL TOKO ── */}
+              {/* ── 1. KELOMPOK GRID PEMBAYARAN MANUAL ── */}
               <section className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
                     <Building2 className="size-3.5" />
-                    1. Pembayaran Manual Toko
+                    Manual
                   </h3>
-                  <span className="text-[9px] font-mono text-content-muted font-bold">Toko / Internal</span>
                 </div>
                 <div className="grid grid-cols-2 gap-1.5">
                   {(() => {
@@ -1885,14 +1884,13 @@ export default function Index({
                 </div>
               </section>
 
-              {/* ── 2. KELOMPOK GRID PEMBAYARAN OTOMATIS MIDTRANS / ONLINE PG ── */}
+              {/* ── 2. KELOMPOK GRID PEMBAYARAN OTOMATIS MIDTRANS ── */}
               <section className="space-y-1.5 pt-1">
                 <div className="flex items-center justify-between">
                   <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
                     <QrCode className="size-3.5" />
-                    2. Payment Gateway ({activeGateway.toUpperCase()})
+                    Midtrans
                   </h3>
-                  <span className="text-[9px] font-mono text-amber-600 dark:text-amber-400 font-bold">Midtrans Otomatis</span>
                 </div>
                 <div className="grid grid-cols-2 gap-1.5">
                   {(() => {
