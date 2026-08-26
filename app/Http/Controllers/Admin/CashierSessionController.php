@@ -63,7 +63,7 @@ class CashierSessionController extends Controller
         }
 
         if ($active === null) {
-            $active = $ownActive ?? $openSessions->first();
+            $active = $ownActive;
         }
 
         return Inertia::render('Admin/CashierSession/Index', [

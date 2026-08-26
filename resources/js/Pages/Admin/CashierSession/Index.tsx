@@ -216,8 +216,11 @@ export default function Index({
   cashAccounts = [],
   outlets = [],
   activeSales = [],
-  recentSessions = [],
 }: CashierSessionIndexProps) {
+  const pageProps = usePage<PageProps>().props
+  const currentUserId = pageProps.auth?.user?.id
+  const isOwnActive = active !== null && (active.user?.id === currentUserId || active.user_id === currentUserId)
+
   const safeAccounts = Array.isArray(cashAccounts) ? cashAccounts : []
   const safeOutlets = Array.isArray(outlets) ? outlets : []
   const safeSales = Array.isArray(activeSales) ? activeSales : []
@@ -850,79 +853,89 @@ export default function Index({
                 </div>
               </CardHeader>
               <CardContent className="p-4 sm:p-5">
-                <form onSubmit={submitClose} className="flex flex-col gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      Uang Fisik Dihitung di Laci (Rp)
-                    </Label>
-                    <MoneyInput
-                      value={closeForm.data.actual_cash}
-                      onChange={(v) => closeForm.setData('actual_cash', v)}
-                      className="h-12 rounded-xl text-lg font-bold"
-                    />
-                    {closeForm.errors.actual_cash && <p className="text-xs text-red-600 font-semibold">{closeForm.errors.actual_cash}</p>}
-                  </div>
-
-                  {/* Selisih Indicator Box */}
-                  <div
-                    className={cn(
-                      'flex flex-col items-center justify-center rounded-2xl border p-4 text-center transition-all',
-                      difference === 0
-                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                        : difference < 0
-                          ? 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300'
-                          : 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300',
-                    )}
-                  >
-                    <p className="text-xs font-bold uppercase tracking-wider opacity-80">
-                      Selisih Kas (Fisik − Expected)
-                    </p>
-                    <Money amount={difference} size="xl" showSign className="font-black mt-1" />
-                    <p className="text-[11px] font-semibold mt-1">
-                      {difference === 0
-                        ? 'Uang fisik pas & sesuai dengan catatan sistem.'
-                        : difference < 0
-                          ? 'Uang fisik kurang dari catatan sistem.'
-                          : 'Uang fisik lebih dari catatan sistem.'}
+                {!isOwnActive ? (
+                  <div className="flex flex-col items-center justify-center p-6 text-center rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300 gap-2">
+                    <ShieldAlert className="size-8 text-amber-600 dark:text-amber-400" />
+                    <h4 className="font-extrabold text-sm">Sesi Dibuka oleh {active?.user?.name ?? 'Kasir Lain'}</h4>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 max-w-xs">
+                      Anda sedang meninjau sesi aktif milik <strong className="text-slate-900 dark:text-white">{active?.user?.name ?? 'kasir lain'}</strong>. Hanya pemilik sesi yang dapat melakukan penutupan kas secara langsung.
                     </p>
                   </div>
-
-                  {needsApproval && (
-                    <div className="space-y-1.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
-                      <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
-                        <ShieldAlert className="size-4 shrink-0" />
-                        <Label className="text-xs font-bold uppercase tracking-wider">
-                          Alasan Selisih Kas (Wajib Min. 5 Karakter)
-                        </Label>
-                      </div>
-                      <Textarea
-                        value={closeForm.data.reason}
-                        onChange={(e) => closeForm.setData('reason', e.target.value)}
-                        placeholder="Jelaskan penyebab selisih kas fisik..."
-                        className="rounded-xl border-amber-500/30 bg-white/80 dark:bg-surface/80"
+                ) : (
+                  <form onSubmit={submitClose} className="flex flex-col gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        Uang Fisik Dihitung di Laci (Rp)
+                      </Label>
+                      <MoneyInput
+                        value={closeForm.data.actual_cash}
+                        onChange={(v) => closeForm.setData('actual_cash', v)}
+                        className="h-12 rounded-xl text-lg font-bold"
                       />
-                      {closeForm.data.approval_token ? (
-                        <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold">
-                          <CheckCircle2 className="size-4" />
-                          <span>Disetujui oleh Supervisor.</span>
-                        </div>
-                      ) : (
-                        <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                          Selisih melebihi toleransi (Rp {toleranceAmount.toLocaleString('id-ID')}) — memerlukan otorisasi PIN supervisor saat penutupan.
-                        </p>
-                      )}
+                      {closeForm.errors.actual_cash && <p className="text-xs text-red-600 font-semibold">{closeForm.errors.actual_cash}</p>}
                     </div>
-                  )}
 
-                  <Button
-                    type="submit"
-                    disabled={closeForm.processing || (needsApproval && !closeForm.data.reason)}
-                    className="h-12 gap-2 rounded-xl bg-red-600 hover:bg-red-700 font-bold text-white shadow-md transition-all mt-2"
-                  >
-                    <Lock className="size-4" />
-                    {closeForm.processing ? 'Menutup Sesi…' : 'Tutup Sesi Kasir Sekarang'}
-                  </Button>
-                </form>
+                    {/* Selisih Indicator Box */}
+                    <div
+                      className={cn(
+                        'flex flex-col items-center justify-center rounded-2xl border p-4 text-center transition-all',
+                        difference === 0
+                          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                          : difference < 0
+                            ? 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300'
+                            : 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+                      )}
+                    >
+                      <p className="text-xs font-bold uppercase tracking-wider opacity-80">
+                        Selisih Kas (Fisik − Expected)
+                      </p>
+                      <Money amount={difference} size="xl" showSign className="font-black mt-1" />
+                      <p className="text-[11px] font-semibold mt-1">
+                        {difference === 0
+                          ? 'Uang fisik pas & sesuai dengan catatan sistem.'
+                          : difference < 0
+                            ? 'Uang fisik kurang dari catatan sistem.'
+                            : 'Uang fisik lebih dari catatan sistem.'}
+                      </p>
+                    </div>
+
+                    {needsApproval && (
+                      <div className="space-y-1.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+                        <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
+                          <ShieldAlert className="size-4 shrink-0" />
+                          <Label className="text-xs font-bold uppercase tracking-wider">
+                            Alasan Selisih Kas (Wajib Min. 5 Karakter)
+                          </Label>
+                        </div>
+                        <Textarea
+                          value={closeForm.data.reason}
+                          onChange={(e) => closeForm.setData('reason', e.target.value)}
+                          placeholder="Jelaskan penyebab selisih kas fisik..."
+                          className="rounded-xl border-amber-500/30 bg-white/80 dark:bg-surface/80"
+                        />
+                        {closeForm.data.approval_token ? (
+                          <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold">
+                            <CheckCircle2 className="size-4" />
+                            <span>Disetujui oleh Supervisor.</span>
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                            Selisih melebihi toleransi (Rp {toleranceAmount.toLocaleString('id-ID')}) — memerlukan otorisasi PIN supervisor saat penutupan.
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    <Button
+                      type="submit"
+                      disabled={closeForm.processing || (needsApproval && !closeForm.data.reason)}
+                      className="h-12 gap-2 rounded-xl bg-red-600 hover:bg-red-700 font-bold text-white shadow-md transition-all mt-2"
+                    >
+                      <Lock className="size-4" />
+                      {closeForm.processing ? 'Menutup Sesi…' : 'Tutup Sesi Kasir Sekarang'}
+                    </Button>
+                  </form>
+                )}
               </CardContent>
             </Card>
           </div>
