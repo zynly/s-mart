@@ -918,6 +918,14 @@ export default function Index({
   const [edcBank, setEdcBank] = useState('BCA')
   const [transferRefNo, setTransferRefNo] = useState('')
   const [transferPin, setTransferPin] = useState('')
+  const [selectedBankId, setSelectedBankId] = useState<number | null>(null)
+  const selectedBankRow = useMemo(() => {
+    if (!bankAccounts || bankAccounts.length === 0) return null
+    if (selectedBankId) {
+      return bankAccounts.find((b) => b.id === selectedBankId) ?? bankAccounts[0]
+    }
+    return bankAccounts[0]
+  }, [bankAccounts, selectedBankId])
   const [methodDialogError, setMethodDialogError] = useState<string | null>(null)
 
   function executeSaleStore(extraPayload: {
@@ -2483,6 +2491,26 @@ export default function Index({
           {methodDialog?.type === 'transfer' && (
             <div className="flex flex-col gap-3 py-1">
               {/* Info Bank Sekolah Tujuan Transfer */}
+              {bankAccounts && bankAccounts.length > 1 && (
+                <div className="space-y-1">
+                  <Label className="text-xs text-gray-700 dark:text-gray-200 font-semibold">Pilih Rekening Bank Tujuan Transfer</Label>
+                  <Select
+                    value={selectedBankRow ? String(selectedBankRow.id) : ''}
+                    onValueChange={(v) => setSelectedBankId(Number(v))}
+                  >
+                    <SelectTrigger className={posFieldClass}>
+                      <SelectValue placeholder="Pilih Rekening Bank" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {bankAccounts.map((b) => (
+                        <SelectItem key={b.id} value={String(b.id)}>
+                          {b.bank_name} - {b.account_number} ({b.account_holder})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="rounded-xl border border-blue-200/80 bg-blue-50/60 dark:border-blue-900/60 dark:bg-blue-950/30 p-3 space-y-2">
                 <div className="flex items-center justify-between border-b border-blue-200/60 dark:border-blue-900/60 pb-1.5">
                   <span className="text-[11px] font-bold text-blue-900 dark:text-blue-200 uppercase tracking-wider flex items-center gap-1.5">
