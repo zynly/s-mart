@@ -252,8 +252,13 @@ class CashController extends Controller
 
         // Kategori kas keluar
         $category = CashCategory::firstOrCreate(
-            ['name' => 'Tarik Tunai Deposit Anggota', 'type' => 'expense'],
-            ['is_active' => true]
+            ['code' => 'TARIK_DEPOSIT'],
+            [
+                'name' => 'Tarik Tunai Deposit Anggota',
+                'type' => 'out',
+                'is_system' => true,
+                'is_active' => true,
+            ]
         );
 
         try {
