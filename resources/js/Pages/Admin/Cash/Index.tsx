@@ -100,7 +100,7 @@ export default function Index({
   const [accountFormOpen, setAccountFormOpen] = useState(false)
 
   const inForm = useForm({ cash_account_id: safeAccounts[0] ? String(safeAccounts[0].id) : '', cash_category_id: '', amount: 0, description: '' })
-  const outForm = useForm({ cash_account_id: safeAccounts[0] ? String(safeAccounts[0].id) : '', cash_category_id: '', amount: 0, description: '' })
+  const outForm = useForm({ cash_account_id: safeAccounts[0] ? String(safeAccounts[0].id) : '', cash_category_id: '', amount: 0, description: '', pin: '' })
   const transferForm = useForm({
     from_account_id: safeAccounts[0] ? String(safeAccounts[0].id) : '',
     to_account_id: safeAccounts[1] ? String(safeAccounts[1].id) : '',
@@ -677,6 +677,21 @@ export default function Index({
                       className="h-11 rounded-xl"
                     />
                     {outForm.errors.description && <p className="text-xs text-red-600 font-semibold">{outForm.errors.description}</p>}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      PIN Otorisasi / Kasir
+                    </Label>
+                    <Input
+                      type="password"
+                      maxLength={6}
+                      value={outForm.data.pin}
+                      onChange={(e) => outForm.setData('pin', e.target.value)}
+                      placeholder="Masukkan PIN Kasir / Supervisor"
+                      className="h-11 rounded-xl font-mono"
+                    />
+                    {outForm.errors.pin && <p className="text-xs text-red-600 font-semibold">{outForm.errors.pin}</p>}
                   </div>
 
                   <Button

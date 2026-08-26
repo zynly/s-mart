@@ -21,6 +21,7 @@ class StoreCashTransactionRequest extends FormRequest
             'cash_category_id' => ['nullable', 'exists:cash_categories,id'],
             'amount' => ['required', 'integer', 'min:1'],
             'description' => ['required', 'string', 'max:255'],
+            'pin' => ['nullable', 'string'],
         ];
     }
 }

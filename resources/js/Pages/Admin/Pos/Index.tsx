@@ -583,6 +583,7 @@ export default function Index({
     if (!session) return
     setCashAmount(0)
     setCashDescription('')
+    setCashPin('')
     setCashError(null)
     setCashOutMode('operational')
     setWithdrawMember(member ?? null)
@@ -607,6 +608,11 @@ export default function Index({
         - (session.total_refund_cash ?? 0))
 
     if (cashDialog === 'out') {
+      if (!cashPin.trim()) {
+        setCashError('PIN Otorisasi / Kasir wajib dimasukkan.')
+        return
+      }
+
       if (cashAmount > drawerBalance) {
         setInsufficientCashModal({
           open: true,
@@ -638,6 +644,7 @@ export default function Index({
           {
             member_id: withdrawMember.id,
             amount: cashAmount,
+            pin: cashPin,
             note: cashDescription || `Tarik tunai deposit di kasir oleh ${withdrawMember.name}`,
           },
           {
@@ -670,6 +677,7 @@ export default function Index({
       {
         cash_account_id: session.cash_account_id,
         amount: cashAmount,
+        pin: cashPin,
         description: cashDescription,
       },
       {
@@ -2386,6 +2394,20 @@ export default function Index({
                   />
                 </div>
               </>
+            )}
+
+            {cashDialog === 'out' && (
+              <div>
+                <Label className="text-gray-600 dark:text-gray-300 text-xs font-bold uppercase tracking-wider">PIN Otorisasi / Kasir</Label>
+                <Input
+                  type="password"
+                  maxLength={6}
+                  value={cashPin}
+                  onChange={(e) => setCashPin(e.target.value)}
+                  placeholder="Masukkan PIN Kasir / Supervisor"
+                  className={posFieldClass}
+                />
+              </div>
             )}
 
             {cashError && <p className="text-xs font-bold text-danger bg-red-50 p-2 rounded-lg">{cashError}</p>}

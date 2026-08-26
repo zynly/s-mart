@@ -163,6 +163,8 @@ class CashController extends Controller
 
     public function storeOut(StoreCashTransactionRequest $request): RedirectResponse
     {
+        $this->verifyCashierPin($request->user(), (string) $request->input('pin'));
+
         $session = $this->sessionService->getActive($request->user());
         if (! $session) {
             throw ValidationException::withMessages([
@@ -211,8 +213,11 @@ class CashController extends Controller
         $validated = $request->validate([
             'member_id' => ['required', 'integer', 'exists:members,id'],
             'amount' => ['required', 'integer', 'min:1000'],
+            'pin' => ['required', 'string'],
             'note' => ['nullable', 'string', 'max:255'],
         ]);
+
+        $this->verifyCashierPin($request->user(), $validated['pin']);
 
         $member = Member::findOrFail($validated['member_id']);
         $amount = (int) $validated['amount'];
@@ -298,5 +303,34 @@ class CashController extends Controller
             'message' => "Tarik tunai Rp " . number_format($amount, 0, ',', '.') . " berhasil untuk {$member->name}.",
             'new_balance' => $member->fresh()->balance_cache,
         ]);
+    }
+
+    private function verifyCashierPin(?User $currentUser, string $pin): void
+    {
+        $cleanPin = trim($pin);
+        if (empty($cleanPin)) {
+            throw ValidationException::withMessages(['pin' => 'PIN Otorisasi / Kasir wajib dimasukkan untuk transaksi kas keluar.']);
+        }
+
+        $pinMatches = false;
+        if ($currentUser !== null) {
+            if (! empty($currentUser->pin) && Hash::check($cleanPin, $currentUser->pin)) {
+                $pinMatches = true;
+            } elseif (Hash::check($cleanPin, $currentUser->password)) {
+                $pinMatches = true;
+            }
+        }
+
+        if (! $pinMatches) {
+            $supervisorMatch = User::query()
+                ->whereNotNull('pin')
+                ->where('is_active', true)
+                ->get()
+                ->first(fn (User $user) => Hash::check($cleanPin, $user->pin));
+
+            if (! $supervisorMatch) {
+                throw ValidationException::withMessages(['pin' => 'PIN Kasir / Supervisor tidak valid atau salah.']);
+            }
+        }
     }
 }
