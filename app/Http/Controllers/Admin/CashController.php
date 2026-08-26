@@ -223,9 +223,10 @@ class CashController extends Controller
             ]);
         }
 
-        if ($drawer->current_balance < $amount) {
+        $cashOnHand = $this->sessionService->calculateExpected($session);
+        if ($cashOnHand < $amount) {
             throw ValidationException::withMessages([
-                'amount' => "Saldo laci kasir (Rp " . number_format($drawer->current_balance, 0, ',', '.') . ") tidak mencukupi untuk mengeluarkan tunai Rp " . number_format($amount, 0, ',', '.') . ".",
+                'amount' => "Saldo laci kasir (Cash On Hand: Rp " . number_format($cashOnHand, 0, ',', '.') . ") tidak mencukupi untuk mengeluarkan tunai Rp " . number_format($amount, 0, ',', '.') . ".",
             ]);
         }
 

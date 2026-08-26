@@ -65,13 +65,16 @@ class CashService
     ): CashTransaction {
         return DB::transaction(function () use ($account, $amount, $categoryId, $description, $session, $source, $userId, $approvedBy) {
             $locked = CashAccount::lockForUpdate()->findOrFail($account->id);
-            $before = $locked->current_balance;
+            $availableCash = ($session !== null && $session->cash_account_id === $locked->id)
+                ? app(CashierSessionService::class)->calculateExpected($session)
+                : $locked->current_balance;
 
-            if ($before < $amount) {
-                throw InsufficientCashBalanceException::make($before, $amount);
+            if ($availableCash < $amount) {
+                throw InsufficientCashBalanceException::make($availableCash, $amount);
             }
 
-            $after = $before - $amount;
+            $before = $locked->current_balance;
+            $after = max(0, $before - $amount);
 
             $trx = CashTransaction::create([
                 'reference' => ReferenceGenerator::generate('KAS', $locked->outlet_id),
@@ -115,14 +118,17 @@ class CashService
     ): CashTransaction {
         return DB::transaction(function () use ($from, $to, $amount, $description, $session, $userId) {
             $fromLocked = CashAccount::lockForUpdate()->findOrFail($from->id);
+            $availableCash = ($session !== null && $session->cash_account_id === $fromLocked->id)
+                ? app(CashierSessionService::class)->calculateExpected($session)
+                : $fromLocked->current_balance;
 
-            if ($fromLocked->current_balance < $amount) {
-                throw InsufficientCashBalanceException::make($fromLocked->current_balance, $amount);
+            if ($availableCash < $amount) {
+                throw InsufficientCashBalanceException::make($availableCash, $amount);
             }
 
             $toLocked = CashAccount::lockForUpdate()->findOrFail($to->id);
 
-            $fromAfter = $fromLocked->current_balance - $amount;
+            $fromAfter = max(0, $fromLocked->current_balance - $amount);
             $toAfter = $toLocked->current_balance + $amount;
 
             $trx = CashTransaction::create([
