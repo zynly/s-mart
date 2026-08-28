@@ -106,6 +106,7 @@ export function DataTable<TData>({
   enableRowSelection = true,
   showNumberColumn = true,
   bulkActions,
+  onBulkDelete,
   getRowId,
   emptyTitle = 'Belum ada data',
   emptyDescription,
