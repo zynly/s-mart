@@ -76,65 +76,67 @@ export default function Dashboard({ members, kpi, recentActivities = [] }: Dashb
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {/* KPI 1: Total Saldo */}
         <Card className="relative overflow-hidden border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Saldo Santri</span>
-              <div className="flex size-8 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:bg-amber-400/20 dark:text-amber-400">
-                <Wallet className="size-4.5" />
+          <CardContent className="p-3.5 sm:p-4 flex flex-col justify-between h-full">
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 truncate">Total Saldo Santri</span>
+              <div className="flex size-7.5 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:bg-amber-400/20 dark:text-amber-400">
+                <Wallet className="size-4" />
               </div>
             </div>
-            <div className="mt-2">
-              <Money amount={totalBalance} size="lg" compact className="font-extrabold text-navy-950 dark:text-white" />
+            <div className="my-2 min-w-0">
+              <Money amount={totalBalance} compact className="text-base sm:text-lg font-black tracking-tight text-navy-950 dark:text-white block truncate" />
             </div>
-            <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">Saldo siap pakai di kasir S-Mart</p>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">Saldo siap pakai di kasir</p>
           </CardContent>
         </Card>
 
         {/* KPI 2: Pengeluaran Hari Ini */}
         <Card className="relative overflow-hidden border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Belanja Hari Ini</span>
-              <div className="flex size-8 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-400">
-                <ShoppingBag className="size-4.5" />
+          <CardContent className="p-3.5 sm:p-4 flex flex-col justify-between h-full">
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 truncate">Belanja Hari Ini</span>
+              <div className="flex size-7.5 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-400">
+                <ShoppingBag className="size-4" />
               </div>
             </div>
-            <div className="mt-2">
-              <Money amount={todaySpent} size="lg" compact className="font-extrabold text-slate-900 dark:text-white" />
+            <div className="my-2 min-w-0">
+              <Money amount={todaySpent} compact className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white block truncate" />
             </div>
-            <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">Total konsumsi hari ini</p>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">Konsumsi hari ini</p>
           </CardContent>
         </Card>
 
         {/* KPI 3: Pengeluaran Bulan Ini */}
         <Card className="relative overflow-hidden border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Belanja Bulan Ini</span>
-              <div className="flex size-8 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:bg-purple-400/20 dark:text-purple-400">
-                <Receipt className="size-4.5" />
+          <CardContent className="p-3.5 sm:p-4 flex flex-col justify-between h-full">
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 truncate">Belanja Bulan Ini</span>
+              <div className="flex size-7.5 shrink-0 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:bg-purple-400/20 dark:text-purple-400">
+                <Receipt className="size-4" />
               </div>
             </div>
-            <div className="mt-2">
-              <Money amount={monthSpent} size="lg" compact className="font-extrabold text-slate-900 dark:text-white" />
+            <div className="my-2 min-w-0">
+              <Money amount={monthSpent} compact className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white block truncate" />
             </div>
-            <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">Akumulasi belanja bulan ini</p>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">Akumulasi belanja bulan ini</p>
           </CardContent>
         </Card>
 
         {/* KPI 4: Jumlah Santri */}
         <Card className="relative overflow-hidden border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Santri Terhubung</span>
-              <div className="flex size-8 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-400">
-                <Users className="size-4.5" />
+          <CardContent className="p-3.5 sm:p-4 flex flex-col justify-between h-full">
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 truncate">Santri Terhubung</span>
+              <div className="flex size-7.5 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-400">
+                <Users className="size-4" />
               </div>
             </div>
-            <div className="mt-2">
-              <span className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">{totalChildren} Santri</span>
+            <div className="my-2 min-w-0">
+              <span className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white block truncate">
+                {totalChildren} Santri
+              </span>
             </div>
-            <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-400">Anak terhubung akun ini</p>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">Anak terhubung akun ini</p>
           </CardContent>
         </Card>
       </div>

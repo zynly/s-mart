@@ -87,7 +87,7 @@ export default function WaliLayout({ children, active }: WaliLayoutProps) {
         description="Apakah Ayah/Bunda yakin ingin keluar dari portal wali santri? Anda dapat masuk kembali kapan saja."
       />
 
-      <main className="mx-auto w-full max-w-2xl flex-1 px-4 sm:px-6 py-6 pb-24">{children}</main>
+      <main className="mx-auto w-full max-w-4xl flex-1 px-4 sm:px-6 py-6 pb-24">{children}</main>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/95 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95 shadow-lg">
         <div className={cn(
