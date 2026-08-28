@@ -23,11 +23,14 @@ class CheckBalanceController extends Controller
             'identity.required' => 'Masukkan NIS atau Nama Santri/Anggota.',
         ]);
 
-        $identity = trim($data['identity']);
+        $identity = trim(preg_replace('/\s+/', ' ', $data['identity']));
         $lower = mb_strtolower($identity);
 
-        // Cari berdasarkan NIS, Nomor Anggota, atau Nama Lengkap (Case-Insensitive)
-        $member = Member::where('status', 'active')
+        $columns = ['id', 'name', 'nis', 'member_number', 'class_name', 'major', 'type', 'balance_cache', 'point_balance'];
+
+        // 1. Tier 1: Exact Match (NIS, Nomor Anggota, atau Nama Lengkap Persis)
+        $member = Member::select($columns)
+            ->where('status', 'active')
             ->where(function ($query) use ($identity, $lower) {
                 $query->where('nis', $identity)
                     ->orWhere('member_number', $identity)
@@ -35,10 +38,19 @@ class CheckBalanceController extends Controller
             })
             ->first();
 
-        // Jika tidak ditemukan dengan exact match, coba cari LIKE (nama mirip)
+        // 2. Tier 2: Prefix Match (Nama Depan / Awalan Kata)
+        if ($member === null && mb_strlen($identity) >= 2) {
+            $member = Member::select($columns)
+                ->where('status', 'active')
+                ->where('name', 'ilike', "{$identity}%")
+                ->first();
+        }
+
+        // 3. Tier 3: Substring Trigram Match (Mengandung Kata / Suku Kata di Tengah)
         if ($member === null && mb_strlen($identity) >= 3) {
-            $member = Member::where('status', 'active')
-                ->whereRaw('LOWER(name) LIKE ?', ["%{$lower}%"])
+            $member = Member::select($columns)
+                ->where('status', 'active')
+                ->where('name', 'ilike', "%{$identity}%")
                 ->first();
         }
 

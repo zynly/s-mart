@@ -365,16 +365,32 @@ class SaleController extends Controller
             return response()->json(['members' => [$this->memberPayload($exact)]]);
         }
 
-        $matches = Member::where('status', 'active')
-            ->where(function ($q) use ($query) {
-                $q->where('name', 'ilike', "%{$query}%")
-                  ->orWhere('member_number', 'ilike', "%{$query}%")
-                  ->orWhere('phone', 'ilike', "%{$query}%")
-                  ->orWhere('class_name', 'ilike', "%{$query}%")
-                  ->orWhereHas('cards', fn ($c) => $c->where('card_number', 'ilike', "%{$query}%"));
+        $cleanQuery = trim(preg_replace('/\s+/', ' ', $query));
+        $cleanLower = mb_strtolower($cleanQuery);
+
+        $matches = Member::select([
+                'id',
+                'member_number',
+                'name',
+                'type',
+                'class_name',
+                'major',
+                'balance_cache',
+                'point_balance',
+                'member_level_id',
+            ])
+            ->where('status', 'active')
+            ->where(function ($q) use ($cleanQuery) {
+                $q->where('name', 'ilike', "%{$cleanQuery}%")
+                  ->orWhere('member_number', 'ilike', "%{$cleanQuery}%")
+                  ->orWhere('nis', 'ilike', "%{$cleanQuery}%")
+                  ->orWhere('phone', 'ilike', "%{$cleanQuery}%")
+                  ->orWhere('class_name', 'ilike', "%{$cleanQuery}%")
+                  ->orWhereHas('cards', fn ($c) => $c->where('card_number', 'ilike', "%{$cleanQuery}%"));
             })
             ->with('level:id,name,color')
-            ->limit(10)
+            ->orderByRaw("CASE WHEN lower(name) LIKE ? THEN 0 WHEN nis = ? THEN 0 ELSE 1 END", ["{$cleanLower}%", $cleanQuery])
+            ->limit(15)
             ->get();
 
         return response()->json(['members' => $matches->map(fn (Member $m) => $this->memberPayload($m))]);
