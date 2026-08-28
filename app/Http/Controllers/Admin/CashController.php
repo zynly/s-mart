@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Services\CashierSessionService;
 use App\Services\CashService;
 use App\Services\DepositService;
+use App\Services\MemberPinService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -33,6 +34,7 @@ class CashController extends Controller
         private readonly CashService $cashService,
         private readonly CashierSessionService $sessionService,
         private readonly DepositService $depositService,
+        private readonly MemberPinService $memberPinService,
     ) {}
 
     public function index(Request $request): Response
@@ -143,6 +145,8 @@ class CashController extends Controller
 
     public function storeIn(StoreCashTransactionRequest $request): RedirectResponse
     {
+        $this->verifyCashierPin($request->user(), (string) $request->input('pin'));
+
         $session = $this->sessionService->getActive($request->user());
         if (! $session) {
             throw ValidationException::withMessages([
@@ -216,6 +220,7 @@ class CashController extends Controller
             'member_id' => ['required', 'integer', 'exists:members,id'],
             'amount' => ['required', 'integer', 'min:1000'],
             'pin' => ['required', 'string'],
+            'member_pin' => ['required', 'string'],
             'note' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -224,6 +229,13 @@ class CashController extends Controller
         $member = Member::findOrFail($validated['member_id']);
         $amount = (int) $validated['amount'];
         $user = $request->user();
+
+        // Verifikasi PIN Anggota
+        if (! $this->memberPinService->verify($member, $validated['member_pin'])) {
+            throw ValidationException::withMessages([
+                'member_pin' => 'PIN Anggota / Santri tidak valid atau salah.',
+            ]);
+        }
 
         // Cek sesi kasir aktif
         $session = $this->sessionService->getActive($user);
@@ -311,7 +323,7 @@ class CashController extends Controller
     {
         $cleanPin = trim($pin);
         if (empty($cleanPin)) {
-            throw ValidationException::withMessages(['pin' => 'PIN Otorisasi / Kasir wajib dimasukkan untuk transaksi kas keluar.']);
+            throw ValidationException::withMessages(['pin' => 'PIN Otorisasi / Kasir wajib dimasukkan untuk transaksi kas.']);
         }
 
         $pinMatches = false;

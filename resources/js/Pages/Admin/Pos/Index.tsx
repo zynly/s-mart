@@ -595,6 +595,7 @@ export default function Index({
     setCashAmount(0)
     setCashDescription('')
     setCashPin('')
+    setWithdrawMemberPin('')
     setCashError(null)
     setCashOutMode('operational')
     setWithdrawMember(member ?? null)
@@ -618,9 +619,16 @@ export default function Index({
         - (session.total_drop ?? 0)
         - (session.total_refund_cash ?? 0))
 
+    if (cashDialog === 'in') {
+      if (!cashPin.trim() || cashPin.length < 6) {
+        setCashError('PIN Kasir Penerima (6 digit) wajib diisi.')
+        return
+      }
+    }
+
     if (cashDialog === 'out') {
-      if (!cashPin.trim()) {
-        setCashError('PIN Otorisasi / Kasir wajib dimasukkan.')
+      if (!cashPin.trim() || cashPin.length < 6) {
+        setCashError('PIN Kasir / Supervisor (6 digit) wajib diisi.')
         return
       }
 
@@ -646,6 +654,10 @@ export default function Index({
           setCashError(`Saldo deposit anggota (Rp ${withdrawMember.balance_cache.toLocaleString('id-ID')}) tidak mencukupi.`)
           return
         }
+        if (!withdrawMemberPin.trim() || withdrawMemberPin.length < 6) {
+          setCashError('PIN Anggota / Santri (6 digit) wajib diisi.')
+          return
+        }
 
         setCashSubmitting(true)
         setCashError(null)
@@ -656,6 +668,7 @@ export default function Index({
             member_id: withdrawMember.id,
             amount: cashAmount,
             pin: cashPin,
+            member_pin: withdrawMemberPin,
             note: cashDescription || `Tarik tunai deposit di kasir oleh ${withdrawMember.name}`,
           },
           {
@@ -970,8 +983,10 @@ export default function Index({
   >(null)
 
   const [cashPin, setCashPin] = useState('')
+  const [withdrawMemberPin, setWithdrawMemberPin] = useState('')
   const [depositPin, setDepositPin] = useState('')
   const [creditPin, setCreditPin] = useState('')
+  const [lastSaleId, setLastSaleId] = useState<number | null>(null)
   const [edcRefNo, setEdcRefNo] = useState('')
   const [edcBank, setEdcBank] = useState('BCA')
   const [transferRefNo, setTransferRefNo] = useState('')
@@ -1029,6 +1044,8 @@ export default function Index({
           toast.success('Pembayaran Berhasil! Transaksi telah disimpan.', {
             description: `${changeInfo}Keranjang kasir telah dikosongkan.`,
           })
+
+          if (saleId) setLastSaleId(saleId)
 
           setTxResultModal({
             open: true,
@@ -1285,6 +1302,14 @@ export default function Index({
   useHotkeys('f3', (e) => { e.preventDefault(); focusScan() })
   useHotkeys('f4', (e) => { e.preventDefault(); doHold() })
   useHotkeys('f5', (e) => { e.preventDefault(); setHoldsOpen(true) })
+  useHotkeys('f8', (e) => {
+    e.preventDefault()
+    if (lastSaleId) {
+      window.open(route('pos.sales.receipt-pdf', lastSaleId), '_blank')
+    } else {
+      toast.info('Belum ada transaksi penjualan yang diselesaikan pada sesi ini.')
+    }
+  })
   useHotkeys('f9', (e) => { e.preventDefault(); handleDirectSubmit() })
   useHotkeys('f11', (e) => { e.preventDefault(); openCashDialog('in') })
   useHotkeys('f12', (e) => { e.preventDefault(); openCashDialog('out') })
@@ -1359,6 +1384,19 @@ export default function Index({
             { key: 'F3', label: 'Cari', icon: Search, onClick: focusScan, isPrimary: false },
             { key: 'F4', label: 'Tahan', icon: Pause, onClick: doHold, disabled: cart.length === 0, isPrimary: false },
             { key: 'F5', label: 'Panggil', icon: Phone, onClick: () => setHoldsOpen(true), isPrimary: false },
+            {
+              key: 'F8',
+              label: 'Nota Terakhir',
+              icon: Printer,
+              onClick: () => {
+                if (lastSaleId) {
+                  window.open(route('pos.sales.receipt-pdf', lastSaleId), '_blank')
+                } else {
+                  toast.info('Belum ada transaksi penjualan yang diselesaikan pada sesi ini.')
+                }
+              },
+              isPrimary: false,
+            },
             { key: 'F9', label: 'Bayar', icon: CreditCard, onClick: handleDirectSubmit, disabled: cart.length === 0, isPrimary: true },
             { key: 'F11', label: 'Cash Masuk', icon: ArrowDownCircle, onClick: () => openCashDialog('in'), isPrimary: false },
             { key: 'F12', label: 'Cash Keluar', icon: ArrowUpCircle, onClick: () => openCashDialog('out'), isPrimary: false },
@@ -2445,12 +2483,38 @@ export default function Index({
               </>
             )}
 
-            {cashDialog === 'out' && (
+            {cashDialog === 'in' && (
+              <div className="flex flex-col items-center justify-center space-y-1.5 text-center pt-1 w-full">
+                <Label className="text-xs text-emerald-800 dark:text-emerald-300 font-bold block text-center">
+                  PIN Kasir Penerima (Wajib, 6 Digit)
+                </Label>
+                <PinInput value={cashPin} onChange={setCashPin} length={6} />
+              </div>
+            )}
+
+            {cashDialog === 'out' && cashOutMode !== 'member_withdraw' && (
               <div className="flex flex-col items-center justify-center space-y-1.5 text-center pt-1 w-full">
                 <Label className="text-xs text-gray-700 dark:text-gray-200 font-bold block text-center">
                   PIN Otorisasi Kasir / Supervisor (Wajib, 6 Digit)
                 </Label>
                 <PinInput value={cashPin} onChange={setCashPin} length={6} />
+              </div>
+            )}
+
+            {cashDialog === 'out' && cashOutMode === 'member_withdraw' && (
+              <div className="space-y-3 pt-1 w-full">
+                <div className="flex flex-col items-center justify-center space-y-1.5 text-center w-full">
+                  <Label className="text-xs text-navy-950 dark:text-gray-200 font-bold block text-center">
+                    1. PIN Kasir Jaga (6 Digit)
+                  </Label>
+                  <PinInput value={cashPin} onChange={setCashPin} length={6} />
+                </div>
+                <div className="flex flex-col items-center justify-center space-y-1.5 text-center w-full border-t border-gray-200 dark:border-border pt-2">
+                  <Label className="text-xs text-amber-700 dark:text-amber-400 font-bold block text-center">
+                    2. PIN Anggota / Santri (6 Digit)
+                  </Label>
+                  <PinInput value={withdrawMemberPin} onChange={setWithdrawMemberPin} length={6} />
+                </div>
               </div>
             )}
 
@@ -3035,42 +3099,82 @@ export default function Index({
             {/* Action Buttons */}
             {txResultModal?.type === 'success' ? (
               <div className="flex flex-col gap-2.5 w-full">
-                <div className="grid grid-cols-2 gap-2.5 w-full">
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      if (txResultModal.saleId) {
-                        window.open(route('pos.sales.receipt-pdf', txResultModal.saleId), '_blank')
-                      }
-                    }}
-                    className="gap-1.5 rounded-xl bg-navy-900 text-white dark:bg-amber-500 dark:text-navy-950 hover:bg-navy-800 dark:hover:bg-amber-400 font-bold text-xs py-5 shadow-sm"
-                  >
-                    <Printer className="size-4" />
-                    Cetak Nota PDF
-                  </Button>
+                {txResultModal.saleId ? (
+                  <div className="grid grid-cols-3 gap-2 w-full">
+                    {/* 1. Direct Thermal Print via hidden iframe */}
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        if (txResultModal.saleId) {
+                          const printFrame = document.createElement('iframe')
+                          printFrame.style.position = 'fixed'
+                          printFrame.style.right = '0'
+                          printFrame.style.bottom = '0'
+                          printFrame.style.width = '0'
+                          printFrame.style.height = '0'
+                          printFrame.style.border = '0'
+                          printFrame.src = route('pos.sales.receipt-pdf', txResultModal.saleId)
+                          document.body.appendChild(printFrame)
+                          printFrame.onload = () => {
+                            printFrame.contentWindow?.focus()
+                            printFrame.contentWindow?.print()
+                            setTimeout(() => {
+                              if (document.body.contains(printFrame)) {
+                                document.body.removeChild(printFrame)
+                              }
+                            }, 3000)
+                          }
+                          toast.success('Mencetak struk ke printer kasir…')
+                        }
+                      }}
+                      className="gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-4 shadow-sm"
+                    >
+                      <Printer className="size-3.5 shrink-0" />
+                      Cetak Struk
+                    </Button>
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      if (txResultModal.saleId) {
-                        router.visit(route('pos.sales.receipt', txResultModal.saleId))
-                      }
-                    }}
-                    className="gap-1.5 rounded-xl border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs py-5"
-                  >
-                    <Receipt className="size-4" />
-                    Lihat Nota
-                  </Button>
-                </div>
+                    {/* 2. PDF Nota in New Tab */}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        if (txResultModal.saleId) {
+                          window.open(route('pos.sales.receipt-pdf', txResultModal.saleId), '_blank')
+                        }
+                      }}
+                      className="gap-1 rounded-xl border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs py-4"
+                    >
+                      <FileText className="size-3.5 shrink-0" />
+                      Nota PDF
+                    </Button>
+
+                    {/* 3. View Full Receipt Page */}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        if (txResultModal.saleId) {
+                          router.visit(route('pos.sales.receipt', txResultModal.saleId))
+                        }
+                      }}
+                      className="gap-1 rounded-xl border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs py-4"
+                    >
+                      <Receipt className="size-3.5 shrink-0" />
+                      Lihat Nota
+                    </Button>
+                  </div>
+                ) : null}
 
                 <Button
                   type="button"
-                  onClick={() => setTxResultModal(null)}
-                  className="w-full gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-5 shadow-md text-sm mt-1"
+                  onClick={() => {
+                    setTxResultModal(null)
+                    focusScan()
+                  }}
+                  className="w-full gap-2 rounded-xl bg-navy-900 hover:bg-navy-950 dark:bg-amber-500 dark:text-navy-950 text-white font-bold py-4 shadow-md text-sm mt-1"
                 >
                   <PlusCircle className="size-4.5" />
-                  Transaksi Baru
+                  Transaksi Baru (Esc)
                 </Button>
               </div>
             ) : (

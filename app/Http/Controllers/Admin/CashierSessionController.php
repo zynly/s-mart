@@ -292,4 +292,39 @@ class CashierSessionController extends Controller
             ], 500);
         }
     }
+
+    public function exportPdf(CashierSession $cashierSession)
+    {
+        $session = $cashierSession->loadMissing([
+            'user',
+            'cashAccount',
+            'outlet',
+            'cashTransactions.cashCategory',
+            'sales.member',
+            'sales.payments.paymentMethod',
+            'sales.items.product',
+        ]);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.cashier-session-audit', [
+            'session' => $session,
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->stream("audit-sesi-{$session->reference}.pdf");
+    }
+
+    public function exportExcel(CashierSession $cashierSession)
+    {
+        $session = $cashierSession->loadMissing([
+            'user',
+            'cashAccount',
+            'outlet',
+            'cashTransactions.cashCategory',
+            'sales.member',
+            'sales.payments.paymentMethod',
+            'sales.items.product',
+        ]);
+
+        return (new \App\Exports\CashierSessionAuditExport($session))
+            ->download("audit-sesi-{$session->reference}.xlsx");
+    }
 }

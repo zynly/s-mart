@@ -117,6 +117,8 @@ class DashboardController extends Controller
 
         if ($user->can('member.view')) {
             $panels['totalMembers'] = Member::where('status', 'active')->count();
+            $panels['topSpenders'] = $this->topSpenderMembers();
+            $panels['debtors'] = $this->debtorMembers();
         }
 
         if ($user->can('deposit.adjust')) {
@@ -322,6 +324,67 @@ class DashboardController extends Controller
                 return $next->between($now->startOfDay(), $end->endOfDay());
             })
             ->map(fn ($m) => ['name' => $m->name, 'birth_date' => $m->birth_date->format('Y-m-d')])
+            ->values()->all();
+    }
+
+    private function topSpenderMembers(): array
+    {
+        return Sale::query()
+            ->join('members', 'members.id', '=', 'sales.member_id')
+            ->whereNotNull('sales.member_id')
+            ->where('sales.status', 'completed')
+            ->groupBy('members.id', 'members.name', 'members.member_number', 'members.class_name', 'members.major')
+            ->selectRaw('
+                members.id,
+                members.name,
+                members.member_number,
+                members.class_name,
+                members.major,
+                COUNT(sales.id) as total_transaksi,
+                SUM(sales.grand_total) as total_belanja
+            ')
+            ->orderByDesc('total_belanja')
+            ->limit(5)
+            ->get()
+            ->map(fn ($m) => [
+                'id' => $m->id,
+                'name' => $m->name,
+                'member_number' => $m->member_number,
+                'class_name' => $m->class_name,
+                'major' => $m->major,
+                'total_transaksi' => (int) $m->total_transaksi,
+                'total_belanja' => (int) $m->total_belanja,
+            ])
+            ->values()->all();
+    }
+
+    private function debtorMembers(): array
+    {
+        return Receivable::query()
+            ->join('members', 'members.id', '=', 'receivables.member_id')
+            ->whereIn('receivables.status', ['unpaid', 'partial', 'overdue'])
+            ->groupBy('members.id', 'members.name', 'members.member_number', 'members.class_name', 'members.major')
+            ->selectRaw('
+                members.id,
+                members.name,
+                members.member_number,
+                members.class_name,
+                members.major,
+                COUNT(receivables.id) as total_bon,
+                SUM(receivables.remaining_amount) as total_hutang
+            ')
+            ->orderByDesc('total_hutang')
+            ->limit(5)
+            ->get()
+            ->map(fn ($m) => [
+                'id' => $m->id,
+                'name' => $m->name,
+                'member_number' => $m->member_number,
+                'class_name' => $m->class_name,
+                'major' => $m->major,
+                'total_bon' => (int) $m->total_bon,
+                'total_hutang' => (int) $m->total_hutang,
+            ])
             ->values()->all();
     }
 }

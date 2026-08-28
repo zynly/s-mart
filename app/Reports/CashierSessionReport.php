@@ -97,7 +97,12 @@ class CashierSessionReport extends BaseReport
                 cashier_sessions.expected_cash as expected_cash,
                 cashier_sessions.actual_cash as actual_cash,
                 cashier_sessions.difference as selisih,
-                cashier_sessions.status as status,
+                CASE 
+                    WHEN cashier_sessions.status = 'closed' THEN 'Ditutup'
+                    WHEN cashier_sessions.status = 'force_closed' THEN 'Ditutup Paksa'
+                    WHEN cashier_sessions.status = 'open' THEN 'Buka / Aktif'
+                    ELSE cashier_sessions.status 
+                END as status,
                 cashier_sessions.difference_reason as catatan
             ")
             ->orderByDesc('cashier_sessions.opened_at');

@@ -49,12 +49,34 @@ type Charts = {
   byHour: { jam: number; transaksi: number }[]
 }
 
+export type MemberSpender = {
+  id: number
+  name: string
+  member_number: string
+  class_name: string | null
+  major: string | null
+  total_transaksi: number
+  total_belanja: number
+}
+
+export type MemberDebtor = {
+  id: number
+  name: string
+  member_number: string
+  class_name: string | null
+  major: string | null
+  total_bon: number
+  total_hutang: number
+}
+
 type Panels = {
   stockAlerts?: { critical: number; expiringSoon: number }
   debtsDue?: number
   receivablesOverdue?: number
   totalMembers?: number
   reconciliationIssues?: number
+  topSpenders?: MemberSpender[]
+  debtors?: MemberDebtor[]
 }
 
 type ManagerViewProps = {
@@ -452,6 +474,93 @@ function ManagerDashboard({ statCards, charts, recentSales, topProducts, cashier
                       <p className="font-bold text-navy-950 dark:text-white">{c.kasir}</p>
                     </div>
                     <Money amount={c.omzet} size="sm" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* 3.5. MEMBERS HIGHLIGHT ROW: Orang yang Sering Jajan & Orang yang Hutang */}
+      {(panels.topSpenders || panels.debtors) && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {panels.topSpenders && (
+            <Card className="rounded-2xl border-slate-200/80 dark:border-slate-800 shadow-2xs">
+              <CardHeader className="p-4 pb-3 border-b border-slate-100 dark:border-slate-800 flex flex-row items-center justify-between">
+                <CardTitle className="text-xs font-extrabold uppercase tracking-wider text-navy-950 dark:text-white flex items-center gap-2">
+                  <div className="flex size-7 items-center justify-center rounded-lg bg-teal-100 text-teal-700">
+                    <Sparkles className="size-4" />
+                  </div>
+                  <span>Santri / Anggota Paling Sering Jajan (Top Spenders)</span>
+                </CardTitle>
+                <Link href={route('admin.members.index')} className="text-[11px] font-bold text-teal-600 hover:text-teal-700 flex items-center gap-0.5">
+                  <span>Lihat Semua</span>
+                  <ArrowUpRight className="size-3" />
+                </Link>
+              </CardHeader>
+              <CardContent className="p-4 flex flex-col gap-3">
+                {panels.topSpenders.length === 0 && <EmptyState title="Belum ada data transaksi anggota" />}
+                {panels.topSpenders.map((m, idx) => (
+                  <div key={m.id} className="flex items-center justify-between text-xs py-2 px-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-surface-alt transition-colors">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex size-6 items-center justify-center rounded-full bg-teal-100 dark:bg-teal-950/60 text-[10px] font-mono font-black text-teal-800 dark:text-teal-300">
+                        #{idx + 1}
+                      </span>
+                      <div>
+                        <p className="font-bold text-navy-950 dark:text-white flex items-center gap-1.5">
+                          <span>{m.name}</span>
+                          <span className="text-[10px] font-mono text-slate-400">({m.member_number})</span>
+                        </p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">
+                          {m.class_name ? `Kelas ${m.class_name}` : ''} {m.major ? `· ${m.major}` : ''} · <span className="font-bold text-teal-700 dark:text-teal-400">{m.total_transaksi}x Transaksi</span>
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <Money amount={m.total_belanja} size="sm" className="font-extrabold text-teal-600 dark:text-teal-400" />
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {panels.debtors && (
+            <Card className="rounded-2xl border-slate-200/80 dark:border-slate-800 shadow-2xs">
+              <CardHeader className="p-4 pb-3 border-b border-slate-100 dark:border-slate-800 flex flex-row items-center justify-between">
+                <CardTitle className="text-xs font-extrabold uppercase tracking-wider text-navy-950 dark:text-white flex items-center gap-2">
+                  <div className="flex size-7 items-center justify-center rounded-lg bg-orange-100 text-orange-700">
+                    <Scale className="size-4" />
+                  </div>
+                  <span>Anggota Memiliki Tanggungan Piutang / Hutang</span>
+                </CardTitle>
+                <Link href={route('admin.receivables.index')} className="text-[11px] font-bold text-orange-600 hover:text-orange-700 flex items-center gap-0.5">
+                  <span>Buka Piutang</span>
+                  <ArrowUpRight className="size-3" />
+                </Link>
+              </CardHeader>
+              <CardContent className="p-4 flex flex-col gap-3">
+                {panels.debtors.length === 0 && <EmptyState title="Tidak ada anggota yang memiliki tunggakan piutang" />}
+                {panels.debtors.map((d, idx) => (
+                  <div key={d.id} className="flex items-center justify-between text-xs py-2 px-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-surface-alt transition-colors">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex size-6 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-950/60 text-[10px] font-mono font-black text-orange-800 dark:text-orange-300">
+                        #{idx + 1}
+                      </span>
+                      <div>
+                        <p className="font-bold text-navy-950 dark:text-white flex items-center gap-1.5">
+                          <span>{d.name}</span>
+                          <span className="text-[10px] font-mono text-slate-400">({d.member_number})</span>
+                        </p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">
+                          {d.class_name ? `Kelas ${d.class_name}` : ''} {d.major ? `· ${d.major}` : ''} · <span className="font-bold text-orange-700 dark:text-orange-400">{d.total_bon} Nota Bon</span>
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <Money amount={d.total_hutang} size="sm" className="font-extrabold text-rose-600 dark:text-rose-400" />
+                    </div>
                   </div>
                 ))}
               </CardContent>

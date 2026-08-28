@@ -6,7 +6,7 @@ import type { ColumnDef } from '@tanstack/react-table'
 import {
   AlertCircle, AlertTriangle, ArrowDownCircle, ArrowDownLeft, ArrowUpCircle,
   ArrowUpRight, Banknote, Check, CheckCircle2, ChevronDown, ChevronUp, Coins, CreditCard, DollarSign,
-  Edit2, FileText, History, Info, Loader2, Lock, PlayCircle, Plus, PlusCircle, QrCode, Receipt, ShieldAlert,
+  Edit2, FileSpreadsheet, FileText, History, Info, Loader2, Lock, PlayCircle, Plus, PlusCircle, QrCode, Receipt, ShieldAlert,
   ShoppingBag, Store, UserCheck, Wallet, XCircle,
 } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
@@ -1198,15 +1198,40 @@ export default function Index({
 
       {/* Modal Detail Transaksi & Item Barang Sesi Kasir */}
       <Dialog open={detailModalOpen} onOpenChange={setDetailModalOpen}>
-        <DialogContent className="sm:max-w-[850px] border-slate-200 dark:border-slate-800 dark:bg-surface max-h-[85vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-white">
-              <Receipt className="size-5 text-amber-500" />
-              Audit & Detail Transaksi Sesi — {sessionDetail?.session.reference ?? 'Memuat...'}
-            </DialogTitle>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Rincian ringkasan kas, daftar nota penjualan, dan item barang yang dibeli pada sesi kasir ini.
-            </p>
+        <DialogContent className="sm:max-w-[880px] border-slate-200 dark:border-slate-800 dark:bg-surface max-h-[88vh] flex flex-col">
+          <DialogHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-white">
+                  <Receipt className="size-5 text-amber-500" />
+                  <span>Audit & Detail Transaksi Sesi — {sessionDetail?.session.reference ?? 'Memuat...'}</span>
+                </DialogTitle>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Rincian ringkasan kas, daftar nota penjualan, dan item barang yang dibeli pada sesi kasir ini.
+                </p>
+              </div>
+
+              {sessionDetail && (
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs h-8 gap-1.5 shadow-xs"
+                    onClick={() => window.open(route('admin.cashier-session.export-pdf', sessionDetail.session.id), '_blank')}
+                  >
+                    <FileText className="size-3.5" />
+                    <span>Ekspor PDF</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-8 gap-1.5 shadow-xs"
+                    onClick={() => window.open(route('admin.cashier-session.export-excel', sessionDetail.session.id), '_blank')}
+                  >
+                    <FileSpreadsheet className="size-3.5" />
+                    <span>Ekspor Excel (.xlsx)</span>
+                  </Button>
+                </div>
+              )}
+            </div>
           </DialogHeader>
 
           {detailLoading ? (
@@ -1451,7 +1476,30 @@ export default function Index({
             </div>
           ) : null}
 
-          <DialogFooter>
+          <DialogFooter className="flex flex-row items-center justify-between sm:justify-between border-t border-slate-100 dark:border-slate-800 pt-3">
+            {sessionDetail ? (
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-red-600 border-red-200 hover:bg-red-50 text-xs font-bold gap-1.5 h-8"
+                  onClick={() => window.open(route('admin.cashier-session.export-pdf', sessionDetail.session.id), '_blank')}
+                >
+                  <FileText className="size-3.5" />
+                  <span>Unduh PDF</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-emerald-700 border-emerald-200 hover:bg-emerald-50 text-xs font-bold gap-1.5 h-8"
+                  onClick={() => window.open(route('admin.cashier-session.export-excel', sessionDetail.session.id), '_blank')}
+                >
+                  <FileSpreadsheet className="size-3.5" />
+                  <span>Unduh Excel (.xlsx)</span>
+                </Button>
+              </div>
+            ) : <div />}
+
             <Button variant="outline" onClick={() => setDetailModalOpen(false)}>
               Tutup
             </Button>

@@ -57,6 +57,19 @@ function formatValue(value: string | number | null, type: string) {
       return formatDate(String(value))
     case 'datetime':
       return formatDateTime(String(value))
+    case 'badge': {
+      const str = String(value)
+      if (str === 'closed' || str === 'Ditutup') {
+        return <Badge variant="outline" className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 text-[11px] font-bold">Ditutup</Badge>
+      }
+      if (str === 'force_closed' || str === 'Ditutup Paksa') {
+        return <Badge variant="outline" className="bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border-rose-300 text-[11px] font-bold">Ditutup Paksa</Badge>
+      }
+      if (str === 'open' || str === 'Buka / Aktif') {
+        return <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-300 text-[11px] font-bold">Aktif / Buka</Badge>
+      }
+      return <Badge variant="outline" className="text-[11px] font-bold">{str}</Badge>
+    }
     default:
       return String(value)
   }
@@ -67,7 +80,11 @@ function formatValueRaw(value: string | number | null, type: string): string {
   if (type === 'money' || type === 'signed_money') {
     return 'Rp ' + new Intl.NumberFormat('id-ID').format(Number(value))
   }
-  return String(value)
+  const str = String(value)
+  if (str === 'closed') return 'Ditutup'
+  if (str === 'force_closed') return 'Ditutup Paksa'
+  if (str === 'open') return 'Buka / Aktif'
+  return str
 }
 
 function humanizeKey(key: string): string {

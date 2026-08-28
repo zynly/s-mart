@@ -62,6 +62,12 @@ class ReportExport extends DefaultValueBinder implements FromQuery, WithCustomVa
         return array_map(function (array $column) use ($row) {
             $value = $row->{$column['key']} ?? null;
 
+            if ($column['key'] === 'status' && is_string($value)) {
+                if ($value === 'force_closed') $value = 'Ditutup Paksa';
+                elseif ($value === 'closed') $value = 'Ditutup';
+                elseif ($value === 'open') $value = 'Buka / Aktif';
+            }
+
             return match ($column['type']) {
                 'money', 'signed_money' => (int) $value,
                 'number', 'signed_number' => is_numeric($value) ? $value + 0 : $value,
