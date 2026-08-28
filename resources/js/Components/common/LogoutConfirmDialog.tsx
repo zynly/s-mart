@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { router } from '@inertiajs/react'
 import { LogOut } from 'lucide-react'
 import { toast } from 'sonner'
@@ -61,7 +61,7 @@ export function LogoutConfirmDialog({
         <AlertDialogFooter className="mt-5 sm:mt-6 flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
           <AlertDialogCancel
             disabled={loading}
-            className="h-11 rounded-xl border-slate-200 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 font-semibold text-xs text-slate-700 dark:text-slate-300"
+            className="h-11 rounded-xl border-slate-300 bg-white hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 font-bold text-sm text-slate-700 dark:text-slate-200 cursor-pointer"
           >
             Tetap di Sini
           </AlertDialogCancel>
@@ -70,9 +70,9 @@ export function LogoutConfirmDialog({
             variant="destructive"
             disabled={loading}
             onClick={handleLogout}
-            className="h-11 gap-2 rounded-xl bg-rose-600 hover:bg-rose-700 font-bold text-xs shadow-md shadow-rose-600/25 text-white"
+            className="h-11 gap-2 rounded-xl bg-rose-600 hover:bg-rose-700 font-extrabold text-sm shadow-md shadow-rose-600/25 text-white cursor-pointer"
           >
-            <LogOut className="size-4" />
+            <LogOut className="size-4.5 stroke-[2.2]" />
             {loading ? 'Memproses Keluar...' : 'Ya, Keluar Akun'}
           </Button>
         </AlertDialogFooter>

@@ -426,9 +426,9 @@ export default function Edit({ setting }: SettingProps) {
           <Button
             variant="destructive"
             onClick={() => setLogoutOpen(true)}
-            className="w-full sm:w-auto gap-2 rounded-xl font-bold bg-rose-600 hover:bg-rose-700 shadow-sm"
+            className="h-11 px-5 w-full sm:w-auto gap-2 rounded-xl font-extrabold text-sm text-white bg-rose-600 hover:bg-rose-700 shadow-md shadow-rose-500/25 tracking-wide cursor-pointer"
           >
-            <LogOut className="size-4" />
+            <LogOut className="size-4.5 stroke-[2.2]" />
             Keluar Sekarang
           </Button>
         </CardContent>

@@ -72,8 +72,13 @@ export default function WaliLayout({ children, active }: WaliLayoutProps) {
             readAllRouteName="wali.notifications.read-all"
             onCountChange={refresh}
           />
-          <Button size="sm" variant="ghost" onClick={() => setLogoutOpen(true)} className="gap-1.5 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40">
-            <LogOut className="size-3.5" />
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setLogoutOpen(true)}
+            className="h-8.5 px-3 gap-1.5 rounded-xl border border-rose-200 bg-rose-50/90 text-rose-700 hover:bg-rose-100 hover:text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300 font-extrabold text-xs shadow-xs cursor-pointer"
+          >
+            <LogOut className="size-3.5 stroke-[2.2]" />
             <span>Keluar</span>
           </Button>
         </div>
