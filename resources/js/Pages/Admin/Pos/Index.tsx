@@ -941,10 +941,28 @@ export default function Index({
         })),
       },
       {
-        onSuccess: () => {
+        onSuccess: (page) => {
+          const flash = (page.props as any).flash
+          const saleId = flash?.completed_sale_id
+          const saleRef = flash?.completed_sale_ref
+
           toast.success('Pembayaran Berhasil! Transaksi kasir telah dicatat.', {
             description: 'Keranjang belanja telah dikosongkan.',
           })
+
+          if (saleId) setLastSaleId(saleId)
+
+          setTxResultModal({
+            open: true,
+            type: 'success',
+            title: 'Transaksi Multi-Metode Berhasil!',
+            message: `Pembayaran senilai Rp ${finalPayable.toLocaleString('id-ID')} berhasil dicatat ke sistem.`,
+            saleId: saleId ?? null,
+            saleRef: saleRef ?? null,
+            amount: finalPayable,
+            methodName: 'Multi Pembayaran',
+          })
+
           setCart([])
           setMember(null)
           setAppliedCoupon('')
