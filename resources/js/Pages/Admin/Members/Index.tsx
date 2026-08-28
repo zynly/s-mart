@@ -9,6 +9,7 @@ import { DataTable } from '@/Components/common/DataTable'
 import { Money } from '@/Components/common/Money'
 import { formatMoneyShort } from '@/Lib/money'
 import { MoneyInput } from '@/Components/common/MoneyInput'
+import { cn } from '@/Lib/utils'
 import { ConfirmDialog } from '@/Components/common/ConfirmDialog'
 import { PinInput } from '@/Components/common/PinInput'
 import { Button } from '@/Components/ui/button'
@@ -855,39 +856,57 @@ export default function Index({
               </TabsList>
 
               <TabsContent value="identitas" className="flex flex-col gap-4 mt-2">
-                {/* 1. TIPE / KATEGORI ANGGOTA (DITARUH DI PALING ATAS) */}
-                <div className="space-y-1.5 rounded-xl border border-blue-200/80 bg-blue-50/60 p-3.5 dark:border-blue-900/50 dark:bg-blue-950/30">
-                  <Label className="text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
-                    Kategori / Tipe Anggota <span className="text-rose-500">*</span>
-                  </Label>
-                  <Select
-                    value={form.data.type}
-                    onValueChange={(v) => {
-                      const newType = v as MemberRow['type']
-                      form.setData((prev) => ({
-                        ...prev,
-                        type: newType,
-                        nis: newType === 'santri' ? prev.nis : '',
-                        class_name: newType === 'santri' ? prev.class_name : '',
-                        major: newType === 'santri' ? prev.major : '',
-                      }))
-                      if (newType !== 'santri' && formTab === 'wali') {
-                        setFormTab('identitas')
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="bg-white dark:bg-slate-900 font-semibold">
-                      <SelectValue placeholder="Pilih Tipe Anggota" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(TYPE_LABELS).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Pilih tipe untuk menyesuaikan form data yang dibutuhkan.
-                  </p>
+                {/* 1. TIPE / KATEGORI ANGGOTA (CEKBOX / RADIO CARD KE SAMPING) */}
+                <div className="space-y-2 rounded-xl border border-blue-200/80 bg-blue-50/60 p-3.5 dark:border-blue-900/50 dark:bg-blue-950/30">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
+                      Pilih Kategori / Tipe Anggota <span className="text-rose-500">*</span>
+                    </Label>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">Tinggal centang/klik</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {Object.entries(TYPE_LABELS).map(([value, label]) => {
+                      const isSelected = form.data.type === value
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => {
+                            const newType = value as MemberRow['type']
+                            form.setData((prev) => ({
+                              ...prev,
+                              type: newType,
+                              nis: newType === 'santri' ? prev.nis : '',
+                              class_name: newType === 'santri' ? prev.class_name : '',
+                              major: newType === 'santri' ? prev.major : '',
+                            }))
+                            if (newType !== 'santri' && formTab === 'wali') {
+                              setFormTab('identitas')
+                            }
+                          }}
+                          className={cn(
+                            'flex items-center gap-2.5 rounded-xl border p-2.5 text-left text-xs font-bold transition-all duration-200 cursor-pointer select-none',
+                            isSelected
+                              ? 'border-blue-600 bg-blue-600 text-white shadow-sm shadow-blue-500/30 dark:border-blue-500 dark:bg-blue-600'
+                              : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50/60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-blue-800',
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              'flex size-4 shrink-0 items-center justify-center rounded-full border transition-all',
+                              isSelected
+                                ? 'border-white bg-white text-blue-600'
+                                : 'border-slate-300 bg-transparent dark:border-slate-600',
+                            )}
+                          >
+                            {isSelected && <div className="size-2 rounded-full bg-blue-600" />}
+                          </div>
+                          <span className="truncate">{label}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
 
                 {/* 2. NAMA LENGKAP */}
