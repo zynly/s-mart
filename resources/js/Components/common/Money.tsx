@@ -1,5 +1,5 @@
 import { cn } from '@/Lib/utils'
-import { formatMoney } from '@/Lib/money'
+import { formatMoney, formatMoneyShort } from '@/Lib/money'
 
 type MoneyProps = {
   amount: number
@@ -7,6 +7,7 @@ type MoneyProps = {
   showSign?: boolean
   size?: 'sm' | 'md' | 'lg' | 'xl'
   inline?: boolean
+  compact?: boolean
 }
 
 const sizeClass: Record<NonNullable<MoneyProps['size']>, string> = {
@@ -16,13 +17,17 @@ const sizeClass: Record<NonNullable<MoneyProps['size']>, string> = {
   xl: 'text-2xl font-bold',
 }
 
-export function Money({ amount, className, showSign = false, size = 'md' }: MoneyProps) {
+export function Money({ amount, className, showSign = false, size = 'md', compact = false }: MoneyProps) {
   const sign = showSign && amount > 0 ? '+' : ''
+  const displayValue = compact ? formatMoneyShort(amount) : formatMoney(amount)
+  const fullValue = formatMoney(amount)
 
   return (
     <span
+      title={compact ? fullValue : undefined}
       className={cn(
         'font-mono tabular-nums whitespace-nowrap',
+        compact && 'cursor-help',
         sizeClass[size],
         amount < 0 && 'text-danger',
         showSign && amount > 0 && 'text-success',
@@ -30,7 +35,7 @@ export function Money({ amount, className, showSign = false, size = 'md' }: Mone
       )}
     >
       {sign}
-      {formatMoney(amount)}
+      {displayValue}
     </span>
   )
 }

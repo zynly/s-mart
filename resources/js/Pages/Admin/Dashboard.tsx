@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card'
 import { Button } from '@/Components/ui/button'
 import { Badge } from '@/Components/ui/badge'
 import { useChartColors } from '@/Lib/chartTheme'
-import { formatMoney } from '@/Lib/money'
+import { formatMoney, formatMoneyShort } from '@/Lib/money'
 import type { PageProps } from '@/Types'
 
 type CashierSession = {
@@ -246,7 +246,8 @@ function ManagerDashboard({ statCards, charts, recentSales, topProducts, cashier
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <StatCard
             label="Penjualan Hari Ini"
-            value={formatMoney(statCards.omzetHariIni)}
+            value={formatMoneyShort(statCards.omzetHariIni)}
+            title={formatMoney(statCards.omzetHariIni)}
             icon={Wallet}
             trend={statCards.omzetTrend}
             trendLabel="vs kemarin"
@@ -254,7 +255,8 @@ function ManagerDashboard({ statCards, charts, recentSales, topProducts, cashier
           />
           <StatCard
             label="Laba Kotor Hari Ini"
-            value={statCards.labaKotorHariIni !== null ? formatMoney(statCards.labaKotorHariIni) : '-'}
+            value={statCards.labaKotorHariIni !== null ? formatMoneyShort(statCards.labaKotorHariIni) : '-'}
+            title={statCards.labaKotorHariIni !== null ? formatMoney(statCards.labaKotorHariIni) : undefined}
             icon={HandCoins}
             color="amber"
           />
@@ -266,13 +268,15 @@ function ManagerDashboard({ statCards, charts, recentSales, topProducts, cashier
           />
           <StatCard
             label="Rata-rata per Transaksi"
-            value={formatMoney(statCards.rataRataNota)}
+            value={formatMoneyShort(statCards.rataRataNota)}
+            title={formatMoney(statCards.rataRataNota)}
             icon={Receipt}
             color="indigo"
           />
           <StatCard
             label="Saldo Deposit Beredar"
-            value={formatMoney(statCards.saldoDeposit ?? 0)}
+            value={formatMoneyShort(statCards.saldoDeposit ?? 0)}
+            title={formatMoney(statCards.saldoDeposit ?? 0)}
             icon={CreditCard}
             color="purple"
           />

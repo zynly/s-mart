@@ -9,9 +9,18 @@ export function formatMoneyShort(amount: number): string {
   const sign = amount < 0 ? '-' : ''
   const abs = Math.abs(amount)
 
-  if (abs >= 1_000_000_000) return `${sign}Rp ${trimZero(abs / 1_000_000_000)}M`
-  if (abs >= 1_000_000) return `${sign}Rp ${trimZero(abs / 1_000_000)}jt`
-  if (abs >= 1_000) return `${sign}Rp ${trimZero(abs / 1_000)}rb`
+  if (abs >= 1_000_000_000_000) {
+    return `${sign}Rp ${formatCompactDecimals(abs / 1_000_000_000_000)} T`
+  }
+  if (abs >= 1_000_000_000) {
+    return `${sign}Rp ${formatCompactDecimals(abs / 1_000_000_000)} M`
+  }
+  if (abs >= 1_000_000) {
+    return `${sign}Rp ${formatCompactDecimals(abs / 1_000_000)} Jt`
+  }
+  if (abs >= 1_000) {
+    return `${sign}Rp ${formatCompactDecimals(abs / 1_000)} rb`
+  }
 
   return formatMoney(amount)
 }
@@ -28,6 +37,10 @@ export function roundMoney(amount: number, step = 100): number {
   return Math.round(amount / step) * step
 }
 
-function trimZero(value: number): string {
-  return value.toFixed(1).replace(/,0$/, '').replace('.', ',').replace(/,0$/, '')
+function formatCompactDecimals(value: number): string {
+  if (Number.isInteger(value)) {
+    return String(value)
+  }
+  const formatted = value.toFixed(2).replace(/\.?0+$/, '')
+  return formatted.replace('.', ',')
 }

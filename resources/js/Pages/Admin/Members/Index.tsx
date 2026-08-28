@@ -7,6 +7,7 @@ import { PageHeader } from '@/Components/common/PageHeader'
 import { PageTabs } from '@/Components/common/PageTabs'
 import { DataTable } from '@/Components/common/DataTable'
 import { Money } from '@/Components/common/Money'
+import { formatMoneyShort } from '@/Lib/money'
 import { MoneyInput } from '@/Components/common/MoneyInput'
 import { ConfirmDialog } from '@/Components/common/ConfirmDialog'
 import { PinInput } from '@/Components/common/PinInput'
@@ -652,8 +653,11 @@ export default function Index({
               </div>
             </div>
             <div className="mt-2">
-              <div className="text-2xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400">
-                Rp {Math.round(Number(stats.total_deposit ?? 0)).toLocaleString('id-ID')}
+              <div
+                className="text-2xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400 cursor-help"
+                title={`Rp ${Math.round(Number(stats.total_deposit ?? 0)).toLocaleString('id-ID')}`}
+              >
+                {formatMoneyShort(Number(stats.total_deposit ?? 0))}
               </div>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 Saldo aktif tersimpan e-money

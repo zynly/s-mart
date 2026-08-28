@@ -5,6 +5,7 @@ import { cn } from '@/Lib/utils'
 type StatCardProps = {
   label: string
   value: string
+  title?: string
   icon?: ComponentType<{ className?: string }>
   trend?: number
   trendLabel?: string
@@ -56,7 +57,7 @@ const COLOR_VARIANTS = {
   },
 }
 
-export function StatCard({ label, value, icon: Icon, trend, trendLabel, color = 'emerald' }: StatCardProps) {
+export function StatCard({ label, value, title, icon: Icon, trend, trendLabel, color = 'emerald' }: StatCardProps) {
   const isPositive = (trend ?? 0) >= 0
   const style = COLOR_VARIANTS[color] ?? COLOR_VARIANTS.emerald
 
@@ -73,7 +74,13 @@ export function StatCard({ label, value, icon: Icon, trend, trendLabel, color = 
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</p>
-          <p className="mt-1 font-mono text-2xl font-black tracking-tight text-navy-950 dark:text-white tabular-nums truncate">
+          <p
+            className={cn(
+              'mt-1 font-mono text-2xl font-black tracking-tight text-navy-950 dark:text-white tabular-nums truncate',
+              title && 'cursor-help',
+            )}
+            title={title || value}
+          >
             {value}
           </p>
 
