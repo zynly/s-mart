@@ -149,6 +149,7 @@ export default function Index({
   const [majorFilter, setMajorFilter] = useState(filters?.major ?? '')
   const [statusFilter, setStatusFilter] = useState(filters?.status ?? '')
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [formTab, setFormTab] = useState<'identitas' | 'wali' | 'level'>('identitas')
   const [sampleCardOpen, setSampleCardOpen] = useState(false)
   const [editing, setEditing] = useState<MemberRow | null>(null)
   const [resetPinTarget, setResetPinTarget] = useState<MemberRow | null>(null)
@@ -215,6 +216,7 @@ export default function Index({
 
   function openCreate() {
     setEditing(null)
+    setFormTab('identitas')
     form.reset()
     form.clearErrors()
     setSheetOpen(true)
@@ -222,6 +224,7 @@ export default function Index({
 
   function openEdit(row: MemberRow) {
     setEditing(row)
+    setFormTab('identitas')
     form.setData({
       name: row.name,
       nis: row.nis ?? '',
@@ -843,30 +846,38 @@ export default function Index({
         size="xl"
         footer={<Button type="submit" form="member-form" disabled={form.processing}>Simpan</Button>}
       >
-          <form id="member-form" onSubmit={submit} className="flex flex-col gap-4">
-            <Tabs defaultValue="identitas">
-              <TabsList>
+        <form id="member-form" onSubmit={submit} className="flex flex-col gap-4">
+            <Tabs value={formTab} onValueChange={(v) => setFormTab(v as 'identitas' | 'wali' | 'level')}>
+              <TabsList className="w-full grid grid-cols-2 sm:grid-cols-3">
                 <TabsTrigger value="identitas">Identitas</TabsTrigger>
-                <TabsTrigger value="wali">Wali</TabsTrigger>
+                {form.data.type === 'santri' && <TabsTrigger value="wali">Wali</TabsTrigger>}
                 <TabsTrigger value="level">Level & Limit</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="identitas" className="flex flex-col gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="m-name">Nama</Label>
-                  <Input id="m-name" value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} />
-                  {form.errors.name && <p className="text-sm text-danger">{form.errors.name}</p>}
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="m-nis">NIS</Label>
-                  <Input id="m-nis" value={form.data.nis} onChange={(e) => form.setData('nis', e.target.value)} />
-                  {form.errors.nis && <p className="text-sm text-danger">{form.errors.nis}</p>}
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Tipe</Label>
-                  <Select value={form.data.type} onValueChange={(v) => form.setData('type', v as MemberRow['type'])}>
-                    <SelectTrigger>
-                      <SelectValue />
+              <TabsContent value="identitas" className="flex flex-col gap-4 mt-2">
+                {/* 1. TIPE / KATEGORI ANGGOTA (DITARUH DI PALING ATAS) */}
+                <div className="space-y-1.5 rounded-xl border border-blue-200/80 bg-blue-50/60 p-3.5 dark:border-blue-900/50 dark:bg-blue-950/30">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
+                    Kategori / Tipe Anggota <span className="text-rose-500">*</span>
+                  </Label>
+                  <Select
+                    value={form.data.type}
+                    onValueChange={(v) => {
+                      const newType = v as MemberRow['type']
+                      form.setData((prev) => ({
+                        ...prev,
+                        type: newType,
+                        nis: newType === 'santri' ? prev.nis : '',
+                        class_name: newType === 'santri' ? prev.class_name : '',
+                        major: newType === 'santri' ? prev.major : '',
+                      }))
+                      if (newType !== 'santri' && formTab === 'wali') {
+                        setFormTab('identitas')
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="bg-white dark:bg-slate-900 font-semibold">
+                      <SelectValue placeholder="Pilih Tipe Anggota" />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(TYPE_LABELS).map(([value, label]) => (
@@ -874,37 +885,95 @@ export default function Index({
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Pilih tipe untuk menyesuaikan form data yang dibutuhkan.
+                  </p>
                 </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="m-class">Kelas</Label>
-                    <Input id="m-class" placeholder="Contoh: X BD, XI PPLG" value={form.data.class_name} onChange={(e) => form.setData('class_name', e.target.value)} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="m-major">Jurusan</Label>
-                    <Select value={form.data.major || 'none'} onValueChange={(v) => form.setData('major', v === 'none' ? '' : v)}>
-                      <SelectTrigger id="m-major">
-                        <SelectValue placeholder="Pilih Jurusan" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Tanpa Jurusan (Fasilitator/Staf)</SelectItem>
-                        {MAJOR_OPTIONS.map((m) => (
-                          <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+
+                {/* 2. NAMA LENGKAP */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="m-name">
+                    Nama Lengkap <span className="text-rose-500">*</span>
+                  </Label>
+                  <Input
+                    id="m-name"
+                    placeholder="Masukkan nama lengkap"
+                    value={form.data.name}
+                    onChange={(e) => form.setData('name', e.target.value)}
+                    required
+                  />
+                  {form.errors.name && <p className="text-sm text-danger">{form.errors.name}</p>}
                 </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="m-entry-year">Tahun Masuk</Label>
-                    <Input
-                      id="m-entry-year"
-                      type="number"
-                      value={form.data.entry_year}
-                      onChange={(e) => form.setData('entry_year', Number(e.target.value))}
-                    />
+
+                {/* 3. KONDISIONAL HANYA UNTUK SANTRI (NIS, KELAS, JURUSAN, TAHUN MASUK) */}
+                {form.data.type === 'santri' && (
+                  <div className="flex flex-col gap-4 rounded-xl border border-emerald-200/80 bg-emerald-50/40 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                    <div className="flex items-center gap-2">
+                      <GraduationCap className="size-4 text-emerald-600 dark:text-emerald-400" />
+                      <span className="text-xs font-bold uppercase tracking-wider text-emerald-900 dark:text-emerald-300">
+                        Data Pendidikan Santri
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="m-nis" className="flex items-center justify-between">
+                        <span>Nomor Induk Santri (NIS) <span className="text-rose-500">*</span></span>
+                        <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium">Digunakan login Wali Santri</span>
+                      </Label>
+                      <Input
+                        id="m-nis"
+                        placeholder="Contoh: 202600001"
+                        value={form.data.nis}
+                        onChange={(e) => form.setData('nis', e.target.value)}
+                        required
+                        className="bg-white dark:bg-slate-900 font-mono"
+                      />
+                      {form.errors.nis && <p className="text-sm text-danger">{form.errors.nis}</p>}
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="m-class">Kelas</Label>
+                        <Input
+                          id="m-class"
+                          placeholder="Contoh: X BD, XI PPLG"
+                          value={form.data.class_name}
+                          onChange={(e) => form.setData('class_name', e.target.value)}
+                          className="bg-white dark:bg-slate-900"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="m-major">Jurusan</Label>
+                        <Select value={form.data.major || 'none'} onValueChange={(v) => form.setData('major', v === 'none' ? '' : v)}>
+                          <SelectTrigger id="m-major" className="bg-white dark:bg-slate-900">
+                            <SelectValue placeholder="Pilih Jurusan" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Pilih Jurusan</SelectItem>
+                            {MAJOR_OPTIONS.map((m) => (
+                              <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="m-entry-year">Tahun Masuk</Label>
+                      <Input
+                        id="m-entry-year"
+                        type="number"
+                        placeholder="Contoh: 2026"
+                        value={form.data.entry_year}
+                        onChange={(e) => form.setData('entry_year', Number(e.target.value))}
+                        className="bg-white dark:bg-slate-900"
+                      />
+                    </div>
                   </div>
+                )}
+
+                {/* 4. DATA UMUM (JENIS KELAMIN, TANGGAL LAHIR, HP, ALAMAT, BERGABUNG) */}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label>Jenis Kelamin</Label>
                     <Select value={form.data.gender || 'none'} onValueChange={(v) => form.setData('gender', v === 'none' ? '' : v)}>
@@ -918,23 +987,40 @@ export default function Index({
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="m-birth">Tanggal Lahir</Label>
+                    <Input id="m-birth" type="date" value={form.data.birth_date} onChange={(e) => form.setData('birth_date', e.target.value)} />
+                  </div>
                 </div>
+
                 <div className="space-y-1.5">
-                  <Label htmlFor="m-birth">Tanggal Lahir</Label>
-                  <Input id="m-birth" type="date" value={form.data.birth_date} onChange={(e) => form.setData('birth_date', e.target.value)} />
+                  <Label htmlFor="m-phone">
+                    No. HP {form.data.type !== 'santri' && <span className="text-xs text-slate-500 dark:text-slate-400 font-normal">(Kontak Utama)</span>}
+                  </Label>
+                  <Input
+                    id="m-phone"
+                    placeholder="Contoh: 081234567890"
+                    value={form.data.phone}
+                    onChange={(e) => form.setData('phone', e.target.value)}
+                  />
+                  {form.errors.phone && <p className="text-sm text-danger">{form.errors.phone}</p>}
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="m-phone">No. HP</Label>
-                  <Input id="m-phone" value={form.data.phone} onChange={(e) => form.setData('phone', e.target.value)} />
-                </div>
+
                 <div className="space-y-1.5">
                   <Label htmlFor="m-address">Alamat</Label>
-                  <Textarea id="m-address" value={form.data.address} onChange={(e) => form.setData('address', e.target.value)} />
+                  <Textarea
+                    id="m-address"
+                    placeholder="Alamat domisili anggota"
+                    value={form.data.address}
+                    onChange={(e) => form.setData('address', e.target.value)}
+                  />
                 </div>
+
                 <div className="space-y-1.5">
                   <Label htmlFor="m-joined">Tanggal Bergabung</Label>
                   <Input id="m-joined" type="date" value={form.data.joined_at} onChange={(e) => form.setData('joined_at', e.target.value)} />
                 </div>
+
                 {editing && (
                   <div className="space-y-1.5">
                     <Label>Status</Label>

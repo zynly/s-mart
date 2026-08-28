@@ -30,9 +30,9 @@ class UpdateMemberRequest extends FormRequest
         // pertahanan berlapis di backend, terlepas dari perbaikan prefill
         // di frontend (Members/Index.tsx openEdit()).
         return [
-            'name' => ['required', 'string', 'max:255'],
             'type' => ['required', 'in:santri,fasilitator,staff,public'],
-            'nis' => ['sometimes', 'nullable', 'string', 'max:30', Rule::unique('members', 'nis')->ignore($memberId)],
+            'name' => ['required', 'string', 'max:255'],
+            'nis' => ['sometimes', 'required_if:type,santri', 'nullable', 'string', 'max:30', Rule::unique('members', 'nis')->ignore($memberId)],
             'member_level_id' => ['sometimes', 'nullable', 'exists:member_levels,id'],
             'class_name' => ['sometimes', 'nullable', 'string', 'max:30'],
             'major' => ['sometimes', 'nullable', 'string', 'max:30'],
@@ -53,6 +53,14 @@ class UpdateMemberRequest extends FormRequest
             'blocked_categories.*' => ['integer', 'exists:categories,id'],
             'status' => ['sometimes', 'nullable', 'in:active,inactive,graduated,transferred,suspended'],
             'joined_at' => ['sometimes', 'nullable', 'date'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'nis.required_if' => 'NIS wajib diisi untuk anggota dengan tipe Santri.',
+            'nis.unique' => 'NIS ini sudah digunakan oleh anggota lain.',
         ];
     }
 }

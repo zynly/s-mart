@@ -17,10 +17,10 @@ class StoreMemberRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
-            'nis' => ['nullable', 'string', 'max:30', 'unique:members,nis'],
-            'member_level_id' => ['nullable', 'exists:member_levels,id'],
             'type' => ['required', 'in:santri,fasilitator,staff,public'],
+            'name' => ['required', 'string', 'max:255'],
+            'nis' => ['required_if:type,santri', 'nullable', 'string', 'max:30', 'unique:members,nis'],
+            'member_level_id' => ['nullable', 'exists:member_levels,id'],
             'class_name' => ['nullable', 'string', 'max:30'],
             'major' => ['nullable', 'string', 'max:30'],
             'entry_year' => ['nullable', 'integer', 'min:2000', 'max:2100'],
@@ -40,6 +40,14 @@ class StoreMemberRequest extends FormRequest
             'blocked_categories.*' => ['integer', 'exists:categories,id'],
             'status' => ['nullable', 'in:active,inactive,graduated,transferred,suspended'],
             'joined_at' => ['nullable', 'date'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'nis.required_if' => 'NIS wajib diisi untuk anggota dengan tipe Santri.',
+            'nis.unique' => 'NIS ini sudah digunakan oleh anggota lain.',
         ];
     }
 }
