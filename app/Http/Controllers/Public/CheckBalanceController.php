@@ -17,55 +17,51 @@ class CheckBalanceController extends Controller
 
     public function check(Request $request): Response
     {
-        // Audit Fase 6 (Temuan Tinggi): member_number berformat sekuensial
-        // dapat ditebak sepenuhnya (tahun+nomor urut) — sebelumnya nomor
-        // ITU SAJA sudah cukup membuka saldo persis, dibatasi cuma
-        // throttle per-IP yang longgar (10/menit) untuk ruang ID yang
-        // kecil. Sekarang wajib faktor kedua (tanggal lahir) yang tidak
-        // bisa ditebak dari nomor anggota — wali/santri pasti tahu,
-        // penyerang acak tidak. Throttle juga diperketat (lihat routes/web.php).
         $data = $request->validate([
-            'member_number' => ['required', 'string', 'max:30'],
-            'birth_date' => ['required', 'date'],
+            'identity' => ['required', 'string', 'max:100'],
+        ], [
+            'identity.required' => 'Masukkan NIS atau Nama Santri/Anggota.',
         ]);
 
-        $member = Member::where('member_number', $data['member_number'])
-            ->whereDate('birth_date', $data['birth_date'])
-            ->where('status', 'active')
+        $identity = trim($data['identity']);
+        $lower = mb_strtolower($identity);
+
+        // Cari berdasarkan NIS, Nomor Anggota, atau Nama Lengkap (Case-Insensitive)
+        $member = Member::where('status', 'active')
+            ->where(function ($query) use ($identity, $lower) {
+                $query->where('nis', $identity)
+                    ->orWhere('member_number', $identity)
+                    ->orWhereRaw('LOWER(name) = ?', [$lower]);
+            })
             ->first();
 
-        // Respons SAMA (generik) untuk "nomor tidak ditemukan", "member
-        // ada tapi status tidak aktif", DAN "tanggal lahir tidak cocok" —
-        // kalau dibedakan, endpoint ini jadi alat enumerasi (baik status
-        // keanggotaan maupun tanggal lahir orang lain).
+        // Jika tidak ditemukan dengan exact match, coba cari LIKE (nama mirip)
+        if ($member === null && mb_strlen($identity) >= 3) {
+            $member = Member::where('status', 'active')
+                ->whereRaw('LOWER(name) LIKE ?', ["%{$lower}%"])
+                ->first();
+        }
+
         if ($member === null) {
             return Inertia::render('Public/CheckBalance', [
-                'error' => 'Nomor anggota atau tanggal lahir tidak cocok.',
-                'submittedNumber' => $data['member_number'],
+                'error' => 'Data anggota dengan NIS atau Nama tersebut tidak ditemukan.',
+                'submittedIdentity' => $identity,
             ]);
         }
 
         return Inertia::render('Public/CheckBalance', [
             'result' => [
-                'name' => $this->maskName($member->name),
+                'name' => $member->name,
+                'nis' => $member->nis,
+                'member_number' => $member->member_number,
+                'class_name' => $member->class_name,
+                'major' => $member->major,
+                'type' => $member->type,
                 'balance' => $member->balance_cache,
+                'point_balance' => $member->point_balance,
             ],
-            'submittedNumber' => $data['member_number'],
+            'submittedIdentity' => $identity,
         ]);
     }
-
-    /**
-     * Nama santri TIDAK ditampilkan penuh — endpoint ini publik tanpa
-     * login, nomor anggota bisa dicoba-coba (walau di-throttle). Kata
-     * pertama utuh (konfirmasi "ini kartu saya") + sisanya disamarkan,
-     * bukan nama lengkap yang bisa dipanen lewat percobaan berurutan.
-     */
-    private function maskName(string $name): string
-    {
-        $words = explode(' ', trim($name));
-        $first = array_shift($words);
-        $masked = array_map(fn ($w) => mb_substr($w, 0, 1).str_repeat('*', max(1, mb_strlen($w) - 1)), $words);
-
-        return trim($first.' '.implode(' ', $masked));
-    }
 }
+
