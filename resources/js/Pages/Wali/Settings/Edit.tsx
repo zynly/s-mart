@@ -195,14 +195,14 @@ export default function Edit({ setting }: SettingProps) {
         <CardContent className="p-4 sm:p-5">
           <form onSubmit={submitNotificationSettings} className="flex flex-col gap-4">
             {/* Low Balance Alert Switch */}
-            <div className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-4 dark:border-slate-800/80 dark:bg-slate-800/40">
+            <div className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-3.5 sm:p-4 dark:border-slate-800/80 dark:bg-slate-800/40">
               <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                   <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
                     <AlertTriangle className="size-4" />
                   </div>
-                  <div>
-                    <Label htmlFor="low_balance_alert" className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white cursor-pointer">
+                  <div className="min-w-0">
+                    <Label htmlFor="low_balance_alert" className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white cursor-pointer block">
                       Notifikasi Saldo Rendah
                     </Label>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -235,13 +235,13 @@ export default function Edit({ setting }: SettingProps) {
             </div>
 
             {/* Weekly Summary Switch */}
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-4 dark:border-slate-800/80 dark:bg-slate-800/40">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-3.5 sm:p-4 dark:border-slate-800/80 dark:bg-slate-800/40">
+              <div className="flex items-center gap-3 min-w-0">
                 <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400">
                   <Calendar className="size-4" />
                 </div>
-                <div>
-                  <Label htmlFor="weekly_summary" className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white cursor-pointer">
+                <div className="min-w-0">
+                  <Label htmlFor="weekly_summary" className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white cursor-pointer block">
                     Ringkasan Belanja Mingguan
                   </Label>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -257,13 +257,13 @@ export default function Edit({ setting }: SettingProps) {
             </div>
 
             {/* Realtime Transaction Alert Switch */}
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-4 dark:border-slate-800/80 dark:bg-slate-800/40">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-3.5 sm:p-4 dark:border-slate-800/80 dark:bg-slate-800/40">
+              <div className="flex items-center gap-3 min-w-0">
                 <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400">
                   <Smartphone className="size-4" />
                 </div>
-                <div>
-                  <Label htmlFor="transaction_alert" className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white cursor-pointer">
+                <div className="min-w-0">
+                  <Label htmlFor="transaction_alert" className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white cursor-pointer block">
                     Notifikasi Tiap Transaksi Realtime
                   </Label>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
