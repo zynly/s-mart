@@ -84,7 +84,7 @@ export default function Dashboard({ members, kpi, recentActivities = [] }: Dashb
               </div>
             </div>
             <div className="mt-2">
-              <Money amount={totalBalance} size="lg" className="font-extrabold text-navy-950 dark:text-white" />
+              <Money amount={totalBalance} size="lg" compact className="font-extrabold text-navy-950 dark:text-white" />
             </div>
             <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">Saldo siap pakai di kasir S-Mart</p>
           </CardContent>
@@ -100,7 +100,7 @@ export default function Dashboard({ members, kpi, recentActivities = [] }: Dashb
               </div>
             </div>
             <div className="mt-2">
-              <Money amount={todaySpent} size="lg" className="font-extrabold text-slate-900 dark:text-white" />
+              <Money amount={todaySpent} size="lg" compact className="font-extrabold text-slate-900 dark:text-white" />
             </div>
             <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">Total konsumsi hari ini</p>
           </CardContent>
@@ -116,7 +116,7 @@ export default function Dashboard({ members, kpi, recentActivities = [] }: Dashb
               </div>
             </div>
             <div className="mt-2">
-              <Money amount={monthSpent} size="lg" className="font-extrabold text-slate-900 dark:text-white" />
+              <Money amount={monthSpent} size="lg" compact className="font-extrabold text-slate-900 dark:text-white" />
             </div>
             <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">Akumulasi belanja bulan ini</p>
           </CardContent>
