@@ -67,6 +67,13 @@ Route::get('/media/{path}', function (string $path) {
     }
 
     if (! $disk) {
+        $defaultLogo = public_path('logo/logo2.png');
+        if (file_exists($defaultLogo)) {
+            return response()->file($defaultLogo, [
+                'Content-Type' => 'image/png',
+                'Cache-Control' => 'public, max-age=86400',
+            ]);
+        }
         abort(404);
     }
 
@@ -74,7 +81,10 @@ Route::get('/media/{path}', function (string $path) {
     $stream = \Illuminate\Support\Facades\Storage::disk($disk)->readStream($path);
 
     return response()->stream(function () use ($stream) {
-        fpassthru($stream);
+        if (is_resource($stream)) {
+            fpassthru($stream);
+            fclose($stream);
+        }
     }, 200, [
         'Content-Type' => $mime,
         'Cache-Control' => 'public, max-age=604800, immutable',

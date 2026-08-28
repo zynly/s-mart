@@ -307,7 +307,6 @@ export default function Index({
   const [withdrawMember, setWithdrawMember] = useState<MemberResult | null>(null)
   const pageProps = usePage<PageProps & { flash?: { completed_sale_id?: number; completed_sale_ref?: string } }>().props
 
-  const [completedSale, setCompletedSale] = useState<{ id: number; ref: string } | null>(null)
 
   useEffect(() => {
     if (pageProps.flash?.completed_sale_id && pageProps.flash?.completed_sale_ref) {
@@ -2802,55 +2801,6 @@ export default function Index({
         </DialogContent>
       </Dialog>
 
-      {/* Modal Popup Berhasil Transaksi (Center Screen Overlay) */}
-      <Dialog open={completedSale !== null} onOpenChange={(open) => !open && setCompletedSale(null)}>
-        <DialogContent className="bg-white dark:bg-surface text-gray-900 dark:text-content border border-gray-200 dark:border-border max-w-sm text-center p-6 rounded-2xl shadow-xl">
-          <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-md">
-            <CheckCircle2 className="size-8 stroke-[2.5]" />
-          </div>
-          <div className="mt-3 space-y-1">
-            <h3 className="text-lg font-extrabold text-gray-900">Transaksi Berhasil!</h3>
-            <p className="text-xs text-gray-500 font-mono">No. Nota: <span className="font-bold text-navy-950">{completedSale?.ref}</span></p>
-          </div>
-
-          <div className="mt-5 flex flex-col gap-2">
-            <Button
-              onClick={() => {
-                if (completedSale) {
-                  // Direct in-page print trigger using hidden iframe, avoiding new tab popup
-                  const printFrame = document.createElement('iframe')
-                  printFrame.style.position = 'fixed'
-                  printFrame.style.right = '0'
-                  printFrame.style.bottom = '0'
-                  printFrame.style.width = '0'
-                  printFrame.style.height = '0'
-                  printFrame.style.border = '0'
-                  printFrame.src = route('pos.sales.receipt-pdf', completedSale.id)
-                  document.body.appendChild(printFrame)
-                  printFrame.onload = () => {
-                    printFrame.contentWindow?.focus()
-                    printFrame.contentWindow?.print()
-                    setTimeout(() => document.body.removeChild(printFrame), 3000)
-                  }
-                }
-              }}
-              className="bg-emerald-600 hover:bg-emerald-700 font-bold text-white w-full rounded-xl py-2.5 shadow-sm"
-            >
-              <Printer className="mr-2 size-4" /> Cetak Struk (In-Page Print)
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setCompletedSale(null)
-                focusScan()
-              }}
-              className="border-gray-300 text-gray-700 hover:bg-gray-100 font-semibold w-full rounded-xl"
-            >
-              Transaksi Baru (Esc)
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* ── Modal Dialog Popup Estetik: Saldo Deposit Tidak Mencukupi ── */}
       <Dialog open={insufficientDepositModal !== null} onOpenChange={(open) => !open && setInsufficientDepositModal(null)}>
