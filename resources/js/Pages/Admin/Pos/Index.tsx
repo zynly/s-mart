@@ -193,32 +193,32 @@ type PosIndexProps = {
 export default function Index({
   session,
   outlet,
-  paymentMethods,
+  paymentMethods = [],
   savedEnabledChannels = [],
   activeGateway = 'midtrans',
   midtransChannels = [],
   bankAccounts = [],
-  catalog,
-  categories,
-  holds,
+  catalog = { data: [], current_page: 1, last_page: 1, total: 0 },
+  categories = [],
+  holds = [],
   activePromos = [],
   activeCoupons = [],
-  noPinThreshold,
-  pointValue,
-  midtransClientKey,
-  midtransIsProduction,
+  noPinThreshold = 0,
+  pointValue = 100,
+  midtransClientKey = null,
+  midtransIsProduction = false,
 }: PosIndexProps) {
   const [selectedPosCategories, setSelectedPosCategories] = useState<number[]>([])
   const [modalSelectedCats, setModalSelectedCats] = useState<number[]>([])
   const [catalogSearch, setCatalogSearch] = useState('')
   const [posCatModalOpen, setPosCatModalOpen] = useState(false)
   const [posCatModalSearch, setPosCatModalSearch] = useState('')
-  const [catalogState, setCatalogState] = useState(catalog)
+  const [catalogState, setCatalogState] = useState(catalog ?? { data: [], current_page: 1, last_page: 1, total: 0 })
   const [isCatalogLoading, setIsCatalogLoading] = useState(false)
   const catalogCache = useRef<Record<string, typeof catalog>>({})
 
   useEffect(() => {
-    setCatalogState(catalog)
+    setCatalogState(catalog ?? { data: [], current_page: 1, last_page: 1, total: 0 })
   }, [catalog])
 
   const selectedCategoriesList = useMemo(
@@ -3069,33 +3069,15 @@ export default function Index({
               <div className="flex flex-col gap-2.5 w-full">
                 {txResultModal.saleId ? (
                   <div className="grid grid-cols-3 gap-2 w-full">
-                    {/* 1. Direct Thermal Print via hidden iframe */}
+                    {/* 1. Direct Receipt PDF Print */}
                     <Button
                       type="button"
                       onClick={() => {
                         if (txResultModal.saleId) {
-                          const printFrame = document.createElement('iframe')
-                          printFrame.style.position = 'fixed'
-                          printFrame.style.right = '0'
-                          printFrame.style.bottom = '0'
-                          printFrame.style.width = '0'
-                          printFrame.style.height = '0'
-                          printFrame.style.border = '0'
-                          printFrame.src = route('pos.sales.receipt-pdf', txResultModal.saleId)
-                          document.body.appendChild(printFrame)
-                          printFrame.onload = () => {
-                            printFrame.contentWindow?.focus()
-                            printFrame.contentWindow?.print()
-                            setTimeout(() => {
-                              if (document.body.contains(printFrame)) {
-                                document.body.removeChild(printFrame)
-                              }
-                            }, 3000)
-                          }
-                          toast.success('Mencetak struk ke printer kasir…')
+                          window.open(route('pos.sales.receipt-pdf', txResultModal.saleId), '_blank')
                         }
                       }}
-                      className="gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-4 shadow-sm"
+                      className="gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-4 shadow-sm cursor-pointer"
                     >
                       <Printer className="size-3.5 shrink-0" />
                       Cetak Struk

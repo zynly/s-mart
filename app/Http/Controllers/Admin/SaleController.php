@@ -101,13 +101,14 @@ class SaleController extends Controller
             $activeGateway = 'midtrans';
         }
 
-        // 3. Midtrans Channels Meta
-        $midtransChannels = [];
-        try {
-            $midtransChannels = $this->midtransGateway->getActivePaymentChannels();
-        } catch (\Throwable) {
-            $midtransChannels = [];
-        }
+        // 3. Midtrans Channels Meta (Cached for 24h to avoid blocking page loads)
+        $midtransChannels = \Illuminate\Support\Facades\Cache::remember('midtrans_active_channels_meta', 86400, function () {
+            try {
+                return $this->midtransGateway->getActivePaymentChannels();
+            } catch (\Throwable) {
+                return [];
+            }
+        });
 
         return Inertia::render('Admin/Pos/Index', [
             'session' => $session,
