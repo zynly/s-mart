@@ -2990,32 +2990,32 @@ export default function Index({
 
       {/* ── Center Aesthetic Transaction Result Modal (Success & Failure) ── */}
       <Dialog open={txResultModal?.open ?? false} onOpenChange={(open) => !open && setTxResultModal(null)}>
-        <DialogContent className="sm:max-w-md w-[92vw] text-center p-6 sm:p-7 rounded-3xl backdrop-blur-md shadow-2xl border bg-white dark:bg-slate-900 overflow-hidden relative border-slate-200 dark:border-slate-800">
+        <DialogContent className="sm:max-w-md w-[92vw] max-h-[90vh] overflow-y-auto text-center p-5 sm:p-6 rounded-3xl backdrop-blur-md shadow-2xl border bg-white dark:bg-slate-900 relative border-slate-200 dark:border-slate-800 my-auto">
           {/* Ambient Glow Effects */}
           <div className={cn(
             "absolute -top-16 -left-16 size-40 rounded-full blur-3xl pointer-events-none",
-            txResultModal?.type === 'success' ? "bg-emerald-500/20" : "bg-rose-500/20"
+            txResultModal?.type === 'success' ? "bg-emerald-500/15" : "bg-rose-500/15"
           )} />
           <div className={cn(
             "absolute -bottom-16 -right-16 size-40 rounded-full blur-3xl pointer-events-none",
-            txResultModal?.type === 'success' ? "bg-amber-500/20" : "bg-rose-500/20"
+            txResultModal?.type === 'success' ? "bg-amber-500/15" : "bg-rose-500/15"
           )} />
 
           <div className="relative flex flex-col items-center">
             {/* Top Animated Icon */}
             {txResultModal?.type === 'success' ? (
-              <div className="mb-4 flex size-20 items-center justify-center rounded-3xl bg-gradient-to-tr from-emerald-500/20 via-emerald-400/15 to-emerald-500/5 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shadow-inner">
-                <CheckCircle2 className="size-10 stroke-[2.2] animate-bounce" />
+              <div className="mb-2 flex size-14 items-center justify-center rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shadow-xs">
+                <CheckCircle2 className="size-8 stroke-[2.5]" />
               </div>
             ) : (
-              <div className="mb-4 flex size-20 items-center justify-center rounded-3xl bg-gradient-to-tr from-rose-500/20 via-rose-400/15 to-rose-500/5 border border-rose-500/30 text-rose-600 dark:text-rose-400 shadow-inner">
-                <AlertCircle className="size-10 stroke-[2.2]" />
+              <div className="mb-2 flex size-14 items-center justify-center rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-600 dark:text-rose-400 shadow-xs">
+                <AlertCircle className="size-8 stroke-[2.5]" />
               </div>
             )}
 
             {/* Status Pill */}
             <div className={cn(
-              "mb-2 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-bold uppercase tracking-wider",
+              "mb-2 inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-wider",
               txResultModal?.type === 'success'
                 ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
                 : "border border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300"
@@ -3025,20 +3025,20 @@ export default function Index({
             </div>
 
             {/* Title */}
-            <h3 className="mb-1 text-xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
+            <h3 className="text-lg font-black tracking-tight text-slate-900 dark:text-white sm:text-xl">
               {txResultModal?.title}
             </h3>
-            <p className="mb-5 text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm">
+            <p className="mb-3 text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm">
               {txResultModal?.message}
             </p>
 
             {/* Details Card */}
             {txResultModal?.type === 'success' && (
-              <div className="mb-6 w-full rounded-2xl border border-slate-200/90 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-800/60 p-4 text-left space-y-2.5 text-xs">
+              <div className="mb-4 w-full rounded-2xl border border-slate-200 bg-slate-50/90 dark:border-slate-800 dark:bg-slate-800/80 p-3 text-left space-y-2 text-xs">
                 {txResultModal.saleRef && (
-                  <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-700/60 pb-2">
+                  <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-700/80 pb-1.5">
                     <span className="text-slate-500 dark:text-slate-400 font-medium">No. Nota:</span>
-                    <span className="font-mono font-bold text-slate-900 dark:text-white bg-amber-500/15 px-2 py-0.5 rounded-md text-amber-700 dark:text-amber-300">
+                    <span className="font-mono font-black text-slate-900 dark:text-white bg-amber-500/15 px-2 py-0.5 rounded text-amber-700 dark:text-amber-300 text-xs">
                       {txResultModal.saleRef}
                     </span>
                   </div>
@@ -3052,11 +3052,11 @@ export default function Index({
                 {txResultModal.amount !== undefined && (
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500 dark:text-slate-400 font-medium">Total Belanja:</span>
-                    <strong className="font-bold text-slate-900 dark:text-white">Rp {txResultModal.amount.toLocaleString('id-ID')}</strong>
+                    <strong className="font-black text-slate-900 dark:text-white">Rp {txResultModal.amount.toLocaleString('id-ID')}</strong>
                   </div>
                 )}
                 {txResultModal.changeAmount !== undefined && txResultModal.changeAmount > 0 && (
-                  <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-200/80 dark:border-slate-700/80">
                     <span className="text-emerald-600 dark:text-emerald-400 font-bold">Uang Kembalian:</span>
                     <strong className="text-emerald-600 dark:text-emerald-400 font-black text-sm">Rp {txResultModal.changeAmount.toLocaleString('id-ID')}</strong>
                   </div>
@@ -3066,7 +3066,7 @@ export default function Index({
 
             {/* Action Buttons */}
             {txResultModal?.type === 'success' ? (
-              <div className="flex flex-col gap-2.5 w-full">
+              <div className="flex flex-col gap-2 w-full">
                 {txResultModal.saleId ? (
                   <div className="grid grid-cols-3 gap-2 w-full">
                     {/* 1. Direct Receipt PDF Print */}
@@ -3077,7 +3077,7 @@ export default function Index({
                           window.open(route('pos.sales.receipt-pdf', txResultModal.saleId), '_blank')
                         }
                       }}
-                      className="gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-4 shadow-sm cursor-pointer"
+                      className="gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs py-2.5 shadow-sm cursor-pointer"
                     >
                       <Printer className="size-3.5 shrink-0" />
                       Cetak Struk
@@ -3092,7 +3092,7 @@ export default function Index({
                           window.open(route('pos.sales.receipt-pdf', txResultModal.saleId), '_blank')
                         }
                       }}
-                      className="gap-1 rounded-xl border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs py-4"
+                      className="gap-1 rounded-xl border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800"
                     >
                       <FileText className="size-3.5 shrink-0" />
                       Nota PDF
@@ -3107,7 +3107,7 @@ export default function Index({
                           router.visit(route('pos.sales.receipt', txResultModal.saleId))
                         }
                       }}
-                      className="gap-1 rounded-xl border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs py-4"
+                      className="gap-1 rounded-xl border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800"
                     >
                       <Receipt className="size-3.5 shrink-0" />
                       Lihat Nota
@@ -3121,9 +3121,9 @@ export default function Index({
                     setTxResultModal(null)
                     focusScan()
                   }}
-                  className="w-full gap-2 rounded-xl bg-navy-900 hover:bg-navy-950 dark:bg-amber-500 dark:text-navy-950 text-white font-bold py-4 shadow-md text-sm mt-1"
+                  className="w-full gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3 shadow-md text-sm cursor-pointer"
                 >
-                  <PlusCircle className="size-4.5" />
+                  <PlusCircle className="size-4" />
                   Transaksi Baru (Esc)
                 </Button>
               </div>
@@ -3131,7 +3131,7 @@ export default function Index({
               <Button
                 type="button"
                 onClick={() => setTxResultModal(null)}
-                className="w-full gap-2 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold py-5 shadow-md text-sm"
+                className="w-full gap-2 rounded-xl bg-slate-900 hover:bg-slate-950 text-white font-bold py-3 shadow-md text-sm"
               >
                 Tutup &amp; Coba Lagi
               </Button>
