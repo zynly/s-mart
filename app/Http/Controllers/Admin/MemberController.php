@@ -51,26 +51,15 @@ class MemberController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $stats = Member::query()
-            ->selectRaw("
-                COUNT(*) as total_members,
-                COUNT(*) FILTER (WHERE type = 'santri') as total_santri,
-                COUNT(*) FILTER (WHERE type = 'fasilitator') as total_fasilitator,
-                COUNT(*) FILTER (WHERE type IN ('staff', 'public')) as total_staff,
-                COALESCE(SUM(balance_cache), 0) as total_deposit,
-                COALESCE(SUM(point_balance), 0) as total_points,
-                COUNT(*) FILTER (WHERE status = 'active') as active_members
-            ")
-            ->first()
-            ?->toArray() ?? [
-                'total_members' => 0,
-                'total_santri' => 0,
-                'total_fasilitator' => 0,
-                'total_staff' => 0,
-                'total_deposit' => 0,
-                'total_points' => 0,
-                'active_members' => 0,
-            ];
+        $stats = [
+            'total_members' => (int) Member::count(),
+            'total_santri' => (int) Member::where('type', 'santri')->count(),
+            'total_fasilitator' => (int) Member::where('type', 'fasilitator')->count(),
+            'total_staff' => (int) Member::whereIn('type', ['staff', 'public'])->count(),
+            'total_deposit' => (int) Member::sum('balance_cache'),
+            'total_points' => (int) Member::sum('point_balance'),
+            'active_members' => (int) Member::where('status', 'active')->count(),
+        ];
 
         return Inertia::render('Admin/Members/Index', [
             'tab' => 'members',

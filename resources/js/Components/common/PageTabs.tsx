@@ -16,7 +16,8 @@ type PageTabsProps = {
 
 export function PageTabs({ tabs, current }: PageTabsProps) {
   const { auth } = usePage<PageProps>().props
-  const visible = tabs.filter((tab) => !tab.permission || auth.user?.permissions.includes(tab.permission))
+  const userPermissions = Array.isArray(auth?.user?.permissions) ? auth.user.permissions : []
+  const visible = tabs.filter((tab) => !tab.permission || userPermissions.includes(tab.permission))
 
   if (visible.length <= 1) return null
 
