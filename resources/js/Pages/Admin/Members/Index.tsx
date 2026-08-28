@@ -132,12 +132,21 @@ const emptyForm = {
   joined_at: '',
 }
 
-export default function Index({ tab, members, stats, levels, categories, classes, filters }: MembersIndexProps) {
-  const [search, setSearch] = useState(filters.search ?? '')
-  const [typeFilter, setTypeFilter] = useState(filters.type ?? '')
-  const [classFilter, setClassFilter] = useState(filters.class_name ?? '')
-  const [majorFilter, setMajorFilter] = useState(filters.major ?? '')
-  const [statusFilter, setStatusFilter] = useState(filters.status ?? '')
+export default function Index({
+  tab = 'members',
+  members,
+  stats,
+  levels = [],
+  categories = [],
+  majors = [],
+  classes = [],
+  filters = {},
+}: MembersIndexProps) {
+  const [search, setSearch] = useState(filters?.search ?? '')
+  const [typeFilter, setTypeFilter] = useState(filters?.type ?? '')
+  const [classFilter, setClassFilter] = useState(filters?.class_name ?? '')
+  const [majorFilter, setMajorFilter] = useState(filters?.major ?? '')
+  const [statusFilter, setStatusFilter] = useState(filters?.status ?? '')
   const [sheetOpen, setSheetOpen] = useState(false)
   const [sampleCardOpen, setSampleCardOpen] = useState(false)
   const [editing, setEditing] = useState<MemberRow | null>(null)
@@ -623,11 +632,11 @@ export default function Index({ tab, members, stats, levels, categories, classes
             </div>
             <div className="mt-2">
               <div className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-                {stats.total_members.toLocaleString('id-ID')}
+                {Number(stats.total_members ?? 0).toLocaleString('id-ID')}
                 <span className="ml-1 text-xs font-normal text-slate-500 dark:text-slate-400">orang</span>
               </div>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                <span className="font-semibold text-blue-600 dark:text-blue-400">{stats.total_santri}</span> Santri · <span className="font-semibold text-indigo-600 dark:text-indigo-400">{stats.total_fasilitator}</span> Fasilitator
+                <span className="font-semibold text-blue-600 dark:text-blue-400">{Number(stats.total_santri ?? 0)}</span> Santri · <span className="font-semibold text-indigo-600 dark:text-indigo-400">{Number(stats.total_fasilitator ?? 0)}</span> Fasilitator
               </p>
             </div>
           </div>
@@ -644,7 +653,7 @@ export default function Index({ tab, members, stats, levels, categories, classes
             </div>
             <div className="mt-2">
               <div className="text-2xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400">
-                Rp {Math.round(stats.total_deposit).toLocaleString('id-ID')}
+                Rp {Math.round(Number(stats.total_deposit ?? 0)).toLocaleString('id-ID')}
               </div>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 Saldo aktif tersimpan e-money
@@ -664,7 +673,7 @@ export default function Index({ tab, members, stats, levels, categories, classes
             </div>
             <div className="mt-2">
               <div className="text-2xl font-extrabold tracking-tight text-amber-600 dark:text-amber-400">
-                {stats.total_points.toLocaleString('id-ID')}
+                {Number(stats.total_points ?? 0).toLocaleString('id-ID')}
                 <span className="ml-1 text-xs font-normal text-slate-500 dark:text-slate-400">poin</span>
               </div>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
@@ -685,12 +694,12 @@ export default function Index({ tab, members, stats, levels, categories, classes
             </div>
             <div className="mt-2">
               <div className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-                {stats.active_members.toLocaleString('id-ID')}
+                {Number(stats.active_members ?? 0).toLocaleString('id-ID')}
                 <span className="ml-1 text-xs font-normal text-slate-500 dark:text-slate-400">aktif</span>
               </div>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                  {Math.round((stats.active_members / (stats.total_members || 1)) * 100)}%
+                  {Math.round((Number(stats.active_members ?? 0) / (Number(stats.total_members ?? 0) || 1)) * 100)}%
                 </span>{' '}
                 anggota siap bertransaksi
               </p>
@@ -805,22 +814,22 @@ export default function Index({ tab, members, stats, levels, categories, classes
 
       <DataTable
         columns={columns}
-        data={members.data}
+        data={members?.data ?? (Array.isArray(members) ? members : [])}
         getRowId={(row) => String(row.id)}
         enableRowSelection
         bulkActions={[
           {
             label: 'Cetak Kartu Terpilih',
             icon: <Printer className="size-3.5" />,
-            onClick: () => printCards(members.data.map((m) => m.id)),
+            onClick: () => printCards((members?.data ?? []).map((m) => m.id)),
           },
         ]}
-        pagination={{
+        pagination={members?.current_page ? {
           page: members.current_page,
           perPage: members.per_page,
           total: members.total,
           onPageChange: (page) => router.get(route('admin.members.index'), { search, type: typeFilter, status: statusFilter, page }, { preserveState: true }),
-        }}
+        } : undefined}
       />
 
       <AppSheet
@@ -966,14 +975,14 @@ export default function Index({ tab, members, stats, levels, categories, classes
                       Akun Login Portal Wali
                     </Label>
 
-                    {editing.guardians.length === 0 && (
+                    {(editing.guardians?.length ?? 0) === 0 && (
                       <p className="text-sm text-content-muted">Belum ada akun wali terhubung.</p>
                     )}
-                    {editing.guardians.map((g) => (
+                    {(editing.guardians ?? []).map((g) => (
                       <div key={g.id} className="flex items-center justify-between rounded-md border border-border p-2 text-sm">
                         <div>
                           <p className="text-content">
-                            {g.name} {Boolean(g.pivot.is_primary) && <Badge variant="outline" className="ml-1">Utama</Badge>}
+                            {g.name} {Boolean(g.pivot?.is_primary) && <Badge variant="outline" className="ml-1">Utama</Badge>}
                             {!g.is_active && <Badge className="ml-1 bg-danger text-white">Nonaktif</Badge>}
                           </p>
                           <p className="text-xs text-content-muted">{g.phone}</p>
@@ -1012,7 +1021,7 @@ export default function Index({ tab, members, stats, levels, categories, classes
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Tanpa level</SelectItem>
-                      {levels.map((l) => (
+                      {(levels ?? []).map((l) => (
                         <SelectItem key={l.id} value={String(l.id)}>{l.name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -1025,8 +1034,8 @@ export default function Index({ tab, members, stats, levels, categories, classes
                 <div className="space-y-1.5">
                   <Label>Kategori Diblokir</Label>
                   <div className="flex flex-wrap gap-2">
-                    {categories.map((c) => {
-                      const checked = form.data.blocked_categories.includes(c.id)
+                    {(categories ?? []).map((c) => {
+                      const checked = (form.data.blocked_categories ?? []).includes(c.id)
 
                       return (
                         <button
