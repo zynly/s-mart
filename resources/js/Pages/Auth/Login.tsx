@@ -48,10 +48,10 @@ export default function Login({ status }: LoginProps) {
 
       {/* Unified Single Login Form (Tanpa Tab) */}
       <form onSubmit={submit} className="flex flex-col gap-4">
-        {/* Username / Phone Field */}
+        {/* Username / NIS / Phone Field */}
         <div className="space-y-1.5">
           <Label htmlFor="identity" className="text-xs font-bold uppercase tracking-wider text-navy-800">
-            Username / Nomor HP / Email
+            NIS Santri / Username / Nomor HP
           </Label>
           <div className="relative">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-navy-500">
@@ -62,7 +62,7 @@ export default function Login({ status }: LoginProps) {
               type="text"
               autoFocus
               autoComplete="username"
-              placeholder="Masukkan username atau no. HP"
+              placeholder="Masukkan NIS Santri, Username, atau No. HP"
               value={data.identity}
               onChange={(e) => setData('identity', e.target.value)}
               className="pl-10 h-11 bg-surface border-border text-navy-900 placeholder:text-content-subtle focus:border-navy-600 focus:ring-2 focus:ring-navy-600/20 rounded-xl transition-all"

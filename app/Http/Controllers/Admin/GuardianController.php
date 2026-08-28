@@ -33,15 +33,15 @@ class GuardianController extends Controller
 
         $guardian = Guardian::where('phone', $data['phone'])->first();
         $isNew = $guardian === null;
-        $generatedPassword = null;
+        $defaultPassword = 'password'; // Or '123456'
+        $defaultPassword = '123456';
 
         if ($isNew) {
-            $generatedPassword = Str::random(10);
             $guardian = Guardian::create([
                 'name' => $data['name'],
                 'phone' => $data['phone'],
                 'relation' => $data['relation'] ?? null,
-                'password' => $generatedPassword,
+                'password' => $defaultPassword,
                 'is_active' => true,
             ]);
         }
@@ -61,11 +61,8 @@ class GuardianController extends Controller
             'consent_given_at' => now(),
         ]);
 
-        // Bug nyata: tanpa ini admin tidak pernah tahu password awal yang
-        // digenerate untuk akun wali baru — tidak ada jalan lain untuk
-        // menyampaikannya ke orang tua.
         return back()->with('success', $isNew
-            ? "Akun wali {$guardian->name} dibuat dan dihubungkan ke {$member->name}. Password awal: {$generatedPassword}"
+            ? "Akun wali {$guardian->name} dibuat dan dihubungkan ke {$member->name}. Password default: {$defaultPassword}"
             : "Wali {$guardian->name} (sudah punya akun) dihubungkan ke {$member->name}.");
     }
 
@@ -78,7 +75,7 @@ class GuardianController extends Controller
 
     public function resetPassword(Request $request, Guardian $guardian): RedirectResponse
     {
-        $newPassword = Str::random(10);
+        $newPassword = '123456';
         $guardian->forceFill(['password' => $newPassword])->save();
 
         // Temuan audit keamanan (Phase B): wali sekarang selalu dikabari
@@ -92,9 +89,9 @@ class GuardianController extends Controller
         activity('security')
             ->causedBy($request->user())
             ->withProperties(['guardian_id' => $guardian->id, 'guardian_name' => $guardian->name])
-            ->log("Password wali {$guardian->name} direset oleh {$request->user()->name}");
+            ->log("Password wali {$guardian->name} direset ke default oleh {$request->user()->name}");
 
-        return back()->with('success', "Password wali {$guardian->name} direset ke: {$newPassword}");
+        return back()->with('success', "Password wali {$guardian->name} direset ke default: {$newPassword}");
     }
 
     public function toggleActive(Guardian $guardian): RedirectResponse

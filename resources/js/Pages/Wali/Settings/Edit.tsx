@@ -262,7 +262,7 @@ export default function Edit({ setting }: SettingProps) {
                   value={passwordForm.data.password}
                   onChange={(e) => passwordForm.setData('password', e.target.value)}
                   className="h-11 pl-10 pr-10 rounded-xl"
-                  placeholder="Minimal 8 karakter unik"
+                  placeholder="Minimal 6 karakter (huruf, angka, simbol)"
                 />
                 <button
                   type="button"

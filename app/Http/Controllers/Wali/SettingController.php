@@ -51,7 +51,7 @@ class SettingController extends Controller
 
         $data = $request->validate([
             'current_password' => ['required', 'string', 'current_password:guardian'],
-            'password' => ['required', 'string', Password::default(), 'confirmed'],
+            'password' => ['required', 'string', 'min:6', 'confirmed'],
         ]);
 
         // Sebelum password diganti — mencabut sesi wali di perangkat LAIN

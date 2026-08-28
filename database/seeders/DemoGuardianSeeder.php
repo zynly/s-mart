@@ -20,7 +20,7 @@ class DemoGuardianSeeder extends Seeder
             [
                 'name'      => 'Demo Wali (Owner Preview)',
                 'email'     => 'demowali@skillagemart.test',
-                'password'  => 'password',
+                'password'  => '123456',
                 'relation'  => 'Demo',
                 'is_active' => true,
             ]

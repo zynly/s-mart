@@ -3,16 +3,21 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Guardian;
+use App\Models\Member;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
 /**
  * Single Portal Login Controller (Tanpa Tab).
- * Otomatis mendeteksi role kredensial (Staff / Admin / Kasir vs Wali Santri)
+ * Otomatis mendeteksi role kredensial:
+ * - Staff / Admin / Kasir / Manager (Username / No. HP / Email)
+ * - Wali Santri (NIS Santri atau Nomor HP Wali)
  * dan mengarahkan ke dashboard yang sesuai.
  */
 class UnifiedLoginController extends Controller
@@ -39,7 +44,7 @@ class UnifiedLoginController extends Controller
 
         if (empty($identity) || empty($password)) {
             throw ValidationException::withMessages([
-                'identity' => 'Username, No. HP, atau password wajib diisi.',
+                'identity' => 'NIS Santri, Username, atau password wajib diisi.',
             ]);
         }
 
@@ -79,7 +84,54 @@ class UnifiedLoginController extends Controller
             }
         }
 
-        // 2. Coba autentikasi sebagai Wali Santri (Guard 'guardian')
+        // 2. Coba autentikasi Wali Santri via NIS Santri
+        $member = Member::where('nis', $identity)
+            ->orWhere('member_number', $identity)
+            ->first();
+
+        if ($member) {
+            // Cari wali yang sudah terhubung ke santri ini
+            $guardian = $member->guardians()
+                ->orderByDesc('guardian_member.is_primary')
+                ->first();
+
+            // Jika belum ada akun wali terhubung, auto-provision akun wali dengan password default 123456
+            if (! $guardian) {
+                $guardianPhone = $member->guardian_phone ?: ('NIS-' . $member->nis);
+                $guardian = Guardian::firstOrCreate(
+                    ['phone' => $guardianPhone],
+                    [
+                        'name' => $member->guardian_name ?: ('Wali dari ' . $member->name),
+                        'password' => '123456',
+                        'relation' => $member->guardian_relation ?: 'Wali',
+                        'is_active' => true,
+                    ]
+                );
+
+                if (! $member->guardians()->where('guardians.id', $guardian->id)->exists()) {
+                    $member->guardians()->attach($guardian->id, [
+                        'is_primary' => true,
+                        'consent_given_at' => now(),
+                    ]);
+                }
+            }
+
+            if ($guardian && Hash::check($password, $guardian->password)) {
+                if (! $guardian->is_active) {
+                    throw ValidationException::withMessages([
+                        'identity' => 'Akun wali santri ini dinonaktifkan. Hubungi admin sekolah.',
+                    ]);
+                }
+
+                Auth::guard('guardian')->login($guardian, $remember);
+                $request->session()->regenerate();
+                $guardian->forceFill(['last_login_at' => now()])->save();
+
+                return redirect()->intended(route('wali.dashboard'));
+            }
+        }
+
+        // 3. Coba autentikasi sebagai Wali Santri via Nomor HP (Guard 'guardian')
         $cleanPhone = preg_replace('/[^0-9]/', '', $identity);
         $phoneCandidates = array_unique(array_filter([
             $identity,
@@ -108,7 +160,7 @@ class UnifiedLoginController extends Controller
         }
 
         throw ValidationException::withMessages([
-            'identity' => 'Username / Nomor HP atau password yang Anda masukkan salah.',
+            'identity' => 'NIS Santri / Username / No. HP atau password yang Anda masukkan salah.',
         ]);
     }
 }
