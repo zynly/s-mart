@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import WaliLayout from '@/Layouts/WaliLayout'
 import { PasswordStrengthMeter } from '@/Components/common/PasswordStrengthMeter'
+import { LogoutConfirmDialog } from '@/Components/common/LogoutConfirmDialog'
 import { Button } from '@/Components/ui/button'
 import { Label } from '@/Components/ui/label'
 import { Input } from '@/Components/ui/input'
@@ -32,6 +33,11 @@ export default function Edit({ setting }: SettingProps) {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [logoutOpen, setLogoutOpen] = useState(false)
+
+  const profileForm = useForm({
+    name: guardian?.name ?? '',
+  })
 
   const { data, setData, put, processing } = useForm(setting)
 
@@ -40,6 +46,13 @@ export default function Edit({ setting }: SettingProps) {
     password: '',
     password_confirmation: '',
   })
+
+  const submitProfile: FormEventHandler = (e) => {
+    e.preventDefault()
+    profileForm.put(route('wali.settings.profile'), {
+      preserveScroll: true,
+    })
+  }
 
   const submitNotificationSettings: FormEventHandler = (e) => {
     e.preventDefault()
@@ -84,7 +97,7 @@ export default function Edit({ setting }: SettingProps) {
                 <ShieldCheck className="size-4.5 text-amber-400 fill-amber-400/20" />
               </div>
               <p className="text-xs text-slate-300">
-                No. HP: <span className="font-mono text-slate-200 font-semibold">{guardian?.phone ?? '-'}</span>
+                No. WhatsApp: <span className="font-mono text-slate-200 font-semibold">{guardian?.phone ?? '-'}</span>
               </p>
               <div className="mt-1.5 inline-flex w-fit items-center gap-1.5 rounded-full bg-amber-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-amber-300">
                 <span className="size-1.5 rounded-full bg-amber-400 animate-pulse" />
@@ -95,7 +108,79 @@ export default function Edit({ setting }: SettingProps) {
         </CardContent>
       </Card>
 
-      {/* Section 1: Pengaturan Notifikasi */}
+      {/* Section 1: Ubah Profil (Khusus Nama Saja) */}
+      <Card className="border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <CardHeader className="border-b border-slate-100 p-4 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <div className="flex size-8 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-400">
+              <User className="size-4.5" />
+            </div>
+            <CardTitle className="text-base font-bold text-slate-900 dark:text-white">
+              Informasi &amp; Ubah Profil Wali
+            </CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-5">
+          <form onSubmit={submitProfile} className="flex flex-col gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="guardian_name" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Nama Lengkap Wali <span className="text-rose-500">*</span>
+              </Label>
+              <div className="relative">
+                <User className="absolute left-3.5 top-3.5 size-4 text-slate-400" />
+                <Input
+                  id="guardian_name"
+                  type="text"
+                  value={profileForm.data.name}
+                  onChange={(e) => profileForm.setData('name', e.target.value)}
+                  className="h-11 pl-10 rounded-xl font-medium"
+                  placeholder="Masukkan nama lengkap Anda"
+                  required
+                />
+              </div>
+              {profileForm.errors.name && (
+                <p className="text-xs text-red-600 font-semibold">{profileForm.errors.name}</p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="guardian_phone" className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Nomor WhatsApp Terdaftar
+                </Label>
+                <span className="flex items-center gap-1 text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+                  <Lock className="size-3" />
+                  Terkunci (Keamanan)
+                </span>
+              </div>
+              <div className="relative">
+                <Smartphone className="absolute left-3.5 top-3.5 size-4 text-slate-400" />
+                <Input
+                  id="guardian_phone"
+                  type="text"
+                  value={guardian?.phone ?? ''}
+                  disabled
+                  className="h-11 pl-10 rounded-xl bg-slate-100/80 dark:bg-slate-800/80 font-mono text-slate-500 dark:text-slate-400 cursor-not-allowed"
+                />
+              </div>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                Nomor WhatsApp digunakan sebagai identitas login utama. Hubungi pihak sekolah jika ingin mengganti nomor.
+              </p>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={profileForm.processing || !profileForm.data.name.trim() || profileForm.data.name === guardian?.name}
+              className="h-11 gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 font-bold text-white shadow-md shadow-blue-500/20 transition-all mt-1"
+            >
+              <Save className="size-4" />
+              {profileForm.processing ? 'Menyimpan…' : 'Simpan Nama Profil'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Section 2: Pengaturan Notifikasi */}
       <Card className="border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <CardHeader className="border-b border-slate-100 p-4 dark:border-slate-800">
           <div className="flex items-center gap-2">
@@ -326,7 +411,7 @@ export default function Edit({ setting }: SettingProps) {
         </CardContent>
       </Card>
 
-      {/* Section 3: Logout Action */}
+      {/* Section 4: Logout Action */}
       <Card className="border-red-200/80 bg-red-50/50 shadow-xs dark:border-red-950/50 dark:bg-red-950/20">
         <CardContent className="flex flex-col gap-3 p-4 sm:p-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
@@ -340,14 +425,22 @@ export default function Edit({ setting }: SettingProps) {
           </div>
           <Button
             variant="destructive"
-            onClick={() => router.post(route('wali.logout'))}
-            className="w-full sm:w-auto gap-2 rounded-xl font-bold"
+            onClick={() => setLogoutOpen(true)}
+            className="w-full sm:w-auto gap-2 rounded-xl font-bold bg-rose-600 hover:bg-rose-700 shadow-sm"
           >
             <LogOut className="size-4" />
             Keluar Sekarang
           </Button>
         </CardContent>
       </Card>
+
+      <LogoutConfirmDialog
+        open={logoutOpen}
+        onOpenChange={setLogoutOpen}
+        logoutUrl={route('wali.logout')}
+        title="Konfirmasi Keluar Portal Wali"
+        description="Apakah Ayah/Bunda yakin ingin keluar dari portal wali santri? Anda dapat masuk kembali kapan saja."
+      />
     </div>
   )
 }

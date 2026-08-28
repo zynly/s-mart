@@ -17,6 +17,7 @@ import { CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, C
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/Components/ui/dialog'
 import { ThemeToggle } from '@/Components/common/ThemeToggle'
 import { NotificationBell } from '@/Components/common/NotificationBell'
+import { LogoutConfirmDialog } from '@/Components/common/LogoutConfirmDialog'
 import { useSidebarStore } from '@/Store/useSidebarStore'
 import { useFlashToast } from '@/Lib/useFlashToast'
 import { cn } from '@/Lib/utils'
@@ -502,6 +503,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const { collapsed, toggle } = useSidebarStore()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [logoutOpen, setLogoutOpen] = useState(false)
   const { auth, masquerade } = usePage<PageProps>().props
 
   useFlashToast()
@@ -640,7 +642,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     <span>Pengaturan Profil</span>
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.post(route('logout'))} className="rounded-xl font-bold text-xs py-2.5 text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950/40 cursor-pointer flex items-center mt-1">
+                <DropdownMenuItem onClick={() => setLogoutOpen(true)} className="rounded-xl font-bold text-xs py-2.5 text-red-600 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-950/40 cursor-pointer flex items-center mt-1">
                   <LogOut className="size-4 mr-2.5 text-red-500" />
                   <span>Keluar dari Sistem</span>
                 </DropdownMenuItem>
@@ -694,6 +696,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </CommandGroup>
         </CommandList>
       </CommandDialog>
+
+      <LogoutConfirmDialog
+        open={logoutOpen}
+        onOpenChange={setLogoutOpen}
+        logoutUrl={route('logout')}
+        title="Konfirmasi Keluar Admin"
+        description="Apakah Anda yakin ingin keluar dari panel admin S-Mart? Anda harus masuk kembali untuk melanjutkan pekerjaan."
+      />
     </div>
   )
 }

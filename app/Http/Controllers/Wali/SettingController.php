@@ -23,6 +23,34 @@ class SettingController extends Controller
         ]);
     }
 
+    public function updateProfile(Request $request): RedirectResponse
+    {
+        $guardian = $request->user('guardian');
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'min:3', 'max:100'],
+        ], [
+            'name.required' => 'Nama lengkap wali wajib diisi.',
+            'name.min' => 'Nama lengkap minimal 3 karakter.',
+            'name.max' => 'Nama lengkap maksimal 100 karakter.',
+        ]);
+
+        $oldName = $guardian->name;
+        $guardian->update(['name' => trim($data['name'])]);
+
+        activity('security')
+            ->causedBy($guardian)
+            ->withProperties([
+                'guardian_id' => $guardian->id,
+                'old_name' => $oldName,
+                'new_name' => $guardian->name,
+                'self_service' => true,
+            ])
+            ->log("Wali memperbarui profil nama dari '{$oldName}' menjadi '{$guardian->name}'");
+
+        return back()->with('success', 'Nama profil berhasil diperbarui.');
+    }
+
     public function update(Request $request): RedirectResponse
     {
         $guardian = $request->user('guardian');

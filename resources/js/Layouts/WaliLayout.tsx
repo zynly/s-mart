@@ -1,8 +1,9 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link, router, usePage } from '@inertiajs/react'
-import { Home, User, UserRound, Wallet, Eye, X } from 'lucide-react'
+import { Home, User, UserRound, Wallet, Eye, X, LogOut } from 'lucide-react'
 import { Button } from '@/Components/ui/button'
 import { NotificationBell } from '@/Components/common/NotificationBell'
+import { LogoutConfirmDialog } from '@/Components/common/LogoutConfirmDialog'
 import { useFlashToast } from '@/Lib/useFlashToast'
 import { useNotificationPoll } from '@/Lib/useNotificationPoll'
 import { cn } from '@/Lib/utils'
@@ -24,6 +25,7 @@ export default function WaliLayout({ children, active }: WaliLayoutProps) {
   const { guardianAuth, ownerWaliPreview, allowWaliTopup = true } = usePage<PageProps>().props
   const url = usePage().url
   const { count, refresh } = useNotificationPoll(30000, 'wali.notifications.count')
+  const [logoutOpen, setLogoutOpen] = useState(false)
 
   const navItems = bottomNav.filter((item) => item.key !== 'topup' || allowWaliTopup)
 
@@ -70,11 +72,20 @@ export default function WaliLayout({ children, active }: WaliLayoutProps) {
             readAllRouteName="wali.notifications.read-all"
             onCountChange={refresh}
           />
-          <Button size="sm" variant="ghost" onClick={() => router.post(route('wali.logout'))}>
-            Keluar
+          <Button size="sm" variant="ghost" onClick={() => setLogoutOpen(true)} className="gap-1.5 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40">
+            <LogOut className="size-3.5" />
+            <span>Keluar</span>
           </Button>
         </div>
       </header>
+
+      <LogoutConfirmDialog
+        open={logoutOpen}
+        onOpenChange={setLogoutOpen}
+        logoutUrl={route('wali.logout')}
+        title="Konfirmasi Keluar Portal Wali"
+        description="Apakah Ayah/Bunda yakin ingin keluar dari portal wali santri? Anda dapat masuk kembali kapan saja."
+      />
 
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 sm:px-6 py-6 pb-24">{children}</main>
 

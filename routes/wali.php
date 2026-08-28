@@ -57,6 +57,7 @@ Route::prefix('wali')->name('wali.')->group(function () {
         Route::post('/topup/midtrans', [TopupController::class, 'storeMidtrans'])->name('topup.midtrans');
         Route::get('/akun', [SettingController::class, 'edit'])->name('settings.edit');
         Route::put('/akun', [SettingController::class, 'update'])->name('settings.update');
+        Route::put('/akun/profil', [SettingController::class, 'updateProfile'])->name('settings.profile');
         Route::put('/akun/password', [SettingController::class, 'updatePassword'])->name('settings.password')->middleware('throttle:wali-password-change');
 
         // fase-16-v2.md §8-9 — lonceng notifikasi in-app, pola sama
