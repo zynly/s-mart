@@ -281,7 +281,7 @@ export default function Edit({ setting }: SettingProps) {
             <Button
               type="submit"
               disabled={processing}
-              className="h-11 gap-2 rounded-xl bg-navy-900 hover:bg-navy-950 font-bold text-white shadow-md dark:bg-amber-500 dark:text-navy-950 transition-all mt-1"
+              className="h-11 gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 font-extrabold text-sm text-white shadow-md shadow-blue-500/25 transition-all mt-1 cursor-pointer"
             >
               <Save className="size-4" />
               {processing ? 'Menyimpan…' : 'Simpan Pengaturan Notifikasi'}
@@ -290,7 +290,7 @@ export default function Edit({ setting }: SettingProps) {
         </CardContent>
       </Card>
 
-      {/* Section 2: Ganti Password */}
+      {/* Section 3: Ganti Password */}
       <Card className="border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <CardHeader className="border-b border-slate-100 p-4 dark:border-slate-800">
           <div className="flex items-center gap-2">
@@ -402,7 +402,7 @@ export default function Edit({ setting }: SettingProps) {
             <Button
               type="submit"
               disabled={passwordForm.processing}
-              className="h-11 gap-2 rounded-xl bg-navy-900 hover:bg-navy-950 font-bold text-white shadow-md dark:bg-amber-500 dark:text-navy-950 transition-all mt-1"
+              className="h-11 gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 font-extrabold text-sm text-white shadow-md shadow-blue-500/25 transition-all mt-1 cursor-pointer"
             >
               <KeyRound className="size-4" />
               {passwordForm.processing ? 'Updating…' : 'Perbarui Password Akun'}
