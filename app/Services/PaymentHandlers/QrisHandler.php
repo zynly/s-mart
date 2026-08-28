@@ -33,15 +33,17 @@ class QrisHandler implements PaymentHandler
             throw new DomainException("Metode \"{$method->name}\" membutuhkan nomor referensi.");
         }
 
-        // Cek duplikasi nomor referensi agar tidak bisa pakai bukti transaksi tua
-        $duplicate = SalePayment::where('reference_no', $referenceNo)
-            ->where('status', '!=', 'refunded')
-            ->exists();
-        if ($duplicate) {
-            throw new DomainException("Nomor referensi \"{$referenceNo}\" telah pernah digunakan pada transaksi lain.");
-        }
-
         $isGatewayConfirmed = in_array($payload['gateway_status'] ?? null, ['settlement', 'capture'], true);
+
+        // Cek duplikasi nomor referensi hanya untuk transaksi gateway online agar ID transaksi payment gateway tidak double credit
+        if ($isGatewayConfirmed) {
+            $duplicate = SalePayment::where('reference_no', $referenceNo)
+                ->where('status', '!=', 'refunded')
+                ->exists();
+            if ($duplicate) {
+                throw new DomainException("Nomor referensi gateway \"{$referenceNo}\" telah pernah digunakan pada transaksi lain.");
+            }
+        }
 
         // Validasi PIN Otorisasi Wajib khusus Transfer Manual (Non-Midtrans)
         if ($method->type === 'transfer' && ! $isGatewayConfirmed) {
