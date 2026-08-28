@@ -205,7 +205,7 @@ export default function Dashboard({ members, kpi, recentActivities = [] }: Dashb
 
                   <div className="flex items-center justify-between rounded-xl bg-slate-50 p-3 dark:bg-slate-800/50">
                     <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Saldo Aktif</span>
-                    <Money amount={member.balance_cache} size="md" className="font-extrabold text-navy-950 dark:text-white" />
+                    <Money amount={member.balance_cache} size="md" compact className="font-extrabold text-navy-950 dark:text-white" />
                   </div>
 
                   <div className="flex items-center gap-2 pt-1">

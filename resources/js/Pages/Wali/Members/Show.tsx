@@ -118,7 +118,7 @@ export default function Show({ member, allMembers = [], riwayat, weeklyChart, fa
       <Card>
         <CardContent className="p-4">
           <p className="text-sm text-content-muted">Saldo Saat Ini</p>
-          <Money amount={member.balance_cache} size="lg" className="text-2xl" />
+          <Money amount={member.balance_cache} size="lg" compact className="text-2xl font-bold" />
         </CardContent>
       </Card>
 

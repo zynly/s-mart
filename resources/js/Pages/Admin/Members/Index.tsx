@@ -418,7 +418,7 @@ export default function Index({
       meta: { align: 'center' },
       cell: ({ row }) => (
         <div className="flex items-center justify-center gap-1 font-bold text-emerald-800 dark:text-emerald-300">
-          <Money amount={row.original.balance_cache} />
+          <Money amount={row.original.balance_cache} compact />
         </div>
       ),
     },
