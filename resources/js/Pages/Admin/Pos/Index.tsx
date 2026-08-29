@@ -3,7 +3,7 @@ import { router, usePage } from '@inertiajs/react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { toast } from 'sonner'
 import {
-  AlertCircle, ArrowDownCircle, ArrowUpCircle, Building2, Check, CheckCircle2, CheckSquare, ChevronLeft, ChevronRight, Clock, Coins, Copy, CreditCard, Filter, Flame, Folder, Gift, Info, Layers, Lock, Pause, Percent, Phone, PlusCircle, Printer, Receipt, RotateCcw,
+  AlertCircle, ArrowDownCircle, ArrowUpCircle, Building2, Check, CheckCircle2, CheckSquare, ChevronLeft, ChevronRight, Clock, Coins, Copy, CreditCard, FileText, Filter, Flame, Folder, Gift, Info, Layers, Lock, Pause, Percent, Phone, PlusCircle, Printer, Receipt, RotateCcw,
   QrCode, ScanLine, Search, ShoppingCart, Sparkles, Store, Tag, Ticket, Trash2, UserCircle, Wallet, X, Zap,
 } from 'lucide-react'
 import PosLayout from '@/Layouts/PosLayout'
@@ -47,6 +47,8 @@ type PaymentMethodRow = {
   allows_change: boolean
   requires_reference: boolean
   mdr_percent: number
+  midtrans_code?: string | null
+  is_active?: boolean
 }
 type CatalogProduct = {
   id: number
@@ -311,7 +313,7 @@ export default function Index({
   useEffect(() => {
     if (pageProps.flash?.completed_sale_id && pageProps.flash?.completed_sale_ref) {
       setTxResultModal((prev) => {
-        if (prev?.open) return prev
+        if (prev?.open && prev.saleId === pageProps.flash?.completed_sale_id) return prev
         return {
           open: true,
           type: 'success',
@@ -319,7 +321,10 @@ export default function Index({
           message: `Transaksi kasir No. Nota ${pageProps.flash.completed_sale_ref} telah sukses disimpan.`,
           saleId: pageProps.flash?.completed_sale_id ?? null,
           saleRef: pageProps.flash?.completed_sale_ref ?? null,
-          methodName: 'POS Kasir',
+          methodName: prev?.methodName || 'POS Kasir',
+          amount: prev?.amount,
+          cashReceived: prev?.cashReceived,
+          changeAmount: prev?.changeAmount,
         }
       })
     }
@@ -2989,156 +2994,167 @@ export default function Index({
       </Dialog>
 
       {/* ── Center Aesthetic Transaction Result Modal (Success & Failure) ── */}
-      <Dialog open={txResultModal?.open ?? false} onOpenChange={(open) => !open && setTxResultModal(null)}>
-        <DialogContent className="sm:max-w-md w-[92vw] max-h-[90vh] overflow-y-auto text-center p-5 sm:p-6 rounded-3xl backdrop-blur-md shadow-2xl border bg-white dark:bg-slate-900 relative border-slate-200 dark:border-slate-800 my-auto">
-          {/* Ambient Glow Effects */}
-          <div className={cn(
-            "absolute -top-16 -left-16 size-40 rounded-full blur-3xl pointer-events-none",
-            txResultModal?.type === 'success' ? "bg-emerald-500/15" : "bg-rose-500/15"
-          )} />
-          <div className={cn(
-            "absolute -bottom-16 -right-16 size-40 rounded-full blur-3xl pointer-events-none",
-            txResultModal?.type === 'success' ? "bg-amber-500/15" : "bg-rose-500/15"
-          )} />
+      {(() => {
+        const targetSaleId = txResultModal?.saleId || lastSaleId || pageProps.flash?.completed_sale_id || null
+        const targetSaleRef = txResultModal?.saleRef || pageProps.flash?.completed_sale_ref || null
 
-          <div className="relative flex flex-col items-center">
-            {/* Top Animated Icon */}
-            {txResultModal?.type === 'success' ? (
-              <div className="mb-2 flex size-14 items-center justify-center rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shadow-xs">
-                <CheckCircle2 className="size-8 stroke-[2.5]" />
-              </div>
-            ) : (
-              <div className="mb-2 flex size-14 items-center justify-center rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-600 dark:text-rose-400 shadow-xs">
-                <AlertCircle className="size-8 stroke-[2.5]" />
-              </div>
-            )}
+        return (
+          <Dialog open={txResultModal?.open ?? false} onOpenChange={(open) => !open && setTxResultModal(null)}>
+            <DialogContent className="sm:max-w-md w-[94vw] max-h-[90vh] overflow-y-auto text-center p-5 sm:p-6 rounded-3xl backdrop-blur-md shadow-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+              <DialogHeader className="sr-only">
+                <DialogTitle>{txResultModal?.title ?? 'Hasil Transaksi'}</DialogTitle>
+              </DialogHeader>
 
-            {/* Status Pill */}
-            <div className={cn(
-              "mb-2 inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-wider",
-              txResultModal?.type === 'success'
-                ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                : "border border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300"
-            )}>
-              <span className={cn("size-2 rounded-full", txResultModal?.type === 'success' ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
-              {txResultModal?.type === 'success' ? 'Transaksi Lunas' : 'Gagal Simpan'}
-            </div>
+              {/* Ambient Glow Effects */}
+              <div className={cn(
+                "absolute -top-16 -left-16 size-40 rounded-full blur-3xl pointer-events-none",
+                txResultModal?.type === 'success' ? "bg-emerald-500/15" : "bg-rose-500/15"
+              )} />
+              <div className={cn(
+                "absolute -bottom-16 -right-16 size-40 rounded-full blur-3xl pointer-events-none",
+                txResultModal?.type === 'success' ? "bg-amber-500/15" : "bg-rose-500/15"
+              )} />
 
-            {/* Title */}
-            <h3 className="text-lg font-black tracking-tight text-slate-900 dark:text-white sm:text-xl">
-              {txResultModal?.title}
-            </h3>
-            <p className="mb-3 text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm">
-              {txResultModal?.message}
-            </p>
-
-            {/* Details Card */}
-            {txResultModal?.type === 'success' && (
-              <div className="mb-4 w-full rounded-2xl border border-slate-200 bg-slate-50/90 dark:border-slate-800 dark:bg-slate-800/80 p-3 text-left space-y-2 text-xs">
-                {txResultModal.saleRef && (
-                  <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-700/80 pb-1.5">
-                    <span className="text-slate-500 dark:text-slate-400 font-medium">No. Nota:</span>
-                    <span className="font-mono font-black text-slate-900 dark:text-white bg-amber-500/15 px-2 py-0.5 rounded text-amber-700 dark:text-amber-300 text-xs">
-                      {txResultModal.saleRef}
-                    </span>
+              <div className="relative flex flex-col items-center">
+                {/* Top Animated Icon */}
+                {txResultModal?.type === 'success' ? (
+                  <div className="mb-2 flex size-14 items-center justify-center rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shadow-xs">
+                    <CheckCircle2 className="size-8 stroke-[2.5]" />
+                  </div>
+                ) : (
+                  <div className="mb-2 flex size-14 items-center justify-center rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-600 dark:text-rose-400 shadow-xs">
+                    <AlertCircle className="size-8 stroke-[2.5]" />
                   </div>
                 )}
-                {txResultModal.methodName && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-500 dark:text-slate-400 font-medium">Metode Pembayaran:</span>
-                    <span className="font-bold text-slate-800 dark:text-slate-200">{txResultModal.methodName}</span>
-                  </div>
-                )}
-                {txResultModal.amount !== undefined && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-500 dark:text-slate-400 font-medium">Total Belanja:</span>
-                    <strong className="font-black text-slate-900 dark:text-white">Rp {txResultModal.amount.toLocaleString('id-ID')}</strong>
-                  </div>
-                )}
-                {txResultModal.changeAmount !== undefined && txResultModal.changeAmount > 0 && (
-                  <div className="flex items-center justify-between pt-1 border-t border-slate-200/80 dark:border-slate-700/80">
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">Uang Kembalian:</span>
-                    <strong className="text-emerald-600 dark:text-emerald-400 font-black text-sm">Rp {txResultModal.changeAmount.toLocaleString('id-ID')}</strong>
-                  </div>
-                )}
-              </div>
-            )}
 
-            {/* Action Buttons */}
-            {txResultModal?.type === 'success' ? (
-              <div className="flex flex-col gap-2 w-full">
-                {txResultModal.saleId ? (
-                  <div className="grid grid-cols-3 gap-2 w-full">
-                    {/* 1. Direct Receipt PDF Print */}
+                {/* Status Pill */}
+                <div className={cn(
+                  "mb-2 inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-wider",
+                  txResultModal?.type === 'success'
+                    ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                    : "border border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300"
+                )}>
+                  <span className={cn("size-2 rounded-full", txResultModal?.type === 'success' ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
+                  {txResultModal?.type === 'success' ? 'Transaksi Lunas' : 'Gagal Simpan'}
+                </div>
+
+                {/* Title */}
+                <h3 className="text-lg font-black tracking-tight text-slate-900 dark:text-white sm:text-xl">
+                  {txResultModal?.title}
+                </h3>
+                <p className="mb-3 text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm">
+                  {txResultModal?.message}
+                </p>
+
+                {/* Details Card */}
+                {txResultModal?.type === 'success' && (
+                  <div className="mb-4 w-full rounded-2xl border border-slate-200 bg-slate-50/90 dark:border-slate-800 dark:bg-slate-800/80 p-3 text-left space-y-2 text-xs">
+                    {targetSaleRef && (
+                      <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-700/80 pb-1.5">
+                        <span className="text-slate-500 dark:text-slate-400 font-medium">No. Nota:</span>
+                        <span className="font-mono font-black text-slate-900 dark:text-white bg-amber-500/15 px-2 py-0.5 rounded text-amber-700 dark:text-amber-300 text-xs">
+                          {targetSaleRef}
+                        </span>
+                      </div>
+                    )}
+                    {txResultModal.methodName && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500 dark:text-slate-400 font-medium">Metode Pembayaran:</span>
+                        <span className="font-bold text-slate-800 dark:text-slate-200">{txResultModal.methodName}</span>
+                      </div>
+                    )}
+                    {txResultModal.amount !== undefined && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500 dark:text-slate-400 font-medium">Total Belanja:</span>
+                        <strong className="font-black text-slate-900 dark:text-white">Rp {txResultModal.amount.toLocaleString('id-ID')}</strong>
+                      </div>
+                    )}
+                    {txResultModal.changeAmount !== undefined && txResultModal.changeAmount > 0 && (
+                      <div className="flex items-center justify-between pt-1 border-t border-slate-200/80 dark:border-slate-700/80">
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">Uang Kembalian:</span>
+                        <strong className="text-emerald-600 dark:text-emerald-400 font-black text-sm">Rp {txResultModal.changeAmount.toLocaleString('id-ID')}</strong>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                {txResultModal?.type === 'success' ? (
+                  <div className="flex flex-col gap-2 w-full">
+                    {targetSaleId ? (
+                      <div className="grid grid-cols-3 gap-2 w-full">
+                        {/* 1. Direct Receipt PDF Print */}
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            if (targetSaleId) {
+                              window.open(route('pos.sales.receipt-pdf', targetSaleId), '_blank')
+                            }
+                          }}
+                          className="gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs py-2.5 shadow-sm cursor-pointer"
+                        >
+                          <Printer className="size-3.5 shrink-0" />
+                          Cetak Struk
+                        </Button>
+
+                        {/* 2. PDF Nota in New Tab */}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            if (targetSaleId) {
+                              window.open(route('pos.sales.receipt-pdf', targetSaleId), '_blank')
+                            }
+                          }}
+                          className="gap-1 rounded-xl border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                        >
+                          <FileText className="size-3.5 shrink-0" />
+                          Nota PDF
+                        </Button>
+
+                        {/* 3. View Full Receipt Page */}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            if (targetSaleId) {
+                              router.visit(route('pos.sales.receipt', targetSaleId))
+                            }
+                          }}
+                          className="gap-1 rounded-xl border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                        >
+                          <Receipt className="size-3.5 shrink-0" />
+                          Lihat Nota
+                        </Button>
+                      </div>
+                    ) : null}
+
                     <Button
                       type="button"
                       onClick={() => {
-                        if (txResultModal.saleId) {
-                          window.open(route('pos.sales.receipt-pdf', txResultModal.saleId), '_blank')
-                        }
+                        setTxResultModal(null)
+                        focusScan()
                       }}
-                      className="gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs py-2.5 shadow-sm cursor-pointer"
+                      className="w-full gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3 shadow-md text-sm cursor-pointer"
                     >
-                      <Printer className="size-3.5 shrink-0" />
-                      Cetak Struk
-                    </Button>
-
-                    {/* 2. PDF Nota in New Tab */}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        if (txResultModal.saleId) {
-                          window.open(route('pos.sales.receipt-pdf', txResultModal.saleId), '_blank')
-                        }
-                      }}
-                      className="gap-1 rounded-xl border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800"
-                    >
-                      <FileText className="size-3.5 shrink-0" />
-                      Nota PDF
-                    </Button>
-
-                    {/* 3. View Full Receipt Page */}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        if (txResultModal.saleId) {
-                          router.visit(route('pos.sales.receipt', txResultModal.saleId))
-                        }
-                      }}
-                      className="gap-1 rounded-xl border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800"
-                    >
-                      <Receipt className="size-3.5 shrink-0" />
-                      Lihat Nota
+                      <PlusCircle className="size-4" />
+                      Transaksi Baru (Esc)
                     </Button>
                   </div>
-                ) : null}
-
-                <Button
-                  type="button"
-                  onClick={() => {
-                    setTxResultModal(null)
-                    focusScan()
-                  }}
-                  className="w-full gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3 shadow-md text-sm cursor-pointer"
-                >
-                  <PlusCircle className="size-4" />
-                  Transaksi Baru (Esc)
-                </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={() => setTxResultModal(null)}
+                    className="w-full gap-2 rounded-xl bg-slate-900 hover:bg-slate-950 text-white font-bold py-3 shadow-md text-sm"
+                  >
+                    Tutup &amp; Coba Lagi
+                  </Button>
+                )}
               </div>
-            ) : (
-              <Button
-                type="button"
-                onClick={() => setTxResultModal(null)}
-                className="w-full gap-2 rounded-xl bg-slate-900 hover:bg-slate-950 text-white font-bold py-3 shadow-md text-sm"
-              >
-                Tutup &amp; Coba Lagi
-              </Button>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+            </DialogContent>
+          </Dialog>
+        )
+      })()}
 
       {/* Dialog Katalog Promo & Kupon Hari Ini — 2 Tab */}
       <Dialog open={showPromosModal} onOpenChange={(open) => {
