@@ -6,7 +6,7 @@ import type { ColumnDef } from '@tanstack/react-table'
 import {
   AlertCircle, AlertTriangle, ArrowDownCircle, ArrowDownLeft, ArrowUpCircle,
   ArrowUpRight, Banknote, Check, CheckCircle2, ChevronDown, ChevronUp, Coins, CreditCard, DollarSign,
-  Edit2, FileSpreadsheet, FileText, History, Info, Loader2, Lock, PlayCircle, Plus, PlusCircle, QrCode, Receipt, ShieldAlert,
+  Edit2, ExternalLink, FileSpreadsheet, FileText, History, Info, Loader2, Lock, PlayCircle, Plus, PlusCircle, Printer, QrCode, Receipt, ShieldAlert,
   ShoppingBag, Store, UserCheck, Wallet, XCircle,
 } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
@@ -74,6 +74,7 @@ type ActiveSession = {
   total_refund_cash: number
   cash_account: Ref
   user?: Ref
+  user_id?: number
   outlet?: Ref
 }
 
@@ -252,6 +253,11 @@ export default function Index({
   const [editingDrawer, setEditingDrawer] = useState<DrawerAccount | null>(null)
   const drawerForm = useForm(emptyDrawerForm)
 
+  /* State for In-Page Receipt Modal Preview */
+  const [receiptModalOpen, setReceiptModalOpen] = useState(false)
+  const [receiptModalSaleId, setReceiptModalSaleId] = useState<number | null>(null)
+  const [receiptModalRef, setReceiptModalRef] = useState<string | null>(null)
+
   function handleOpenNewDrawer() {
     setEditingDrawer(null)
     drawerForm.setData({
@@ -398,7 +404,11 @@ export default function Index({
             size="sm"
             variant="outline"
             className="h-8 gap-1 border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-200 font-bold text-xs px-2.5 rounded-lg"
-            onClick={() => window.open(route('pos.sales.receipt-pdf', row.original.id), '_blank')}
+            onClick={() => {
+              setReceiptModalSaleId(row.original.id)
+              setReceiptModalRef(row.original.reference)
+              setReceiptModalOpen(true)
+            }}
           >
             <Receipt className="size-3.5 text-slate-500" />
             PDF Struk
@@ -1439,7 +1449,11 @@ export default function Index({
                                 size="sm"
                                 variant="outline"
                                 className="h-7 text-[11px] gap-1 px-2 border-slate-200 dark:border-slate-700"
-                                onClick={() => window.open(route('pos.sales.receipt-pdf', sale.id), '_blank')}
+                                onClick={() => {
+                                  setReceiptModalSaleId(sale.id)
+                                  setReceiptModalRef(sale.reference)
+                                  setReceiptModalOpen(true)
+                                }}
                               >
                                 <Receipt className="size-3" />
                                 <span>PDF</span>
@@ -1504,6 +1518,85 @@ export default function Index({
               Tutup
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Dialog Preview Struk Transaksi (In-Page Modal) ── */}
+      <Dialog open={receiptModalOpen} onOpenChange={setReceiptModalOpen}>
+        <DialogContent className="sm:max-w-[460px] w-[94vw] h-[85vh] max-h-[720px] flex flex-col p-0 gap-0 overflow-hidden rounded-3xl border border-border bg-card shadow-2xl">
+          <DialogHeader className="px-5 py-3.5 border-b border-border bg-muted/20 flex flex-row items-center justify-between shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Receipt className="size-5" />
+              </div>
+              <div className="text-left">
+                <DialogTitle className="text-sm font-extrabold text-content">Preview Struk Kasir</DialogTitle>
+                <p className="text-[11px] text-content-muted font-mono">{receiptModalRef ?? '-'}</p>
+              </div>
+            </div>
+            {receiptModalRef && (
+              <Badge variant="outline" className="font-mono text-xs px-2.5 py-0.5 bg-primary/10 text-primary border-primary/30 mr-6">
+                {receiptModalRef}
+              </Badge>
+            )}
+          </DialogHeader>
+
+          <div className="flex-1 min-h-0 w-full overflow-hidden bg-slate-900 flex flex-col p-0">
+            {receiptModalSaleId ? (
+              <iframe
+                id="receipt-pdf-frame"
+                src={`${route('pos.sales.receipt-pdf', receiptModalSaleId)}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+                className="w-full flex-1 h-full border-0 bg-white"
+                title={`Struk ${receiptModalRef}`}
+              />
+            ) : (
+              <div className="flex flex-1 items-center justify-center text-xs text-content-muted">
+                Memuat struk...
+              </div>
+            )}
+          </div>
+
+          <div className="px-5 py-4 border-t border-border bg-card flex flex-col gap-2 shrink-0 z-10">
+            <div className="grid grid-cols-3 gap-2.5 w-full">
+              <Button
+                type="button"
+                className="h-10 text-xs font-bold gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-sm rounded-xl"
+                onClick={() => {
+                  const iframe = document.getElementById('receipt-pdf-frame') as HTMLIFrameElement | null
+                  if (iframe?.contentWindow) {
+                    iframe.contentWindow.focus()
+                    iframe.contentWindow.print()
+                  } else if (receiptModalSaleId) {
+                    window.open(route('pos.sales.receipt-pdf', receiptModalSaleId), '_blank')
+                  }
+                }}
+              >
+                <Printer className="size-4 shrink-0" />
+                <span>Cetak</span>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 text-xs font-bold gap-1.5 border-border bg-muted/40 hover:bg-muted text-content rounded-xl cursor-pointer"
+                onClick={() => {
+                  if (receiptModalSaleId) {
+                    window.open(route('pos.sales.receipt-pdf', receiptModalSaleId), '_blank')
+                  }
+                }}
+              >
+                <ExternalLink className="size-4 shrink-0" />
+                <span>Tab Baru</span>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setReceiptModalOpen(false)}
+                className="h-10 text-xs font-bold border-border bg-muted/40 hover:bg-muted text-content rounded-xl cursor-pointer"
+              >
+                <span>Tutup</span>
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
