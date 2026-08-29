@@ -36,10 +36,16 @@ class ReceivableController extends Controller
         $search       = $request->string('search')->toString();
 
         $members = Member::query()
+            ->select(['id', 'name', 'member_number', 'nis', 'type', 'receivable_limit'])
             ->whereHas('receivables')
             ->with([
-                'receivables' => fn ($q) => $q->with('sale:id,reference')->orderBy('due_date', 'asc')->orderBy('id', 'asc'),
-                'receivables.payments' => fn ($q) => $q->with(['cashAccount:id,name', 'creator:id,name'])->orderByDesc('created_at'),
+                'receivables' => fn ($q) => $q->select(['id', 'member_id', 'sale_id', 'reference', 'total_amount', 'paid_amount', 'remaining_amount', 'due_date', 'status', 'created_at'])
+                    ->with('sale:id,reference')
+                    ->orderBy('due_date', 'asc')
+                    ->orderBy('id', 'asc'),
+                'receivables.payments' => fn ($q) => $q->select(['id', 'receivable_id', 'reference', 'payment_date', 'amount', 'payment_method', 'note', 'cash_account_id', 'created_by', 'created_at'])
+                    ->with(['cashAccount:id,name', 'creator:id,name', 'receivable:id,reference,sale_id', 'receivable.sale:id,reference'])
+                    ->orderByDesc('created_at'),
             ])
             ->when($search, fn ($q) => $q->where(
                 fn ($sub) => $sub->where('name', 'ilike', "%{$search}%")
@@ -219,31 +225,28 @@ class ReceivableController extends Controller
 
         $orderId = 'PTG-SNAP-'.$member->id.'-'.Str::random(8);
 
-        $params = [
-            'transaction_details' => [
-                'order_id' => $orderId,
-                'gross_amount' => (int) $validated['amount'],
-            ],
-            'customer_details' => [
-                'first_name' => $member->name,
-                'phone' => $member->phone ?? '',
-            ],
-            'item_details' => [
-                [
-                    'id' => 'CICILAN-PIUTANG',
-                    'price' => (int) $validated['amount'],
-                    'quantity' => 1,
-                    'name' => 'Cicilan Piutang - '.$member->name,
-                ],
-            ],
-        ];
-
         try {
-            $snapToken = $this->midtransGateway->createSnapToken($params);
+            $result = $this->midtransGateway->createTransaction(
+                $orderId,
+                (int) $validated['amount'],
+                [
+                    'first_name' => $member->name,
+                    'phone' => $member->phone ?? '',
+                ],
+                [
+                    [
+                        'id' => 'CICILAN-PIUTANG',
+                        'price' => (int) $validated['amount'],
+                        'quantity' => 1,
+                        'name' => 'Cicilan Piutang - '.$member->name,
+                    ],
+                ],
+            );
 
             return response()->json([
-                'snap_token' => $snapToken,
+                'snap_token' => $result['token'],
                 'order_id' => $orderId,
+                'redirect_url' => $result['redirect_url'] ?? null,
             ]);
         } catch (\Throwable $e) {
             return response()->json(['message' => 'Gagal membuat sesi gateway: '.$e->getMessage()], 422);
