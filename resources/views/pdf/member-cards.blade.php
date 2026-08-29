@@ -14,47 +14,54 @@
 </head>
 <body>
     {{--
-        Cetak DUPLEX-siap: halaman 1 = seluruh sisi DEPAN, halaman 2 =
-        seluruh sisi BELAKANG, dalam URUTAN GRID YANG SAMA PERSIS —
-        supaya saat dicetak bolak-balik (duplex) dan disusun, depan
-        dan belakang tiap kartu sejajar. TIDAK diselang-seling
-        depan/belakang per kartu (itu akan merusak alur potong-tempel
-        operator percetakan).
+        Cetak DUPLEX-siap: halaman cetak per 8 kartu (2 kolom x 4 baris = 8 kartu/lembar A4).
+        Sisi DEPAN diurutkan biasa (kiri ke kanan), sedangkan sisi BELAKANG dicerminkan
+        (kanan ke kiri) agar saat kertas dibalik horizontal (duplex long-edge), sisi depan
+        dan belakang tiap kartu pas & presisi sejajar saat dipotong.
     --}}
-    <table class="grid">
-        @foreach ($cards->chunk(2) as $row)
-            <tr>
-                @foreach ($row as $item)
-                    <td>
-                        <div class="cut-guide">
-                            @include('pdf.partials.member-card-item', ['member' => $item['member'], 'card' => $item['card'], 'barcode' => $item['barcode']])
-                        </div>
-                    </td>
-                @endforeach
-                @if ($row->count() < 2)
-                    <td></td>
-                @endif
-            </tr>
-        @endforeach
-    </table>
+    @foreach ($cards->chunk(8) as $pageIndex => $pageCards)
+        @if ($pageIndex > 0)
+            <div class="page-break"></div>
+        @endif
 
-    <div class="page-break"></div>
+        {{-- Sisi DEPAN (Front) --}}
+        <table class="grid">
+            @foreach ($pageCards->chunk(2) as $row)
+                <tr>
+                    @foreach ($row as $item)
+                        <td>
+                            <div class="cut-guide">
+                                @include('pdf.partials.member-card-item', ['member' => $item['member'], 'card' => $item['card'], 'barcode' => $item['barcode']])
+                            </div>
+                        </td>
+                    @endforeach
+                    @if ($row->count() < 2)
+                        <td></td>
+                    @endif
+                </tr>
+            @endforeach
+        </table>
 
-    <table class="grid">
-        @foreach ($cards->chunk(2) as $row)
-            <tr>
-                @foreach ($row as $item)
-                    <td>
-                        <div class="cut-guide">
-                            @include('pdf.partials.member-card-back', ['member' => $item['member'], 'card' => $item['card'], 'barcode' => $item['barcode'] ?? null])
-                        </div>
-                    </td>
-                @endforeach
-                @if ($row->count() < 2)
-                    <td></td>
-                @endif
-            </tr>
-        @endforeach
-    </table>
+        <div class="page-break"></div>
+
+        {{-- Sisi BELAKANG (Back) — Cermin horizontal per baris untuk Duplex Alignment --}}
+        <table class="grid">
+            @foreach ($pageCards->chunk(2) as $row)
+                <tr>
+                    @if ($row->count() < 2)
+                        <td></td>
+                    @endif
+                    @foreach ($row->reverse() as $item)
+                        <td>
+                            <div class="cut-guide">
+                                @include('pdf.partials.member-card-back', ['member' => $item['member'], 'card' => $item['card'], 'barcode' => $item['barcode'] ?? null])
+                            </div>
+                        </td>
+                    @endforeach
+                </tr>
+            @endforeach
+        </table>
+    @endforeach
 </body>
 </html>
+
