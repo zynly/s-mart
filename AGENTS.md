@@ -1,4 +1,4 @@
-﻿# WORKSPACE RULES & BEHAVIOR CONSTRAINTS
+# WORKSPACE RULES & BEHAVIOR CONSTRAINTS
 
 ## 🔴 STRICT DATABASE SAFETY & MIGRATION CONTROL (MUTLAK & DILARANG KERAS DI-BYPASS)
 1. **DILARANG KERAS `migrate:fresh`, `db:wipe`, `migrate:reset`, ATAU TEST DENGAN REFRESH DATABASE:**
@@ -26,6 +26,9 @@
 9. **Rule #9 — Aktifkan OPcache**: Pastikan ekstensi OPcache aktif pada server production.
 10. **Rule #10 — Driver Cache & Session Cepat**: Gunakan Redis (atau Memcached) untuk cache dan session driver, bukan file atau database.
 
-## 🔴 STRICT GIT PUSH PERMISSION CONTROL
+## 🔴 STRICT GIT PUSH PERMISSION CONTROL & DUAL REMOTE REQUIREMENT
 - **Git Commit**: Boleh (diizinkan) melakukan `git commit` di lokal untuk menyimpan checkpoint pekerjaan.
-- **Git Push**: **DILARANG KERAS** me-push kode ke remote (GitHub/GitLab/origin main) secara otomatis. `git push` HANYA boleh dieksekusi jika USER secara eksplisit menyuruh "push".
+- **Git Push**: **DILARANG KERAS** me-push kode secara otomatis tanpa instruksi USER.
+- **DUAL REMOTE PUSH (MUTLAK UNTUK PROYEK S-MART)**: Apabila USER memberikan instruksi/perintah push (mis. "push", "push ke main"), AGEN **WAJIB PUSH KE 2 REMOTE SEKALIGUS**:
+  1. `git push origin main` (`https://github.com/zynly/s-mart.git`)
+  2. `git push velora main` (`https://github.com/velora-1d/POS-Skillage.git`)
