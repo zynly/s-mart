@@ -15,7 +15,6 @@ class DatabaseSeeder extends Seeder
             RolePermissionSeeder::class,
             UserSeeder::class,
             MasterDataSeeder::class,
-            ProductSeeder::class,
             MemberLevelSeeder::class,
             MemberSeeder::class,
             StockLayerSeeder::class,
