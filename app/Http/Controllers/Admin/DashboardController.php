@@ -117,6 +117,8 @@ class DashboardController extends Controller
 
         if ($user->can('member.view')) {
             $panels['totalMembers'] = Member::where('status', 'active')->count();
+            $panels['totalSantri'] = Member::where('status', 'active')->where('type', 'santri')->count();
+            $panels['totalFasilitator'] = Member::where('status', 'active')->where('type', '!=', 'santri')->count();
             $panels['topSpenders'] = $this->topSpenderMembers();
             $panels['debtors'] = $this->debtorMembers();
         }

@@ -74,6 +74,8 @@ type Panels = {
   debtsDue?: number
   receivablesOverdue?: number
   totalMembers?: number
+  totalSantri?: number
+  totalFasilitator?: number
   reconciliationIssues?: number
   topSpenders?: MemberSpender[]
   debtors?: MemberDebtor[]
@@ -362,16 +364,16 @@ function ManagerDashboard({ statCards, charts, recentSales, topProducts, cashier
                   <Users className="size-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-teal-700 dark:text-teal-400">Santri Aktif</p>
+                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-teal-700 dark:text-teal-400">Anggota Aktif</p>
                   <p className="text-xs font-bold text-navy-950 dark:text-white mt-0.5 truncate">
-                    {panels.totalMembers} Santri
+                    {panels.totalSantri ?? panels.totalMembers} Santri · {panels.totalFasilitator ?? 0} Staf/Ustadz
                   </p>
                 </div>
               </div>
               <div className="mt-3 flex items-center justify-between border-t border-teal-200/60 dark:border-teal-800/60 pt-2.5">
                 <span className="text-[10px] font-bold text-slate-500">Anggota</span>
                 <Link href={route('admin.members.index')} className="text-xs font-extrabold text-teal-700 dark:text-teal-400 hover:text-teal-900 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
-                  <span>Buka Santri</span>
+                  <span>Buka Anggota</span>
                   <ArrowUpRight className="size-3" />
                 </Link>
               </div>
