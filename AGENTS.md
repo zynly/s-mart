@@ -1,14 +1,13 @@
 # WORKSPACE RULES & BEHAVIOR CONSTRAINTS
 
-## 🔴 STRICT DATABASE SAFETY & MIGRATION CONTROL (MUTLAK & DILARANG KERAS DI-BYPASS)
-1. **DILARANG KERAS `migrate:fresh`, `db:wipe`, `migrate:reset`, ATAU TEST DENGAN REFRESH DATABASE:**
-   - **TIDAK BOLEH** menjalankan `php artisan migrate:fresh`, `php artisan db:wipe`, `php artisan migrate:reset`, atau seeder yang menghapus/menimpa data pada database server/koneksi aktif (`db-smart`).
-   - `migrate:fresh` **HANYA BOLEH** dieksekusi jika dan hanya jika pengguna (USER) secara eksplisit menulis perintah "migrate:fresh".
-2. **OPERASI DATABASE HANYA BERSIFAT INCREMENTAL & AMAN:**
+## 🔴 STRICT DATABASE SAFETY & MIGRATION CONTROL (MUTLAK 1000% DILARANG BYPASS)
+1. **HARAM & DILARANG KERAS `db:seed`, `migrate:fresh`, `db:wipe`, `migrate:reset`, ATAU `RefreshDatabase`:**
+   - **DILARANG KERAS MENGJALANKAN SEED ATAU RESET**: `php artisan db:seed`, `php artisan migrate:fresh`, `php artisan db:wipe`, `php artisan migrate:reset`, maupun menjalankan test yang menggunakan `RefreshDatabase` pada database server/koneksi aktif (`db-smart`).
+   - Eksekusi seeder atau reset database **HANYA BOLEH** jika pengguna (USER) menulis instruksi perintah yang sangat eksplisit.
+2. **OPERASI DATABASE HANYA READ-ONLY / INCREMENTAL MIGRATION AMAN:**
    - Jika ada perubahan skema tabel baru, HANYA boleh menjalankan `php artisan migrate` standar (incremental).
-   - Jika melakukan seeding atau pengisian data, **WAJIB HANYA MENGISI DATA YANG BELUM ADA SAJA** (menggunakan `firstOrCreate`, `insertOrIgnore`, atau pengecekan `exists()` terlebih dahulu). Dilarang keras menimpa/menghapus data lama yang sudah ada.
 3. **PENGUJIAN / TESTING:**
-   - Testing wajib menggunakan mock atau transaksi rollback (`DatabaseTransactions`), DILARANG menggunakan `RefreshDatabase` pada database utama.
+   - Testing WAJIB menggunakan mock atau transaksi rollback (`DatabaseTransactions`), DILARANG KERAS menggunakan `RefreshDatabase` atau seeder otomatis pada database utama.
 
 ## 🔴 MANDATORY PACKAGE MANAGER: WAJIB GUNAKAN `pnpm` (MUTLAK)
 - **WAJIB MENGGUNAKAN `pnpm`**: Seluruh perintah package manager dan eksekusi frontend WAJIB menggunakan `pnpm` (`pnpm install`, `pnpm build`, `pnpm run build`, `pnpm run dev`, `pnpm add ...`, `pnpm dlx ...`).
