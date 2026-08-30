@@ -16,6 +16,7 @@ import { Switch } from '@/Components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select'
 import { AppSheet } from '@/Components/common/AppSheet'
 import { ProductCombobox } from '@/Components/common/ProductCombobox'
+import { SelectCombobox } from '@/Components/common/SelectCombobox'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs'
 import { formatDate } from '@/Lib/date'
 import type { Paginated } from '@/Types'
@@ -237,29 +238,23 @@ export default function Index({ tab, purchases, suppliers, outlets, products, un
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label>Supplier</Label>
-                    <Select value={form.data.supplier_id} onValueChange={(v) => form.setData('supplier_id', v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih supplier" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {suppliers.map((s) => (
-                          <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <SelectCombobox
+                      options={suppliers.map((s) => ({ value: String(s.id), label: s.name }))}
+                      value={form.data.supplier_id}
+                      onSelect={(v) => form.setData('supplier_id', v)}
+                      placeholder="Pilih supplier"
+                      searchPlaceholder="Cari nama supplier…"
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label>Outlet</Label>
-                    <Select value={form.data.outlet_id} onValueChange={(v) => form.setData('outlet_id', v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih outlet" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {outlets.map((o) => (
-                          <SelectItem key={o.id} value={String(o.id)}>{o.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <SelectCombobox
+                      options={outlets.map((o) => ({ value: String(o.id), label: o.name }))}
+                      value={form.data.outlet_id}
+                      onSelect={(v) => form.setData('outlet_id', v)}
+                      placeholder="Pilih outlet"
+                      searchPlaceholder="Cari nama outlet…"
+                    />
                   </div>
                 </div>
                 <div className="space-y-1.5">
@@ -287,32 +282,30 @@ export default function Index({ tab, purchases, suppliers, outlets, products, un
                 {form.data.type === 'regular' && (
                   <div className="space-y-1.5">
                     <Label>Metode Bayar</Label>
-                    <Select value={form.data.payment_type} onValueChange={(v) => form.setData('payment_type', v as 'cash' | 'credit')}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="cash">Tunai</SelectItem>
-                        <SelectItem value="credit">Kredit (hutang)</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <SelectCombobox
+                      options={[
+                        { value: 'cash', label: 'Tunai' },
+                        { value: 'credit', label: 'Kredit (hutang)' },
+                      ]}
+                      value={form.data.payment_type}
+                      onSelect={(v) => form.setData('payment_type', v as 'cash' | 'credit')}
+                      placeholder="Pilih metode bayar"
+                      searchable={false}
+                    />
                   </div>
                 )}
                 {form.data.type === 'regular' && form.data.payment_type === 'cash' && (
                   <div className="space-y-1.5">
                     <Label>Akun Kas (saldo akan berkurang sebesar total pembelian)</Label>
-                    <Select value={form.data.cash_account_id} onValueChange={(v) => form.setData('cash_account_id', v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih akun kas" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {cashAccounts
-                          .filter((a) => String(a.outlet_id) === form.data.outlet_id)
-                          .map((a) => (
-                            <SelectItem key={a.id} value={String(a.id)}>{a.name}</SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
+                    <SelectCombobox
+                      options={cashAccounts
+                        .filter((a) => String(a.outlet_id) === form.data.outlet_id)
+                        .map((a) => ({ value: String(a.id), label: a.name }))}
+                      value={form.data.cash_account_id}
+                      onSelect={(v) => form.setData('cash_account_id', v)}
+                      placeholder="Pilih akun kas"
+                      searchPlaceholder="Cari akun kas…"
+                    />
                     {form.errors.cash_account_id && <p className="text-sm text-danger">{form.errors.cash_account_id}</p>}
                   </div>
                 )}
@@ -352,16 +345,13 @@ export default function Index({ tab, purchases, suppliers, outlets, products, un
                           {/* Satuan */}
                           <div className="w-36 space-y-1 sm:space-y-0 shrink-0">
                             <Label className="text-xs sm:hidden">Satuan</Label>
-                            <Select value={item.unit_id} onValueChange={(v) => updateItem(index, { unit_id: v })}>
-                              <SelectTrigger className="w-full">
-                                <SelectValue className="truncate" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {units.map((u) => (
-                                  <SelectItem key={u.id} value={String(u.id)}>{u.code}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <SelectCombobox
+                              options={units.map((u) => ({ value: String(u.id), label: `${u.code} (${u.name})` }))}
+                              value={item.unit_id}
+                              onSelect={(v) => updateItem(index, { unit_id: v })}
+                              placeholder="Pilih satuan"
+                              searchPlaceholder="Cari kode/nama satuan…"
+                            />
                           </div>
 
                           {/* Qty */}
