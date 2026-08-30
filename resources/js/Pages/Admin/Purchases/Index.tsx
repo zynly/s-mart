@@ -118,6 +118,7 @@ export default function Index({ tab, purchases, suppliers, outlets, products, un
   }
 
   const itemsSubtotal = form.data.items.reduce((sum, it) => sum + it.qty * it.unit_price - it.discount, 0)
+  const totalQty = form.data.items.reduce((sum, it) => sum + (Number(it.qty) || 0), 0)
   const costsTotal = form.data.other_costs.reduce((sum, c) => sum + c.amount, 0)
   const grandTotal = itemsSubtotal - form.data.discount + form.data.tax + costsTotal
 
@@ -318,62 +319,105 @@ export default function Index({ tab, purchases, suppliers, outlets, products, un
               </TabsContent>
 
               <TabsContent value="item" className="flex flex-col gap-3">
+                {/* Table Header for Desktop */}
+                {form.data.items.length > 0 && (
+                  <div className="hidden sm:flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-500 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 rounded-t-lg">
+                    <div className="flex-1">Produk</div>
+                    <div className="w-36">Satuan</div>
+                    <div className="w-28 text-center">Qty</div>
+                    <div className="w-36">Harga Beli (Rp)</div>
+                    <div className="w-36 text-right">Subtotal (Rp)</div>
+                    <div className="w-8"></div>
+                  </div>
+                )}
+
                 {form.data.items.map((item, index) => {
                   const product = products.find((p) => String(p.id) === item.product_id)
+                  const lineSubtotal = item.qty * item.unit_price - (item.discount || 0)
 
                   return (
-                    <div key={index} className="flex flex-col gap-2 rounded-md border border-border p-2.5">
-                      <div className="flex items-end gap-2">
-                        <div className="flex-1 space-y-1">
-                          <Label className="text-xs">Produk</Label>
+                    <div key={index} className="flex flex-col gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-2xs transition-all hover:border-slate-300 dark:hover:border-slate-700">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
+                        {/* Produk */}
+                        <div className="flex-1 space-y-1 sm:space-y-0">
+                          <Label className="text-xs sm:hidden">Produk</Label>
                           <ProductCombobox
                             products={products}
                             value={item.product_id}
                             onSelect={(p) => updateItem(index, { product_id: String(p.id), unit_id: String(p.base_unit_id) })}
                           />
                         </div>
-                        <div className="w-24 space-y-1">
-                          <Label className="text-xs">Satuan</Label>
-                          <Select value={item.unit_id} onValueChange={(v) => updateItem(index, { unit_id: v })}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {units.map((u) => (
-                                <SelectItem key={u.id} value={String(u.id)}>{u.code}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+
+                        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                          {/* Satuan */}
+                          <div className="w-36 space-y-1 sm:space-y-0 shrink-0">
+                            <Label className="text-xs sm:hidden">Satuan</Label>
+                            <Select value={item.unit_id} onValueChange={(v) => updateItem(index, { unit_id: v })}>
+                              <SelectTrigger className="w-full">
+                                <SelectValue className="truncate" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {units.map((u) => (
+                                  <SelectItem key={u.id} value={String(u.id)}>{u.code}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* Qty */}
+                          <div className="w-28 space-y-1 sm:space-y-0 shrink-0">
+                            <Label className="text-xs sm:hidden">Qty</Label>
+                            <Input
+                              type="number"
+                              min={0.001}
+                              step="0.001"
+                              value={item.qty}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) => updateItem(index, { qty: Number(e.target.value) })}
+                              className="text-center font-bold bg-slate-50/50 dark:bg-slate-800/50"
+                            />
+                          </div>
+
+                          {/* Harga Beli */}
+                          <div className="w-36 space-y-1 sm:space-y-0 shrink-0">
+                            <Label className="text-xs sm:hidden">Harga Beli</Label>
+                            <MoneyInput value={item.unit_price} onChange={(v) => updateItem(index, { unit_price: v })} />
+                          </div>
+
+                          {/* Subtotal */}
+                          <div className="w-36 space-y-1 sm:space-y-0 shrink-0 text-right">
+                            <Label className="text-xs sm:hidden text-slate-400">Subtotal</Label>
+                            <div className="flex h-9 items-center justify-end px-2.5 rounded-md bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 font-bold text-xs text-blue-600 dark:text-blue-400">
+                              <Money amount={lineSubtotal} />
+                            </div>
+                          </div>
+
+                          {/* Delete Button */}
+                          <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeItem(index)} className="shrink-0 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
+                            <Trash2 className="size-4" />
+                          </Button>
                         </div>
-                        <div className="w-20 space-y-1">
-                          <Label className="text-xs">Qty</Label>
-                          <Input type="number" min={0.001} step="0.001" value={item.qty} onChange={(e) => updateItem(index, { qty: Number(e.target.value) })} />
-                        </div>
-                        <div className="w-32 space-y-1">
-                          <Label className="text-xs">Harga Beli</Label>
-                          <MoneyInput value={item.unit_price} onChange={(v) => updateItem(index, { unit_price: v })} />
-                        </div>
-                        <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeItem(index)}>
-                          <Trash2 className="size-4 text-danger" />
-                        </Button>
                       </div>
+
+                      {/* Expirable / Batch Info */}
                       {product?.is_expirable && (
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2.5 mt-1 pt-2 border-t border-slate-100 dark:border-slate-800/60 bg-amber-50/40 dark:bg-amber-950/10 p-2 rounded-lg">
                           <div className="flex-1 space-y-1">
-                            <Label className="text-xs">No. Batch</Label>
-                            <Input value={item.batch_no} onChange={(e) => updateItem(index, { batch_no: e.target.value })} />
+                            <Label className="text-[11px] font-semibold text-amber-900 dark:text-amber-300">No. Batch</Label>
+                            <Input value={item.batch_no} placeholder="mis. BATCH-001" onChange={(e) => updateItem(index, { batch_no: e.target.value })} className="h-8 text-xs bg-white dark:bg-slate-900" />
                           </div>
                           <div className="flex-1 space-y-1">
-                            <Label className="text-xs">Tanggal Kadaluwarsa (wajib)</Label>
-                            <Input type="date" value={item.expired_at} onChange={(e) => updateItem(index, { expired_at: e.target.value })} />
+                            <Label className="text-[11px] font-semibold text-amber-900 dark:text-amber-300">Tanggal Kadaluwarsa (wajib)</Label>
+                            <Input type="date" value={item.expired_at} onChange={(e) => updateItem(index, { expired_at: e.target.value })} className="h-8 text-xs bg-white dark:bg-slate-900" />
                           </div>
                         </div>
                       )}
                     </div>
                   )
                 })}
-                <Button type="button" variant="outline" size="sm" onClick={addItem} className="w-fit">
-                  <Plus className="size-3.5" /> Tambah Item
+
+                <Button type="button" variant="outline" size="sm" onClick={addItem} className="w-fit gap-1.5 border-dashed border-blue-300 text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950/30 font-semibold mt-1">
+                  <Plus className="size-4" /> Tambah Item Barang
                 </Button>
                 {form.errors.items && <p className="text-sm text-danger">{form.errors.items}</p>}
               </TabsContent>
@@ -401,10 +445,37 @@ export default function Index({ tab, purchases, suppliers, outlets, products, un
               </TabsContent>
             </Tabs>
 
-            <div className="flex justify-end border-t border-border pt-3">
-              <div className="text-right">
-                <p className="text-sm text-content-muted">Total</p>
-                <Money amount={grandTotal} size="lg" />
+            {/* Sticky Summary & Grand Total Bar */}
+            <div className="rounded-xl border border-blue-200 dark:border-blue-900/50 bg-gradient-to-r from-blue-50/80 to-slate-50 dark:from-slate-900 dark:to-blue-950/30 p-3.5 flex flex-wrap items-center justify-between gap-4 mt-4 shadow-xs">
+              <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs text-slate-600 dark:text-slate-300">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400 font-medium">Jenis Item:</span>
+                  <span className="font-bold text-slate-900 dark:text-white px-2 py-0.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">{form.data.items.length} Barang</span>
+                </div>
+                <div className="h-3 w-px bg-slate-300 dark:bg-slate-700 hidden sm:block" />
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400 font-medium">Total Qty:</span>
+                  <span className="font-bold text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full bg-blue-100/60 dark:bg-blue-900/40">{totalQty.toLocaleString('id-ID')}</span>
+                </div>
+                <div className="h-3 w-px bg-slate-300 dark:bg-slate-700 hidden sm:block" />
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400 font-medium">Subtotal Item:</span>
+                  <Money amount={itemsSubtotal} className="font-bold text-slate-800 dark:text-slate-200" />
+                </div>
+                {costsTotal > 0 && (
+                  <>
+                    <div className="h-3 w-px bg-slate-300 dark:bg-slate-700 hidden sm:block" />
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-slate-400 font-medium">Biaya Tambahan:</span>
+                      <Money amount={costsTotal} className="font-bold text-amber-600 dark:text-amber-400" />
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2.5 ml-auto">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total:</span>
+                <Money amount={grandTotal} size="lg" className="font-black text-blue-600 dark:text-blue-400 text-lg sm:text-xl" />
               </div>
             </div>
 
