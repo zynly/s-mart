@@ -145,8 +145,6 @@ class CashController extends Controller
 
     public function storeIn(StoreCashTransactionRequest $request): RedirectResponse
     {
-        $this->verifyCashierPin($request->user(), (string) $request->input('pin'));
-
         $session = $this->sessionService->getActive($request->user());
         if (! $session) {
             throw ValidationException::withMessages([
