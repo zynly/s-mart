@@ -223,6 +223,13 @@ export default function Index({
     setCatalogState(catalog ?? { data: [], current_page: 1, last_page: 1, total: 0 })
   }, [catalog])
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void fetchCatalog({ search: catalogSearch, page: 1 })
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [catalogSearch, fetchCatalog])
+
   const selectedCategoriesList = useMemo(
     () => categories.filter((c) => selectedPosCategories.includes(c.id)),
     [categories, selectedPosCategories]
@@ -524,15 +531,16 @@ export default function Index({
       const data = await res.json()
 
       if (!res.ok) {
-        setScanError(data.message ?? 'Barcode tidak dikenali.')
         return
       }
 
       addLine(data.product, data.unit, data.price, data.qty_multiplier)
+      toast.success(`Produk "${data.product.name}" ditambahkan ke keranjang via Barcode.`)
+      setCatalogSearch('')
+      void fetchCatalog({ search: '', page: 1 })
     } catch {
-      setScanError('Gagal memeriksa barcode.')
+      // ignore
     } finally {
-      setBarcode('')
       focusScan()
     }
   }
@@ -1465,24 +1473,36 @@ export default function Index({
       <div className="flex flex-1 min-h-0 h-full w-full overflow-hidden">
         {/* GRID 1: KATALOG PRODUK & SEARCH (Kolom Kiri Terbesar - Flex Expand) */}
         <section className="flex flex-1 min-w-0 flex-col gap-3 overflow-hidden border-r border-gray-200 dark:border-border bg-gray-50/60 dark:bg-bg p-3 min-h-0 h-full">
-          {/* Search bar Barcode */}
+          {/* Barcode & Search Bar Utama (Terintegrasi F3) */}
           <div className="relative shrink-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
             <input
               ref={barcodeRef}
               autoFocus
               type="text"
-              placeholder="Scan barcode atau cari produk… (F3)"
-              value={barcode}
-              onChange={(e) => setBarcode(e.target.value)}
+              placeholder="Scan barcode scanner atau cari nama / SKU produk… (F3)"
+              value={catalogSearch}
+              onChange={(e) => setCatalogSearch(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
-                  void submitScan(barcode)
+                  void submitScan(catalogSearch)
                 }
               }}
               className="h-10 w-full rounded-xl border border-gray-200 dark:border-border bg-white/90 dark:bg-surface-alt/90 pl-10 pr-10 text-sm text-gray-900 dark:text-content placeholder:text-gray-400 dark:placeholder:text-content-muted neu-pressed transition-all focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/20"
             />
+            {catalogSearch ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setCatalogSearch('')
+                  void fetchCatalog({ search: '', page: 1 })
+                }}
+                className="absolute right-9 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 dark:hover:text-content"
+              >
+                <X className="size-4" />
+              </button>
+            ) : null}
             <ScanLine className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-gray-400 dark:text-content-muted" />
           </div>
           {scanError && <p className="-mt-2 text-sm text-danger">{scanError}</p>}
@@ -1559,35 +1579,6 @@ export default function Index({
                   <Filter className="size-3 text-content-muted shrink-0" />
                 )}
               </Button>
-
-              {/* Input Pencarian Produk dengan Icon & Clear Button */}
-              <div className="relative">
-                <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-content-muted pointer-events-none" />
-                <Input
-                  placeholder="Cari nama / barcode produk…"
-                  value={catalogSearch}
-                  onChange={(e) => setCatalogSearch(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      void fetchCatalog({ search: catalogSearch, page: 1 })
-                    }
-                  }}
-                  className={`h-8.5 w-40 sm:w-56 pl-8 pr-7 text-xs bg-white dark:bg-surface ${posFieldClass}`}
-                />
-                {catalogSearch ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCatalogSearch('')
-                      void fetchCatalog({ search: '', page: 1 })
-                    }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 dark:hover:text-content"
-                  >
-                    <X className="size-3.5" />
-                  </button>
-                ) : null}
-              </div>
             </div>
           </div>
 

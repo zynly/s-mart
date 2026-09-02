@@ -65,20 +65,6 @@ class BarcodeResolverService
             ];
         }
 
-        // 4. Fallback: Cari berdasar nama produk (pencarian fleksibel)
-        $productByName = Product::with(['baseUnit'])
-            ->where('is_active', true)
-            ->where('name', 'ilike', "%{$barcode}%")
-            ->first();
-
-        if ($productByName !== null) {
-            return [
-                'product' => $productByName,
-                'unit' => $productByName->baseUnit,
-                'qty_multiplier' => 1.0,
-            ];
-        }
-
-        throw new DomainException("Barcode / produk \"{$barcode}\" tidak ditemukan.");
+        throw new DomainException("Barcode / SKU \"{$barcode}\" tidak ditemukan.");
     }
 }
