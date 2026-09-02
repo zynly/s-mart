@@ -534,6 +534,11 @@ export default function Index({
         return
       }
 
+      if (data.price <= 0) {
+        toast.error(`Produk "${data.product.name}" belum ada harga. Tidak dapat dipilih.`)
+        return
+      }
+
       addLine(data.product, data.unit, data.price, data.qty_multiplier)
       toast.success(`Produk "${data.product.name}" ditambahkan ke keranjang via Barcode.`)
       setCatalogSearch('')
@@ -1592,34 +1597,54 @@ export default function Index({
               </div>
             )}
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4">
-              {catalogState.data.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => p.unit && addLine({ id: p.id, name: p.name, sku: p.sku, image_url: p.image_url }, p.unit, p.price, 1)}
-                  className="group relative flex flex-col justify-between rounded-xl border border-gray-200/80 dark:border-border bg-white dark:bg-surface p-2 text-left transition-all duration-200 neu-flat hover:-translate-y-0.5 hover:border-amber-400 dark:hover:border-amber-400 hover:shadow-lg active:scale-95"
-                >
-                  <div>
-                    <div className="relative mb-1.5 aspect-square w-full overflow-hidden rounded-lg bg-gray-50 dark:bg-surface-alt border border-gray-100 dark:border-border">
-                      <img
-                        src={p.image_url ?? '/logo/logo2.png'}
-                        alt={p.name}
-                        className="size-full object-contain p-1 transition-transform group-hover:scale-105"
-                        loading="lazy"
-                        onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/logo/logo2.png' }}
-                      />
-                      {p.has_promo && (
-                        <Badge className="absolute right-1 top-1 bg-amber-500 px-1.5 py-0 text-[9px] font-bold text-white shadow-sm">PROMO</Badge>
+              {catalogState.data.map((p) => {
+                const isNoPrice = p.price <= 0
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    disabled={isNoPrice || !p.unit}
+                    onClick={() => !isNoPrice && p.unit && addLine({ id: p.id, name: p.name, sku: p.sku, image_url: p.image_url }, p.unit, p.price, 1)}
+                    className={cn(
+                      "group relative flex flex-col justify-between rounded-xl border border-gray-200/80 dark:border-border bg-white dark:bg-surface p-2 text-left transition-all duration-200 neu-flat",
+                      isNoPrice
+                        ? "opacity-60 cursor-not-allowed bg-gray-50/80 dark:bg-surface-alt/40"
+                        : "hover:-translate-y-0.5 hover:border-amber-400 dark:hover:border-amber-400 hover:shadow-lg active:scale-95"
+                    )}
+                  >
+                    <div>
+                      <div className="relative mb-1.5 aspect-square w-full overflow-hidden rounded-lg bg-gray-50 dark:bg-surface-alt border border-gray-100 dark:border-border">
+                        <img
+                          src={p.image_url ?? '/images/default-product.webp'}
+                          alt={p.name}
+                          className="size-full object-contain p-1 transition-transform group-hover:scale-105"
+                          loading="lazy"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/default-product.webp' }}
+                        />
+                        {p.has_promo && !isNoPrice && (
+                          <Badge className="absolute right-1 top-1 bg-amber-500 px-1.5 py-0 text-[9px] font-bold text-white shadow-sm">PROMO</Badge>
+                        )}
+                        {isNoPrice && (
+                          <Badge className="absolute left-1 top-1 bg-rose-600 px-1.5 py-0 text-[9px] font-bold text-white shadow-sm">Tidak Ada Harga</Badge>
+                        )}
+                      </div>
+                      <p className="line-clamp-2 text-xs font-semibold leading-tight text-gray-900 dark:text-content group-hover:text-amber-500">{p.name}</p>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between border-t border-gray-100 dark:border-border pt-1.5">
+                      {isNoPrice ? (
+                        <span className="text-[11px] font-bold text-rose-500">Tidak ada harga</span>
+                      ) : (
+                        <p className="text-xs font-bold text-amber-500"><Money amount={p.price} size="sm" /></p>
+                      )}
+                      {isNoPrice ? (
+                        <span className="text-[10px] font-bold text-gray-400 bg-gray-100 dark:bg-surface-alt px-1.5 py-0.5 rounded-md border border-gray-200 cursor-not-allowed">Tidak bisa dipilih</span>
+                      ) : (
+                        <span className="text-[10px] font-extrabold text-navy-700 dark:text-khaki-200 bg-navy-50 dark:bg-surface-alt px-2 py-0.5 rounded-md border border-navy-200/60 dark:border-border group-hover:border-amber-400 group-hover:bg-amber-400 group-hover:text-black transition-all">+ Tambah</span>
                       )}
                     </div>
-                    <p className="line-clamp-2 text-xs font-semibold leading-tight text-gray-900 dark:text-content group-hover:text-amber-500">{p.name}</p>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between border-t border-gray-100 dark:border-border pt-1.5">
-                    <p className="text-xs font-bold text-amber-500"><Money amount={p.price} size="sm" /></p>
-                    <span className="text-[10px] font-extrabold text-navy-700 dark:text-khaki-200 bg-navy-50 dark:bg-surface-alt px-2 py-0.5 rounded-md border border-navy-200/60 dark:border-border group-hover:border-amber-400 group-hover:bg-amber-400 group-hover:text-black transition-all">+ Tambah</span>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                )
+              })}
             </div>
 
             {catalogState.data.length === 0 && (
