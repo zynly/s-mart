@@ -9,7 +9,7 @@ import '@fontsource/jetbrains-mono/500.css'
 import { createInertiaApp } from '@inertiajs/react'
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers'
 import { createRoot } from 'react-dom/client'
-import { Toaster } from 'sonner'
+import { Toaster } from '@/Components/ui/sonner'
 import { route as ziggyRoute } from 'ziggy-js'
 import type { ComponentType } from 'react'
 
@@ -23,13 +23,13 @@ const appName = import.meta.env.VITE_APP_NAME || 'Skillage Mart'
   const isDark =
     saved === 'dark' ||
     (saved === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-  document.documentElement.classList.toggle('dark', isDark)
-  // Pastikan localStorage selalu terisi supaya Zustand tidak jatuh ke 'system'
-  if (!localStorage.getItem('theme')) {
-    localStorage.setItem('theme', 'light')
+
+  if (isDark) {
+    document.documentElement.classList.add('dark')
+  } else {
+    document.documentElement.classList.remove('dark')
   }
 })()
-// ─────────────────────────────────────────────────────────────────────────────
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -55,7 +55,7 @@ createInertiaApp({
     createRoot(el).render(
       <>
         <App {...props} />
-        <Toaster richColors position="top-right" />
+        <Toaster richColors position="top-right" closeButton />
       </>,
     )
   },
