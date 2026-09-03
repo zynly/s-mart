@@ -218,17 +218,72 @@ export default function Index({
   const [catalogState, setCatalogState] = useState(catalog ?? { data: [], current_page: 1, last_page: 1, total: 0 })
   const [isCatalogLoading, setIsCatalogLoading] = useState(false)
   const catalogCache = useRef<Record<string, typeof catalog>>({})
+  const [cart, setCart] = useState<CartLine[]>([])
+  const [member, setMember] = useState<MemberResult | null>(null)
+  const [appliedCoupon, setAppliedCoupon] = useState('')
+  const [showPromosModal, setShowPromosModal] = useState(false)
+  const [promoModalTab, setPromoModalTab] = useState<'promos' | 'coupons'>('promos')
+  const [promoTypeFilter, setPromoTypeFilter] = useState<string>('all')
+  const [couponValidating, setCouponValidating] = useState(false)
+  const [couponValidationResult, setCouponValidationResult] = useState<{
+    valid: boolean
+    discount: number
+    message: string | null
+    coupon?: ActiveCouponRow | null
+  } | null>(null)
+  const [barcode, setBarcode] = useState('')
+  const [scanError, setScanError] = useState<string | null>(null)
+  const [memberQuery, setMemberQuery] = useState('')
+  const [memberResults, setMemberResults] = useState<MemberResult[]>([])
+  const [paymentOpen, setPaymentOpen] = useState(false)
+  const [holdsOpen, setHoldsOpen] = useState(false)
+  const [paymentLines, setPaymentLines] = useState<PaymentLine[]>([])
+  const [selectedMethodId, setSelectedMethodId] = useState('')
+  const [directMethodId, setDirectMethodId] = useState<number | null>(null)
+  const [cashInput, setCashInput] = useState<number>(0)
+  const [creditWarning, setCreditWarning] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [midtransPayingKey, setMidtransPayingKey] = useState<string | null>(null)
+  const snap = useMidtransSnap(midtransClientKey, midtransIsProduction)
+  const [holdError, setHoldError] = useState<string | null>(null)
+  const [cashDialog, setCashDialog] = useState<'in' | 'out' | null>(null)
+  const [cashAmount, setCashAmount] = useState(0)
+  const [cashDescription, setCashDescription] = useState('')
+  const [cashError, setCashError] = useState<string | null>(null)
+  const [cashSubmitting, setCashSubmitting] = useState(false)
+  /** 'operational' = pengeluaran rutin, 'member_withdraw' = tarik tunai deposit anggota */
+  const [cashOutMode, setCashOutMode] = useState<'operational' | 'member_withdraw'>('operational')
+  /** anggota yang dipilih untuk tarik tunai (pre-filled dari member aktif di POS) */
+  const [withdrawMember, setWithdrawMember] = useState<MemberResult | null>(null)
+  const pageProps = usePage<PageProps & { flash?: { completed_sale_id?: number; completed_sale_ref?: string } }>().props
+  const [pakasirModalUrl, setPakasirModalUrl] = useState<string | null>(null)
+  const [pakasirModalOrderId, setPakasirModalOrderId] = useState<string | null>(null)
+  const [pakasirModalAmount, setPakasirModalAmount] = useState<number | null>(null)
+  const [insufficientDepositModal, setInsufficientDepositModal] = useState<{
+    memberName: string
+    memberNumber: string
+    currentBalance: number
+    requiredAmount: number
+    shortage: number
+  } | null>(null)
+  const [txResultModal, setTxResultModal] = useState<{
+    open: boolean
+    type: 'success' | 'error'
+    title: string
+    message: string
+    saleId?: number | null
+    saleRef?: string | null
+    amount?: number
+    cashReceived?: number
+    changeAmount?: number
+    methodName?: string
+  } | null>(null)
 
-  useEffect(() => {
-    setCatalogState(catalog ?? { data: [], current_page: 1, last_page: 1, total: 0 })
-  }, [catalog])
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      void fetchCatalog({ search: catalogSearch, page: 1 })
-    }, 250)
-    return () => clearTimeout(timer)
-  }, [catalogSearch, fetchCatalog])
+  const idempotencyKeyRef = useRef(newIdempotencyKey())
+  const barcodeRef = useRef<HTMLInputElement>(null)
+  const memberInputRef = useRef<HTMLInputElement>(null)
+  const carouselRef = useRef<HTMLDivElement>(null)
 
   const selectedCategoriesList = useMemo(
     () => categories.filter((c) => selectedPosCategories.includes(c.id)),
@@ -276,46 +331,17 @@ export default function Index({
       setIsCatalogLoading(false)
     }
   }, [selectedPosCategories, catalogSearch])
-  const [cart, setCart] = useState<CartLine[]>([])
-  const [member, setMember] = useState<MemberResult | null>(null)
-  const [appliedCoupon, setAppliedCoupon] = useState('')
-  const [showPromosModal, setShowPromosModal] = useState(false)
-  const [promoModalTab, setPromoModalTab] = useState<'promos' | 'coupons'>('promos')
-  const [promoTypeFilter, setPromoTypeFilter] = useState<string>('all')
-  const [couponValidating, setCouponValidating] = useState(false)
-  const [couponValidationResult, setCouponValidationResult] = useState<{
-    valid: boolean
-    discount: number
-    message: string | null
-    coupon?: ActiveCouponRow | null
-  } | null>(null)
-  const [barcode, setBarcode] = useState('')
-  const [scanError, setScanError] = useState<string | null>(null)
-  const [memberQuery, setMemberQuery] = useState('')
-  const [memberResults, setMemberResults] = useState<MemberResult[]>([])
-  const [paymentOpen, setPaymentOpen] = useState(false)
-  const [holdsOpen, setHoldsOpen] = useState(false)
-  const [paymentLines, setPaymentLines] = useState<PaymentLine[]>([])
-  const [selectedMethodId, setSelectedMethodId] = useState('')
-  const [directMethodId, setDirectMethodId] = useState<number | null>(null)
-  const [cashInput, setCashInput] = useState<number>(0)
-  const [creditWarning, setCreditWarning] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-  const [paymentError, setPaymentError] = useState<string | null>(null)
-  const [midtransPayingKey, setMidtransPayingKey] = useState<string | null>(null)
-  const snap = useMidtransSnap(midtransClientKey, midtransIsProduction)
-  const [holdError, setHoldError] = useState<string | null>(null)
-  const [cashDialog, setCashDialog] = useState<'in' | 'out' | null>(null)
-  const [cashAmount, setCashAmount] = useState(0)
-  const [cashDescription, setCashDescription] = useState('')
-  const [cashError, setCashError] = useState<string | null>(null)
-  const [cashSubmitting, setCashSubmitting] = useState(false)
-  /** 'operational' = pengeluaran rutin, 'member_withdraw' = tarik tunai deposit anggota */
-  const [cashOutMode, setCashOutMode] = useState<'operational' | 'member_withdraw'>('operational')
-  /** anggota yang dipilih untuk tarik tunai (pre-filled dari member aktif di POS) */
-  const [withdrawMember, setWithdrawMember] = useState<MemberResult | null>(null)
-  const pageProps = usePage<PageProps & { flash?: { completed_sale_id?: number; completed_sale_ref?: string } }>().props
 
+  useEffect(() => {
+    setCatalogState(catalog ?? { data: [], current_page: 1, last_page: 1, total: 0 })
+  }, [catalog])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void fetchCatalog({ search: catalogSearch, page: 1 })
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [catalogSearch, fetchCatalog])
 
   useEffect(() => {
     if (pageProps.flash?.completed_sale_id && pageProps.flash?.completed_sale_ref) {
@@ -336,35 +362,6 @@ export default function Index({
       })
     }
   }, [pageProps.flash?.completed_sale_id, pageProps.flash?.completed_sale_ref])
-
-  const idempotencyKeyRef = useRef(newIdempotencyKey())
-  const barcodeRef = useRef<HTMLInputElement>(null)
-  const memberInputRef = useRef<HTMLInputElement>(null)
-  const carouselRef = useRef<HTMLDivElement>(null)
-
-  const [pakasirModalUrl, setPakasirModalUrl] = useState<string | null>(null)
-  const [pakasirModalOrderId, setPakasirModalOrderId] = useState<string | null>(null)
-  const [pakasirModalAmount, setPakasirModalAmount] = useState<number | null>(null)
-  const [insufficientDepositModal, setInsufficientDepositModal] = useState<{
-    memberName: string
-    memberNumber: string
-    currentBalance: number
-    requiredAmount: number
-    shortage: number
-  } | null>(null)
-
-  const [txResultModal, setTxResultModal] = useState<{
-    open: boolean
-    type: 'success' | 'error'
-    title: string
-    message: string
-    saleId?: number | null
-    saleRef?: string | null
-    amount?: number
-    cashReceived?: number
-    changeAmount?: number
-    methodName?: string
-  } | null>(null)
 
 
   function scrollCarousel(direction: -1 | 1) {
