@@ -136,6 +136,11 @@ class SaleService
 
                 $activePrice = $this->priceService->getActivePrice($product, $outlet, $unit, $memberId);
                 $unitPrice = $item['price_override'] ?? $activePrice;
+
+                if ($unitPrice <= 0) {
+                    throw new DomainException("Produk \"{$product->name}\" belum memiliki harga yang valid dan tidak dapat dijual.");
+                }
+
                 $qtyBase = $this->convertToBaseQty($product, $unit, (float) $item['qty'], $conversions);
                 $lineSubtotal = (int) round($unitPrice * (float) $item['qty']);
 

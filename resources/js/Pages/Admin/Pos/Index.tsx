@@ -1600,12 +1600,21 @@ export default function Index({
                   <button
                     key={p.id}
                     type="button"
-                    disabled={isNoPrice || !p.unit}
-                    onClick={() => !isNoPrice && p.unit && addLine({ id: p.id, name: p.name, sku: p.sku, image_url: p.image_url }, p.unit, p.price, 1)}
+                    onClick={() => {
+                      if (isNoPrice) {
+                        toast.error(`Produk "${p.name}" belum memiliki harga resmi. Tidak dapat dimasukkan ke keranjang.`)
+                        return
+                      }
+                      if (!p.unit) {
+                        toast.error(`Produk "${p.name}" tidak memiliki satuan unit yang valid.`)
+                        return
+                      }
+                      addLine({ id: p.id, name: p.name, sku: p.sku, image_url: p.image_url }, p.unit, p.price, 1)
+                    }}
                     className={cn(
                       "group relative flex flex-col justify-between rounded-xl border border-gray-200/80 dark:border-border bg-white dark:bg-surface p-2 text-left transition-all duration-200 neu-flat",
                       isNoPrice
-                        ? "opacity-60 cursor-not-allowed bg-gray-50/80 dark:bg-surface-alt/40"
+                        ? "opacity-60 cursor-not-allowed bg-gray-50/80 dark:bg-surface-alt/40 border-dashed border-rose-300 dark:border-rose-900/50"
                         : "hover:-translate-y-0.5 hover:border-amber-400 dark:hover:border-amber-400 hover:shadow-lg active:scale-95"
                     )}
                   >

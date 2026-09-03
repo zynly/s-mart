@@ -259,12 +259,15 @@ class SaleController extends Controller
             $categoryIds = array_filter(array_map('intval', explode(',', $categoryIds)));
         }
 
+        $search = trim($request->string('search')->toString());
+
         $query = Product::query()
             ->where('is_active', true)
             ->whereHas('stocks', fn ($q) => $q->where('outlet_id', $outlet->id)->where('qty', '>', 0))
+            ->when(empty($search), fn ($q) => $q->whereHas('prices', fn ($pq) => $pq->where('outlet_id', $outlet->id)->whereNull('effective_to')->where('price', '>', 0)))
             ->when(!empty($categoryIds), fn ($q) => $q->whereIn('category_id', (array) $categoryIds))
             ->when(empty($categoryIds) && $request->integer('category_id'), fn ($q) => $q->where('category_id', $request->integer('category_id')))
-            ->when($request->string('search')->toString(), fn ($q, $search) => $q->where(
+            ->when(!empty($search), fn ($q) => $q->where(
                 fn ($sub) => $sub->where('name', 'ilike', "%{$search}%")->orWhere('sku', 'ilike', "%{$search}%")
             ))
             ->with(['category:id,name', 'baseUnit:id,code,name', 'images' => fn ($q) => $q->where('is_primary', true)->limit(1)])
