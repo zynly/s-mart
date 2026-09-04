@@ -22,6 +22,7 @@ class StoreCashTransactionRequest extends FormRequest
             'amount' => ['required', 'integer', 'min:1'],
             'description' => ['required', 'string', 'max:255'],
             'pin' => ['nullable', 'string'],
+            'is_pos' => ['nullable', 'boolean'],
         ];
     }
 }

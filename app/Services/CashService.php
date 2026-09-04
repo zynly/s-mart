@@ -26,12 +26,15 @@ class CashService
             $before = $locked->current_balance;
             $after = $before + $amount;
 
+            $isDrawerSession = ($session !== null && $session->cash_account_id === $locked->id && $locked->is_drawer);
+            $validSession = $isDrawerSession ? $session : null;
+
             $trx = CashTransaction::create([
                 'reference' => ReferenceGenerator::generate('KAS', $locked->outlet_id),
                 'cash_account_id' => $locked->id,
                 'cash_category_id' => $categoryId,
                 'outlet_id' => $locked->outlet_id,
-                'cashier_session_id' => $session?->id,
+                'cashier_session_id' => $validSession?->id,
                 'type' => 'in',
                 'amount' => $amount,
                 'balance_before' => $before,
@@ -45,8 +48,8 @@ class CashService
 
             $locked->forceFill(['current_balance' => $after])->save();
 
-            if ($session !== null) {
-                $session->increment('total_cash_in', $amount);
+            if ($validSession !== null) {
+                $validSession->increment('total_cash_in', $amount);
             }
 
             return $trx;
@@ -65,8 +68,12 @@ class CashService
     ): CashTransaction {
         return DB::transaction(function () use ($account, $amount, $categoryId, $description, $session, $source, $userId, $approvedBy) {
             $locked = CashAccount::lockForUpdate()->findOrFail($account->id);
-            $availableCash = ($session !== null && $session->cash_account_id === $locked->id)
-                ? app(CashierSessionService::class)->calculateExpected($session)
+
+            $isDrawerSession = ($session !== null && $session->cash_account_id === $locked->id && $locked->is_drawer);
+            $validSession = $isDrawerSession ? $session : null;
+
+            $availableCash = $isDrawerSession
+                ? app(CashierSessionService::class)->calculateExpected($validSession)
                 : $locked->current_balance;
 
             if ($availableCash < $amount) {
@@ -81,7 +88,7 @@ class CashService
                 'cash_account_id' => $locked->id,
                 'cash_category_id' => $categoryId,
                 'outlet_id' => $locked->outlet_id,
-                'cashier_session_id' => $session?->id,
+                'cashier_session_id' => $validSession?->id,
                 'type' => 'out',
                 'amount' => $amount,
                 'balance_before' => $before,
@@ -96,8 +103,8 @@ class CashService
 
             $locked->forceFill(['current_balance' => $after])->save();
 
-            if ($session !== null) {
-                $session->increment('total_cash_out', $amount);
+            if ($validSession !== null) {
+                $validSession->increment('total_cash_out', $amount);
             }
 
             return $trx;

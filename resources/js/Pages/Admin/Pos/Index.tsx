@@ -728,6 +728,7 @@ export default function Index({
         amount: cashAmount,
         pin: cashPin,
         description: cashDescription,
+        is_pos: true,
       },
       {
         preserveScroll: true,

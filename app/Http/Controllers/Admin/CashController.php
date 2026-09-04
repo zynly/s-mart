@@ -40,9 +40,11 @@ class CashController extends Controller
     public function index(Request $request): Response
     {
         $transactions = CashTransaction::query()
-            ->with(['cashAccount:id,name', 'cashCategory:id,name', 'transferToAccount:id,name'])
+            ->with(['cashAccount:id,name', 'cashCategory:id,name', 'transferToAccount:id,name', 'cashierSession:id,reference'])
             ->when($request->integer('cash_account_id'), fn ($q, $id) => $q->where('cash_account_id', $id))
             ->when($request->string('type')->toString(), fn ($q, $type) => $q->where('type', $type))
+            ->when($request->string('source')->toString() === 'pos', fn ($q) => $q->whereNotNull('cashier_session_id'))
+            ->when($request->string('source')->toString() === 'admin', fn ($q) => $q->whereNull('cashier_session_id'))
             ->orderByDesc('created_at')
             ->paginate(20)
             ->withQueryString();
@@ -75,7 +77,7 @@ class CashController extends Controller
             // (halaman ini sendiri yang jadi tempat kelola per-outlet).
             'allAccounts' => CashAccount::withoutGlobalScope('outlet')->with('outlet:id,name')->orderBy('name')->get(),
             'outlets' => Outlet::where('is_active', true)->orderBy('name')->get(['id', 'name']),
-            'filters' => $request->only('cash_account_id', 'type'),
+            'filters' => $request->only('cash_account_id', 'type', 'source'),
         ]);
     }
 
@@ -145,14 +147,18 @@ class CashController extends Controller
 
     public function storeIn(StoreCashTransactionRequest $request): RedirectResponse
     {
-        $session = $this->sessionService->getActive($request->user());
-        if (! $session) {
-            throw ValidationException::withMessages([
-                'cash_account_id' => 'Sesi kasir aktif tidak ditemukan. Buka sesi kasir terlebih dahulu untuk mencatat kas masuk.',
-            ]);
-        }
-
         $account = CashAccount::findOrFail($request->validated('cash_account_id'));
+        $isPos = $request->boolean('is_pos');
+        $session = null;
+
+        if ($isPos) {
+            $session = $this->sessionService->getActive($request->user());
+            if (! $session) {
+                throw ValidationException::withMessages([
+                    'cash_account_id' => 'Sesi kasir aktif tidak ditemukan. Buka sesi kasir terlebih dahulu untuk mencatat kas masuk di kasir.',
+                ]);
+            }
+        }
 
         $this->cashService->recordIn(
             $account,
@@ -169,14 +175,18 @@ class CashController extends Controller
     {
         $this->verifyCashierPin($request->user(), (string) $request->input('pin'));
 
-        $session = $this->sessionService->getActive($request->user());
-        if (! $session) {
-            throw ValidationException::withMessages([
-                'cash_account_id' => 'Sesi kasir aktif tidak ditemukan. Buka sesi kasir terlebih dahulu untuk mencatat kas keluar.',
-            ]);
-        }
-
         $account = CashAccount::findOrFail($request->validated('cash_account_id'));
+        $isPos = $request->boolean('is_pos');
+        $session = null;
+
+        if ($isPos) {
+            $session = $this->sessionService->getActive($request->user());
+            if (! $session) {
+                throw ValidationException::withMessages([
+                    'cash_account_id' => 'Sesi kasir aktif tidak ditemukan. Buka sesi kasir terlebih dahulu untuk mencatat kas keluar di kasir.',
+                ]);
+            }
+        }
 
         try {
             $this->cashService->recordOut(

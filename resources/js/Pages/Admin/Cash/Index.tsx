@@ -41,6 +41,8 @@ type TransactionRow = {
   cash_account: { id: number; name: string }
   cash_category: { id: number; name: string } | null
   transfer_to_account: { id: number; name: string } | null
+  cashier_session_id?: number | null
+  cashier_session?: { id: number; reference: string } | null
 }
 
 type FullAccountRow = {
@@ -64,7 +66,7 @@ type CashIndexProps = {
   categories: CategoryRow[]
   allAccounts: FullAccountRow[]
   outlets: OutletRef[]
-  filters: { cash_account_id?: string; type?: string }
+  filters: { cash_account_id?: string; type?: string; source?: string }
 }
 
 const TYPE_LABELS: Record<string, string> = { in: 'Kas Masuk', out: 'Kas Keluar', transfer: 'Transfer / Drop' }
@@ -96,6 +98,7 @@ export default function Index({
   const safeTransactions = Array.isArray(transactions?.data) ? transactions.data : []
 
   const [accountFilter, setAccountFilter] = useState(filters.cash_account_id ?? '')
+  const [sourceFilter, setSourceFilter] = useState(filters.source ?? '')
   const [editingAccount, setEditingAccount] = useState<FullAccountRow | null>(null)
   const [accountFormOpen, setAccountFormOpen] = useState(false)
 
@@ -202,7 +205,20 @@ export default function Index({
 
   function applyFilter(accountId: string) {
     setAccountFilter(accountId)
-    router.get(route('admin.cash.index'), { cash_account_id: accountId }, { preserveState: true, replace: true })
+    router.get(
+      route('admin.cash.index'),
+      { cash_account_id: accountId, source: sourceFilter },
+      { preserveState: true, replace: true },
+    )
+  }
+
+  function applySourceFilter(source: string) {
+    setSourceFilter(source)
+    router.get(
+      route('admin.cash.index'),
+      { cash_account_id: accountFilter, source },
+      { preserveState: true, replace: true },
+    )
   }
 
   const [cashRejectModal, setCashRejectModal] = useState<{
@@ -261,11 +277,30 @@ export default function Index({
     {
       accessorKey: 'reference',
       header: 'Referensi',
-      cell: ({ row }) => (
-        <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200">
-          {row.original.reference}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const isPos = Boolean(row.original.cashier_session_id)
+        return (
+          <div className="flex flex-col gap-1 items-start">
+            <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200">
+              {row.original.reference}
+            </span>
+            {isPos ? (
+              <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30">
+                <Store className="size-2.5" />
+                <span>POS Kasir</span>
+                {row.original.cashier_session?.reference && (
+                  <span className="opacity-80 font-mono">({row.original.cashier_session.reference})</span>
+                )}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold bg-slate-500/15 text-slate-700 dark:text-slate-300 border border-slate-500/30">
+                <Building2 className="size-2.5" />
+                <span>Admin</span>
+              </span>
+            )}
+          </div>
+        )
+      },
     },
     {
       id: 'account',
@@ -434,7 +469,18 @@ export default function Index({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Select value={sourceFilter || 'all'} onValueChange={(v) => applySourceFilter(v === 'all' ? '' : v)}>
+                    <SelectTrigger className="w-40 h-10 rounded-xl border-slate-200 font-semibold dark:border-slate-800">
+                      <SelectValue placeholder="Semua Sumber" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Sumber</SelectItem>
+                      <SelectItem value="pos">POS Kasir</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+
                   <Select value={accountFilter || 'all'} onValueChange={(v) => applyFilter(v === 'all' ? '' : v)}>
                     <SelectTrigger className="w-56 h-10 rounded-xl border-slate-200 font-semibold dark:border-slate-800">
                       <SelectValue placeholder="Semua Akun Kas" />
@@ -459,7 +505,7 @@ export default function Index({
                   page: transactions.current_page,
                   perPage: transactions.per_page,
                   total: transactions.total,
-                  onPageChange: (page) => router.get(route('admin.cash.index'), { cash_account_id: accountFilter, page }, { preserveState: true }),
+                  onPageChange: (page) => router.get(route('admin.cash.index'), { cash_account_id: accountFilter, source: sourceFilter, page }, { preserveState: true }),
                 } : undefined}
               />
             </CardContent>
