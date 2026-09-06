@@ -88,7 +88,7 @@ class CashierSessionController extends Controller
                 ->get(['id', 'name', 'code', 'current_balance', 'is_default', 'outlet_id'])
                 ->map(function ($acc) use ($user, $openSessions) {
                     $openSession = $openSessions->firstWhere('cash_account_id', $acc->id);
-                    $balance = $openSession
+                    $balance = ($openSession instanceof CashierSession)
                         ? $this->sessionService->calculateExpected($openSession)
                         : (int) $acc->current_balance;
 

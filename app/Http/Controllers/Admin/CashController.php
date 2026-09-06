@@ -56,7 +56,7 @@ class CashController extends Controller
             ->get(['id', 'name', 'type', 'current_balance', 'is_drawer'])
             ->map(function ($acc) use ($openSessions) {
                 $openSession = $openSessions->get($acc->id);
-                $balance = ($acc->is_drawer && $openSession)
+                $balance = ($acc->is_drawer && $openSession instanceof CashierSession)
                     ? $this->sessionService->calculateExpected($openSession)
                     : (int) $acc->current_balance;
 

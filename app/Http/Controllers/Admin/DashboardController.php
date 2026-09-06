@@ -13,6 +13,7 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Stock;
 use App\Models\StockLayer;
+use App\Models\User;
 use App\Reports\SalesByCashierReport;
 use App\Reports\SalesByPaymentMethodReport;
 use App\Reports\SalesSummaryReport;
@@ -51,7 +52,7 @@ class DashboardController extends Controller
         return Inertia::render('Admin/Dashboard', $this->managerData($user));
     }
 
-    private function cashierData($user): array
+    private function cashierData(User $user): array
     {
         $session = $this->cashierSessionService->getActive($user);
         $today = now()->toDateString();
@@ -96,7 +97,7 @@ class DashboardController extends Controller
         ];
     }
 
-    private function managerData($user): array
+    private function managerData(User $user): array
     {
         $today = now()->toDateString();
         $yesterday = now()->subDay()->toDateString();
@@ -167,7 +168,7 @@ class DashboardController extends Controller
         return $data;
     }
 
-    private function statCards($user, string $today, string $yesterday): array
+    private function statCards(User $user, string $today, string $yesterday): array
     {
         $report = new SalesSummaryReport;
         $todayRow = $report->scopedQuery(['date_from' => $today, 'date_to' => $today], $user)->first();
@@ -190,7 +191,7 @@ class DashboardController extends Controller
         ];
     }
 
-    private function trend30d($user): array
+    private function trend30d(User $user): array
     {
         $report = new SalesSummaryReport;
         $rows = $report->scopedQuery([
@@ -204,7 +205,7 @@ class DashboardController extends Controller
         ])->values()->all();
     }
 
-    private function salesByCategory($user, string $today): array
+    private function salesByCategory(User $user, string $today): array
     {
         $query = SaleItem::query()
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
@@ -224,7 +225,7 @@ class DashboardController extends Controller
         return $query->get()->map(fn ($r) => ['kategori' => $r->kategori, 'total' => (int) $r->total])->values()->all();
     }
 
-    private function salesByPaymentMethod($user, string $today): array
+    private function salesByPaymentMethod(User $user, string $today): array
     {
         $report = new SalesByPaymentMethodReport;
 
@@ -234,7 +235,7 @@ class DashboardController extends Controller
             ->values()->all();
     }
 
-    private function salesByHour($user, string $today): array
+    private function salesByHour(User $user, string $today): array
     {
         $driver = DB::getDriverName();
         $hourExpr = match ($driver) {
@@ -257,7 +258,7 @@ class DashboardController extends Controller
         return $query->get()->map(fn ($r) => ['jam' => (int) $r->jam, 'transaksi' => (int) $r->transaksi])->values()->all();
     }
 
-    private function recentSales($user): array
+    private function recentSales(User $user): array
     {
         $query = Sale::with(['user:id,name'])
             ->where('status', 'completed')
@@ -277,7 +278,7 @@ class DashboardController extends Controller
             ])->values()->all();
     }
 
-    private function topProductsThisWeek($user): array
+    private function topProductsThisWeek(User $user): array
     {
         $query = SaleItem::query()
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
@@ -296,7 +297,7 @@ class DashboardController extends Controller
         return $query->get()->map(fn ($r) => ['produk' => $r->produk, 'qty' => (float) $r->qty])->values()->all();
     }
 
-    private function cashierRanking($user, string $today): array
+    private function cashierRanking(User $user, string $today): array
     {
         $report = new SalesByCashierReport;
 

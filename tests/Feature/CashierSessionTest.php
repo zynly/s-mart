@@ -1,132 +1,151 @@
 <?php
 
+namespace Tests\Feature;
+
 use App\Models\CashAccount;
 use App\Models\CashierSession;
 use App\Models\Outlet;
 use App\Models\User;
 use App\Services\CashierSessionService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Spatie\Permission\Models\Permission;
+use Tests\TestCase;
 
-uses(DatabaseTransactions::class);
+class CashierSessionTest extends TestCase
+{
+    use DatabaseTransactions;
 
-beforeEach(function () {
-    $this->outlet = Outlet::create([
-        'code' => 'OUT-TEST',
-        'name' => 'Outlet Utama Test',
-        'is_main' => true,
-        'is_active' => true,
-    ]);
+    protected Outlet $outlet;
+    protected User $cashier;
+    protected CashAccount $cashAccount;
 
-    $this->cashier = User::factory()->create([
-        'name' => 'Kasir Uji',
-        'email' => 'kasir@test.com',
-        'outlet_id' => $this->outlet->id,
-    ]);
-    \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'pos.view', 'guard_name' => 'web']);
-    \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'pos.create', 'guard_name' => 'web']);
-    $this->cashier->givePermissionTo(['pos.view', 'pos.create']);
+    protected function setUp(): void
+    {
+        parent::setUp();
 
-    $this->cashAccount = CashAccount::create([
-        'code' => 'LACI-01',
-        'name' => 'Laci Kasir Test 1',
-        'type' => 'cash',
-        'outlet_id' => $this->outlet->id,
-        'is_drawer' => true,
-        'is_active' => true,
-        'is_default' => true,
-    ]);
-});
+        $this->outlet = Outlet::create([
+            'code' => 'OUT-TEST',
+            'name' => 'Outlet Utama Test',
+            'is_main' => true,
+            'is_active' => true,
+        ]);
 
-it('can render cashier session index page', function () {
-    $this->actingAs($this->cashier);
+        $this->cashier = User::factory()->create([
+            'name' => 'Kasir Uji',
+            'email' => 'kasir@test.com',
+            'outlet_id' => $this->outlet->id,
+        ]);
+        Permission::firstOrCreate(['name' => 'pos.view', 'guard_name' => 'web']);
+        Permission::firstOrCreate(['name' => 'pos.create', 'guard_name' => 'web']);
+        $this->cashier->givePermissionTo(['pos.view', 'pos.create']);
 
-    $response = $this->get(route('admin.cashier-session.index'));
+        $this->cashAccount = CashAccount::create([
+            'code' => 'LACI-01',
+            'name' => 'Laci Kasir Test 1',
+            'type' => 'cash',
+            'outlet_id' => $this->outlet->id,
+            'is_drawer' => true,
+            'is_active' => true,
+            'is_default' => true,
+        ]);
+    }
 
-    $response->assertStatus(200);
-    $response->assertInertia(fn ($page) => $page
-        ->component('Admin/CashierSession/Index', false)
-        ->has('cashAccounts')
-    );
-});
+    public function test_can_render_cashier_session_index_page(): void
+    {
+        $this->actingAs($this->cashier);
 
-it('can open cashier session successfully', function () {
-    $this->actingAs($this->cashier);
+        $response = $this->get(route('admin.cashier-session.index'));
 
-    $response = $this->post(route('admin.cashier-session.open'), [
-        'cash_account_id' => $this->cashAccount->id,
-        'opening_cash' => 150000,
-    ]);
+        $response->assertStatus(200);
+        $response->assertInertia(fn ($page) => $page
+            ->component('Admin/CashierSession/Index', false)
+            ->has('cashAccounts')
+        );
+    }
 
-    $response->assertRedirect();
-    $response->assertSessionHas('success');
+    public function test_can_open_cashier_session_successfully(): void
+    {
+        $this->actingAs($this->cashier);
 
-    $session = CashierSession::where('user_id', $this->cashier->id)->where('status', 'open')->first();
-    expect($session)->not->toBeNull();
-    expect($session->opening_cash)->toBe(150000);
-    expect($session->outlet_id)->toBe($this->outlet->id);
-    expect($session->cash_account_id)->toBe($this->cashAccount->id);
-});
+        $response = $this->post(route('admin.cashier-session.open'), [
+            'cash_account_id' => $this->cashAccount->id,
+            'opening_cash' => 150000,
+        ]);
 
-it('can open cashier session with secondary drawer account for active outlet', function () {
-    $secondaryAccount = CashAccount::create([
-        'code' => 'LACI-02',
-        'name' => 'Laci Kasir Test 2',
-        'type' => 'cash',
-        'outlet_id' => $this->outlet->id,
-        'is_drawer' => true,
-        'is_active' => true,
-    ]);
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
 
-    $this->actingAs($this->cashier);
+        $session = CashierSession::where('user_id', $this->cashier->id)->where('status', 'open')->first();
+        $this->assertNotNull($session);
+        $this->assertSame(150000, $session->opening_cash);
+        $this->assertSame($this->outlet->id, $session->outlet_id);
+        $this->assertSame($this->cashAccount->id, $session->cash_account_id);
+    }
 
-    $response = $this->post(route('admin.cashier-session.open'), [
-        'cash_account_id' => $secondaryAccount->id,
-        'opening_cash' => 200000,
-    ]);
+    public function test_can_open_cashier_session_with_secondary_drawer_account_for_active_outlet(): void
+    {
+        $secondaryAccount = CashAccount::create([
+            'code' => 'LACI-02',
+            'name' => 'Laci Kasir Test 2',
+            'type' => 'cash',
+            'outlet_id' => $this->outlet->id,
+            'is_drawer' => true,
+            'is_active' => true,
+        ]);
 
-    $response->assertRedirect();
-    $response->assertSessionHas('success');
+        $this->actingAs($this->cashier);
 
-    $session = CashierSession::where('user_id', $this->cashier->id)->where('status', 'open')->first();
-    expect($session)->not->toBeNull();
-    expect($session->opening_cash)->toBe(200000);
-    expect($session->outlet_id)->toBe($this->outlet->id);
-    expect($session->cash_account_id)->toBe($secondaryAccount->id);
-});
+        $response = $this->post(route('admin.cashier-session.open'), [
+            'cash_account_id' => $secondaryAccount->id,
+            'opening_cash' => 200000,
+        ]);
 
-it('returns 422 validation error instead of 500 when session is already open', function () {
-    $this->actingAs($this->cashier);
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
 
-    app(CashierSessionService::class)->open($this->cashier, $this->cashAccount, 100000);
+        $session = CashierSession::where('user_id', $this->cashier->id)->where('status', 'open')->first();
+        $this->assertNotNull($session);
+        $this->assertSame(200000, $session->opening_cash);
+        $this->assertSame($this->outlet->id, $session->outlet_id);
+        $this->assertSame($secondaryAccount->id, $session->cash_account_id);
+    }
 
-    $response = $this->post(route('admin.cashier-session.open'), [
-        'cash_account_id' => $this->cashAccount->id,
-        'opening_cash' => 50000,
-    ]);
+    public function test_returns_422_validation_error_instead_of_500_when_session_is_already_open(): void
+    {
+        $this->actingAs($this->cashier);
 
-    $response->assertStatus(302);
-    $response->assertSessionHasErrors(['cash_account_id']);
-});
+        app(CashierSessionService::class)->open($this->cashier, $this->cashAccount, 100000);
 
-it('updates cash account balance when session is opened, closed, or force closed', function () {
-    $this->actingAs($this->cashier);
-    $service = app(CashierSessionService::class);
+        $response = $this->post(route('admin.cashier-session.open'), [
+            'cash_account_id' => $this->cashAccount->id,
+            'opening_cash' => 50000,
+        ]);
 
-    // Open session with 100,000
-    $session = $service->open($this->cashier, $this->cashAccount, 100000);
-    expect((int) $this->cashAccount->fresh()->current_balance)->toBe(100000);
+        $response->assertStatus(302);
+        $response->assertSessionHasErrors(['cash_account_id']);
+    }
 
-    // Add sales cash
-    $service->addSaleCash($session, 50000);
-    expect($service->calculateExpected($session))->toBe(150000);
+    public function test_updates_cash_account_balance_when_session_is_opened_closed_or_force_closed(): void
+    {
+        $this->actingAs($this->cashier);
+        $service = app(CashierSessionService::class);
 
-    // Close session with actual cash 150,000
-    $service->close($session, 150000);
-    expect((int) $this->cashAccount->fresh()->current_balance)->toBe(150000);
+        // Open session with 100,000
+        $session = $service->open($this->cashier, $this->cashAccount, 100000);
+        $this->assertSame(100000, (int) $this->cashAccount->fresh()->current_balance);
 
-    // Reopen and force close
-    $session2 = $service->open($this->cashier, $this->cashAccount, 150000);
-    $service->addSaleCash($session2, 25000);
-    $service->forceClose($session2);
-    expect((int) $this->cashAccount->fresh()->current_balance)->toBe(175000);
-});
+        // Add sales cash
+        $service->addSaleCash($session, 50000);
+        $this->assertSame(150000, $service->calculateExpected($session));
+
+        // Close session with actual cash 150,000
+        $service->close($session, 150000);
+        $this->assertSame(150000, (int) $this->cashAccount->fresh()->current_balance);
+
+        // Reopen and force close
+        $session2 = $service->open($this->cashier, $this->cashAccount, 150000);
+        $service->addSaleCash($session2, 25000);
+        $service->forceClose($session2);
+        $this->assertSame(175000, (int) $this->cashAccount->fresh()->current_balance);
+    }
+}
