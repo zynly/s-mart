@@ -22,6 +22,7 @@ class StoreConsignmentSettlementRequest extends FormRequest
             'period_start' => ['required', 'date'],
             'period_end' => ['required', 'date', 'after_or_equal:period_start'],
             'commission_percent' => ['required', 'numeric', 'min:0', 'max:100'],
+            'product_id' => ['nullable', 'exists:products,id'],
         ];
     }
 }

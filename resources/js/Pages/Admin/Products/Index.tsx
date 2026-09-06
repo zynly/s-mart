@@ -577,7 +577,7 @@ export default function Index({ tab, products, categories, brands, units, outlet
             {row.original.name}
           </Link>
           {row.original.is_consignment && (
-            <Badge className="bg-purple-600 text-white text-[9px] px-1.5 py-0 font-normal">Titipan ({row.original.consignment_percent ?? 0}%)</Badge>
+            <Badge className="bg-blue-600 text-white text-[9px] px-1.5 py-0 font-normal">Titipan ({row.original.consignment_percent ?? 0}%)</Badge>
           )}
         </div>
       ),
@@ -1087,7 +1087,7 @@ export default function Index({ tab, products, categories, brands, units, outlet
                     htmlFor="p-consignment"
                     className={`flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer select-none ${
                       form.data.is_consignment
-                        ? 'bg-purple-50/70 border-purple-300 text-purple-950 dark:bg-purple-950/40 dark:border-purple-700 dark:text-purple-200'
+                        ? 'bg-blue-50/70 border-blue-300 text-blue-950 dark:bg-blue-950/40 dark:border-blue-700 dark:text-blue-200'
                         : 'bg-surface border-border text-content-muted hover:border-gray-300'
                     }`}
                   >
@@ -1125,21 +1125,46 @@ export default function Index({ tab, products, categories, brands, units, outlet
                 </div>
 
                 {form.data.is_consignment && (
-                  <div className="space-y-1.5 pt-2 border-t border-border/60">
-                    <Label htmlFor="p-consignment-percent" className="text-xs font-semibold text-content">Komisi Mart (%)</Label>
-                    <Input
-                      id="p-consignment-percent"
-                      type="number"
-                      min={0}
-                      max={100}
-                      step="1"
-                      placeholder="mis. 20"
-                      value={form.data.consignment_percent}
-                      onChange={(e) => form.setData('consignment_percent', e.target.value)}
-                      className="text-xs rounded-xl max-w-xs"
-                    />
-                    <p className="text-[11px] text-content-muted">Persentase komisi yang dipotong mart saat barang titipan ini terjual di kasir.</p>
-                    {form.errors.consignment_percent && <p className="text-xs text-danger font-medium">{form.errors.consignment_percent}</p>}
+                  <div className="space-y-3 pt-3 border-t border-border/70">
+                    <div className="rounded-xl border border-blue-200/80 bg-blue-50/50 p-3 text-xs dark:border-blue-800/60 dark:bg-blue-950/30 space-y-2">
+                      <div className="flex items-center gap-1.5 font-bold text-blue-900 dark:text-blue-200 text-xs">
+                        <ShieldCheck className="h-4 w-4 text-blue-600" />
+                        <span>Skema Produk Konsinyasi (Barang Titipan)</span>
+                      </div>
+                      <p className="text-[11px] text-content-muted leading-relaxed">
+                        Produk ini akan masuk ke database produk konsinyasi untuk modul <strong>Konsinyasi & Barang Titipan</strong>. Saat dijual di kasir, mart mengakui pendapatan komisi dan mencatat utang konsinyasi ke pemasok.
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] pt-1">
+                        <div className="p-2 rounded-lg bg-surface border border-border/60">
+                          <span className="font-bold text-navy-950 dark:text-white block">1. Harga Titipan</span>
+                          <span className="text-content-muted text-[10px]">Nominal hak pemasok per pcs yang disetor saat settlement.</span>
+                        </div>
+                        <div className="p-2 rounded-lg bg-surface border border-border/60">
+                          <span className="font-bold text-navy-950 dark:text-white block">2. Harga Dijual</span>
+                          <span className="text-content-muted text-[10px]">Harga resmi di meja kasir (dapat diatur di menu Atur Harga).</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="p-consignment-percent" className="text-xs font-semibold text-content">Komisi Mart (%)</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="p-consignment-percent"
+                          type="number"
+                          min={0}
+                          max={100}
+                          step="1"
+                          placeholder="mis. 20"
+                          value={form.data.consignment_percent}
+                          onChange={(e) => form.setData('consignment_percent', e.target.value)}
+                          className="text-xs rounded-xl max-w-xs"
+                        />
+                        <span className="text-xs font-bold text-content-muted">%</span>
+                      </div>
+                      <p className="text-[11px] text-content-muted">Persentase komisi toko mart saat produk titipan ini terjual di kasir.</p>
+                      {form.errors.consignment_percent && <p className="text-xs text-danger font-medium">{form.errors.consignment_percent}</p>}
+                    </div>
                   </div>
                 )}
               </div>

@@ -45,13 +45,26 @@ class ConsignmentService
      * komisi ke pemilik barang.
      *
      * @return array{items: array<int, array<string, mixed>>, total_sold: int, commission_amount: int, payable_amount: int}
+    /**
+     * @return array{items: array<int, array<string, mixed>>, total_sold: int, commission_amount: int, payable_amount: int}
      */
-    public function calculateSettlement(Supplier $supplier, Outlet $outlet, Carbon $periodStart, Carbon $periodEnd, float $commissionPercent): array
-    {
-        $layerIds = StockLayer::where('supplier_id', $supplier->id)
+    public function calculateSettlement(
+        Supplier $supplier,
+        Outlet $outlet,
+        Carbon $periodStart,
+        Carbon $periodEnd,
+        float $commissionPercent,
+        ?int $productId = null,
+    ): array {
+        $layerQuery = StockLayer::where('supplier_id', $supplier->id)
             ->where('outlet_id', $outlet->id)
-            ->where('is_consignment', true)
-            ->pluck('id');
+            ->where('is_consignment', true);
+
+        if ($productId !== null) {
+            $layerQuery->where('product_id', $productId);
+        }
+
+        $layerIds = $layerQuery->pluck('id');
 
         $consumptionsByProduct = StockLayerConsumption::query()
             ->join('stock_layers', 'stock_layers.id', '=', 'stock_layer_consumptions.stock_layer_id')
@@ -69,28 +82,27 @@ class ConsignmentService
         $totalSold = 0;
         $totalCommission = 0;
 
-        foreach ($consumptionsByProduct as $productId => $group) {
-            $product = Product::findOrFail($productId);
+        foreach ($consumptionsByProduct as $pId => $group) {
+            $product = Product::findOrFail($pId);
             $qtySold = (float) $group->sum('qty');
-            // Rata-rata tertimbang harga JUAL SEBENARNYA per baris —
-            // bisa berbeda antar transaksi dalam periode yang sama kalau
-            // harga produk sempat berubah, bukan satu harga "sekarang".
+            // Rata-rata tertimbang harga JUAL SEBENARNYA per baris
             $totalPrice = (int) round($group->sum(fn ($row) => (float) $row->qty * $row->unit_price));
             $effectivePercent = ($product->consignment_percent !== null && (int) $product->consignment_percent > 0)
                 ? (float) $product->consignment_percent
                 : $commissionPercent;
             $commission = (int) round($totalPrice * $effectivePercent / 100);
+            $payable = $totalPrice - $commission;
+            $sellingPrice = $qtySold > 0 ? (int) round($totalPrice / $qtySold) : 0;
+            $consignmentPrice = $qtySold > 0 ? (int) round($payable / $qtySold) : 0;
 
             $items[] = [
-                'product_id' => (int) $productId,
+                'product_id' => (int) $pId,
                 'qty_sold' => $qtySold,
-                // Rata-rata (bisa beda dari harga produk saat ini kalau
-                // sudah berubah sejak transaksi) — bukan lagi single
-                // "harga aktif sekarang".
-                'unit_price' => $qtySold > 0 ? (int) round($totalPrice / $qtySold) : 0,
+                'unit_price' => $sellingPrice,
                 'total_price' => $totalPrice,
                 'commission' => $commission,
-                'payable' => $totalPrice - $commission,
+                'payable' => $payable,
+                'consignment_price' => $consignmentPrice,
             ];
 
             $totalSold += $totalPrice;
@@ -105,9 +117,15 @@ class ConsignmentService
         ];
     }
 
-    public function settle(Supplier $supplier, Outlet $outlet, Carbon $periodStart, Carbon $periodEnd, float $commissionPercent): ConsignmentSettlement
-    {
-        return DB::transaction(function () use ($supplier, $outlet, $periodStart, $periodEnd, $commissionPercent) {
+    public function settle(
+        Supplier $supplier,
+        Outlet $outlet,
+        Carbon $periodStart,
+        Carbon $periodEnd,
+        float $commissionPercent,
+        ?int $productId = null,
+    ): ConsignmentSettlement {
+        return DB::transaction(function () use ($supplier, $outlet, $periodStart, $periodEnd, $commissionPercent, $productId) {
             // Audit Fase 6 (Temuan Sedang): sebelumnya tidak ada proteksi
             // periode overlap/duplikat sama sekali — settle() dua kali
             // untuk rentang yang sama/tumpang tindih menghitung ULANG
@@ -124,7 +142,7 @@ class ConsignmentService
                 throw new DomainException('Sudah ada settlement lain (draft/approved/paid) yang periodenya tumpang tindih untuk supplier & outlet ini.');
             }
 
-            $calc = $this->calculateSettlement($supplier, $outlet, $periodStart, $periodEnd, $commissionPercent);
+            $calc = $this->calculateSettlement($supplier, $outlet, $periodStart, $periodEnd, $commissionPercent, $productId);
 
             $settlement = ConsignmentSettlement::create([
                 'reference' => ReferenceGenerator::generate('KON', $outlet->id),

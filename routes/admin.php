@@ -209,8 +209,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
 
     Route::middleware('can:consignment.view')->group(function () {
         Route::get('/consignment', [ConsignmentController::class, 'index'])->name('consignment.index');
+        Route::post('/consignment/preview', [ConsignmentController::class, 'preview'])->name('consignment.preview');
+        Route::get('/consignment/{consignment}', [ConsignmentController::class, 'show'])->name('consignment.show');
+        Route::get('/consignment/{consignment}/export-pdf', [ConsignmentController::class, 'exportPdf'])->name('consignment.export-pdf');
     });
     Route::post('/consignment', [ConsignmentController::class, 'store'])->name('consignment.store')->middleware('can:consignment.create');
+    Route::post('/consignment/receive', [ConsignmentController::class, 'receiveGoods'])->name('consignment.receive')->middleware('can:consignment.create');
+    Route::post('/consignment/return', [ConsignmentController::class, 'returnGoods'])->name('consignment.return')->middleware('can:consignment.update');
     Route::put('/consignment/{consignment}/approve', [ConsignmentController::class, 'approve'])->name('consignment.approve')->middleware('can:consignment.approve');
     Route::put('/consignment/{consignment}/mark-paid', [ConsignmentController::class, 'markPaid'])->name('consignment.mark-paid')->middleware('can:consignment.update');
 
