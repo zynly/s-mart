@@ -157,7 +157,7 @@ class CashierSessionController extends Controller
                     'total_receivable_cash' => $s->total_receivable_cash ?? 0,
                     'total_cash_in' => $s->total_cash_in ?? 0,
                     'total_cash_out' => $s->total_cash_out ?? 0,
-                    'expected_cash' => $s->status === 'open' ? $this->sessionService->calculateExpected($s) : $s->expected_cash,
+                    'expected_cash' => $s->expected_cash,
                     'actual_cash' => $s->actual_cash,
                     'difference' => $s->difference,
                     'status' => $s->status,
