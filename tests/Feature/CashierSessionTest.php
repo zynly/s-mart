@@ -107,3 +107,26 @@ it('returns 422 validation error instead of 500 when session is already open', f
     $response->assertStatus(302);
     $response->assertSessionHasErrors(['cash_account_id']);
 });
+
+it('updates cash account balance when session is opened, closed, or force closed', function () {
+    $this->actingAs($this->cashier);
+    $service = app(CashierSessionService::class);
+
+    // Open session with 100,000
+    $session = $service->open($this->cashier, $this->cashAccount, 100000);
+    expect((int) $this->cashAccount->fresh()->current_balance)->toBe(100000);
+
+    // Add sales cash
+    $service->addSaleCash($session, 50000);
+    expect($service->calculateExpected($session))->toBe(150000);
+
+    // Close session with actual cash 150,000
+    $service->close($session, 150000);
+    expect((int) $this->cashAccount->fresh()->current_balance)->toBe(150000);
+
+    // Reopen and force close
+    $session2 = $service->open($this->cashier, $this->cashAccount, 150000);
+    $service->addSaleCash($session2, 25000);
+    $service->forceClose($session2);
+    expect((int) $this->cashAccount->fresh()->current_balance)->toBe(175000);
+});

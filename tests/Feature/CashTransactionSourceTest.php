@@ -62,7 +62,7 @@ class CashTransactionSourceTest extends TestCase
         $this->cashier->givePermissionTo(['pos.view', 'pos.create', 'cash.create']);
 
         $this->bankAccount = CashAccount::create([
-            'code' => 'BANK-MANDIRI-TEST-'.uniqid(),
+            'code' => 'BANK-TEST-'.uniqid(),
             'name' => 'Bank Mandiri Uji',
             'type' => 'bank',
             'outlet_id' => $this->outlet->id,

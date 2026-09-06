@@ -49,20 +49,22 @@ class CashController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $activeSession = $this->sessionService->getActive($request->user());
-        $expectedCash = $activeSession ? $this->sessionService->calculateExpected($activeSession) : null;
+        $openSessions = CashierSession::where('status', 'open')->get()->keyBy('cash_account_id');
 
         $accounts = CashAccount::where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name', 'type', 'current_balance', 'is_drawer'])
-            ->map(function ($acc) use ($activeSession, $expectedCash) {
+            ->map(function ($acc) use ($openSessions) {
+                $openSession = $openSessions->get($acc->id);
+                $balance = ($acc->is_drawer && $openSession)
+                    ? $this->sessionService->calculateExpected($openSession)
+                    : (int) $acc->current_balance;
+
                 return [
                     'id' => $acc->id,
                     'name' => $acc->name,
                     'type' => $acc->type,
-                    'current_balance' => ($acc->is_drawer && $activeSession && $activeSession->cash_account_id === $acc->id)
-                        ? $expectedCash
-                        : $acc->current_balance,
+                    'current_balance' => $balance,
                     'is_drawer' => $acc->is_drawer,
                 ];
             });

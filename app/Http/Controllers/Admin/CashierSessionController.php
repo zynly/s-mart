@@ -86,13 +86,17 @@ class CashierSessionController extends Controller
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->get(['id', 'name', 'code', 'current_balance', 'is_default', 'outlet_id'])
-                ->map(function ($acc) use ($user) {
-                    $openSession = CashierSession::with('user:id,name')->where('cash_account_id', $acc->id)->where('status', 'open')->first();
+                ->map(function ($acc) use ($user, $openSessions) {
+                    $openSession = $openSessions->firstWhere('cash_account_id', $acc->id);
+                    $balance = $openSession
+                        ? $this->sessionService->calculateExpected($openSession)
+                        : (int) $acc->current_balance;
+
                     return [
                         'id' => $acc->id,
                         'name' => $acc->name,
                         'code' => $acc->code,
-                        'current_balance' => $acc->current_balance,
+                        'current_balance' => $balance,
                         'is_default' => $acc->is_default,
                         'outlet_id' => $acc->outlet_id,
                         'is_open' => $openSession !== null,

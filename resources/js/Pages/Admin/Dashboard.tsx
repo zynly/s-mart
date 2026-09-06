@@ -4,7 +4,7 @@ import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   PieChart, Pie, Cell, BarChart, Bar, Legend,
 } from 'recharts'
-import { ShoppingCart, Wallet, PackageX, HandCoins, AlertTriangle, Receipt, CreditCard, Scale, Users, ArrowUpRight, Trophy, Package, Sparkles } from 'lucide-react'
+import { ShoppingCart, Wallet, PackageX, HandCoins, AlertTriangle, Receipt, CreditCard, Scale, Users, ArrowUpRight, Trophy, Package, Sparkles, Coins } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { PageHeader } from '@/Components/common/PageHeader'
 import { StatCard } from '@/Components/common/StatCard'
@@ -21,6 +21,8 @@ type CashierSession = {
   reference: string
   opened_at: string
   opening_cash: number
+  expected_cash?: number
+  drawer_name?: string
   total_sales_cash: number
   total_sales_deposit: number
   total_sales_noncash: number
@@ -30,6 +32,7 @@ type CashierSession = {
 type CashierViewProps = {
   view: 'cashier'
   session: CashierSession
+  drawer?: { id: number; name: string; current_balance: number } | null
   todayStats: { transaksi: number; omzet: number }
 }
 
@@ -77,6 +80,7 @@ type Panels = {
   totalSantri?: number
   totalFasilitator?: number
   reconciliationIssues?: number
+  kasLaci?: { total: number; active: number; count: number }
   topSpenders?: MemberSpender[]
   debtors?: MemberDebtor[]
 }
@@ -101,7 +105,9 @@ function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
 }
 
-function CashierDashboard({ session, todayStats }: CashierViewProps) {
+function CashierDashboard({ session, drawer, todayStats }: CashierViewProps) {
+  const drawerBalance = session?.expected_cash ?? drawer?.current_balance ?? 0
+
   return (
     <div className="flex flex-col gap-4">
       <Card className="border-amber-200/80 bg-gradient-to-r from-amber-500/10 via-white to-white dark:from-amber-950/20 dark:via-surface dark:to-surface shadow-xs rounded-2xl overflow-hidden">
@@ -109,7 +115,12 @@ function CashierDashboard({ session, todayStats }: CashierViewProps) {
           <div>
             {session ? (
               <>
-                <p className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">Sesi Kasir Aktif — {session.reference}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">Sesi Kasir Aktif — {session.reference}</p>
+                  <Badge variant="outline" className="text-[10px] font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-300">
+                    {session.drawer_name ?? 'Laci Kasir'}
+                  </Badge>
+                </div>
                 <p className="mt-1 text-xl font-extrabold text-navy-950 dark:text-white">Dibuka Pukul {formatTime(session.opened_at)}</p>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                   Modal awal <Money amount={session.opening_cash} size="sm" /> · Total {session.transaction_count} Transaksi
@@ -119,7 +130,9 @@ function CashierDashboard({ session, todayStats }: CashierViewProps) {
               <>
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Status Sesi</p>
                 <p className="mt-1 text-xl font-extrabold text-navy-950 dark:text-white">Belum Ada Sesi Kasir Aktif</p>
-                <p className="mt-1 text-xs text-slate-500">Buka sesi kasir untuk mulai memproses transaksi POS.</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {drawer ? `${drawer.name} · Saldo kas saat ini ${formatMoney(drawer.current_balance)}` : 'Buka sesi kasir untuk mulai memproses transaksi POS.'}
+                </p>
               </>
             )}
           </div>
@@ -132,7 +145,14 @@ function CashierDashboard({ session, todayStats }: CashierViewProps) {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard
+          label={session ? "Uang di Laci Kasir (Expected)" : "Saldo Kas di Laci"}
+          value={formatMoney(drawerBalance)}
+          title={session ? `Modal awal: ${formatMoney(session.opening_cash)} + Penjualan tunai & mutasi kas` : undefined}
+          icon={Coins}
+          color="amber"
+        />
         <StatCard label="Penjualan Saya Hari Ini" value={formatMoney(todayStats.omzet)} icon={Wallet} color="emerald" />
         <StatCard label="Transaksi Saya Hari Ini" value={String(todayStats.transaksi)} icon={ShoppingCart} color="blue" />
       </div>
@@ -280,14 +300,36 @@ function ManagerDashboard({ statCards, charts, recentSales, topProducts, cashier
             value={formatMoneyShort(statCards.saldoDeposit ?? 0)}
             title={formatMoney(statCards.saldoDeposit ?? 0)}
             icon={CreditCard}
-            color="purple"
+            color="blue"
           />
         </div>
       )}
 
       {/* 2. MIDDLE ROW: Styled Operational Warning & Metric Cards */}
       {hasPanels && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          {panels.kasLaci !== undefined && (
+            <div className="group flex flex-col justify-between rounded-2xl border border-blue-200/90 dark:border-blue-800/80 bg-blue-50/70 dark:bg-blue-950/20 p-4 shadow-2xs hover:shadow-md transition-all duration-200">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md shadow-blue-600/20 shrink-0">
+                  <Coins className="size-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-extrabold uppercase tracking-wider text-blue-700 dark:text-blue-400">Total Kas di Laci</p>
+                  <p className="text-xs font-bold text-navy-950 dark:text-white mt-0.5 truncate">
+                    {formatMoney(panels.kasLaci.total)} ({panels.kasLaci.active} aktif)
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center justify-between border-t border-blue-200/60 dark:border-blue-800/60 pt-2.5">
+                <span className="text-[10px] font-bold text-slate-500">Laci Kasir</span>
+                <Link href={route('admin.cashier-session.index')} className="text-xs font-extrabold text-blue-700 dark:text-blue-400 hover:text-blue-900 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                  <span>Sesi Kasir</span>
+                  <ArrowUpRight className="size-3" />
+                </Link>
+              </div>
+            </div>
+          )}
           {panels.stockAlerts && (
             <div className="group flex flex-col justify-between rounded-2xl border border-rose-200/90 dark:border-rose-800/80 bg-rose-50/70 dark:bg-rose-950/20 p-4 shadow-2xs hover:shadow-md transition-all duration-200">
               <div className="flex items-center gap-3">

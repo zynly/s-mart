@@ -54,7 +54,7 @@ class CashierSessionService
                 throw new DomainException('Outlet tidak ditemukan. Sesi kasir wajib terikat pada outlet yang valid.');
             }
 
-            return CashierSession::create([
+            $createdSession = CashierSession::create([
                 'reference' => ReferenceGenerator::generate('SES', (int) $outletId),
                 'outlet_id' => $outletId,
                 'user_id' => $user->id,
@@ -64,6 +64,10 @@ class CashierSessionService
                 'expected_cash' => $openingCash,
                 'status' => 'open',
             ]);
+
+            $account->forceFill(['current_balance' => $openingCash])->save();
+
+            return $createdSession;
         });
     }
 
@@ -130,6 +134,11 @@ class CashierSessionService
                 'approved_at' => $approver !== null ? now() : null,
             ]);
 
+            $cashAccount = CashAccount::lockForUpdate()->find($locked->cash_account_id);
+            if ($cashAccount !== null) {
+                $cashAccount->forceFill(['current_balance' => $actualCash])->save();
+            }
+
             return $locked;
         });
     }
@@ -157,6 +166,11 @@ class CashierSessionService
                 'status' => 'force_closed',
                 'note' => trim(($locked->note ? $locked->note.' ' : '').'Ditutup otomatis oleh sistem (session:auto-close).'),
             ]);
+
+            $cashAccount = CashAccount::lockForUpdate()->find($locked->cash_account_id);
+            if ($cashAccount !== null) {
+                $cashAccount->forceFill(['current_balance' => $expected])->save();
+            }
 
             return $locked;
         });

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\CashAccount;
+use App\Models\CashierSession;
 use App\Models\Debt;
 use App\Models\DepositReconciliation;
 use App\Models\Member;
@@ -39,8 +41,10 @@ class DashboardController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
+        $masqueradeRole = $request->session()->get('masquerade_role');
+        $isCashier = $masqueradeRole ? ($masqueradeRole === 'cashier') : $user->hasRole('cashier');
 
-        if ($user->hasRole('cashier')) {
+        if ($isCashier) {
             return Inertia::render('Admin/Dashboard', $this->cashierData($user));
         }
 
@@ -59,20 +63,35 @@ class DashboardController extends Controller
             ->selectRaw('COUNT(*) as transaksi, COALESCE(SUM(grand_total), 0) as omzet')
             ->first();
 
+        $outletId = session('active_outlet_id') ?? $user->primaryOutletId();
+        $defaultDrawer = CashAccount::where('is_drawer', true)
+            ->where('is_active', true)
+            ->when($outletId, fn ($q) => $q->where('outlet_id', $outletId))
+            ->orderByDesc('is_default')
+            ->first()
+            ?? CashAccount::where('is_drawer', true)->where('is_active', true)->first();
+
         return [
             'view' => 'cashier',
             'session' => $session ? [
                 'reference' => $session->reference,
                 'opened_at' => $session->opened_at->toIso8601String(),
                 'opening_cash' => $session->opening_cash,
+                'expected_cash' => $this->cashierSessionService->calculateExpected($session),
+                'drawer_name' => $session->cashAccount?->name ?? 'Laci Kasir',
                 'total_sales_cash' => $session->total_sales_cash,
                 'total_sales_deposit' => $session->total_sales_deposit,
                 'total_sales_noncash' => $session->total_sales_noncash,
                 'transaction_count' => $session->transaction_count,
             ] : null,
+            'drawer' => $defaultDrawer ? [
+                'id' => $defaultDrawer->id,
+                'name' => $defaultDrawer->name,
+                'current_balance' => (int) $defaultDrawer->current_balance,
+            ] : null,
             'todayStats' => [
-                'transaksi' => (int) $todaySales->transaksi,
-                'omzet' => (int) $todaySales->omzet,
+                'transaksi' => (int) ($todaySales->transaksi ?? 0),
+                'omzet' => (int) ($todaySales->omzet ?? 0),
             ],
         ];
     }
@@ -125,6 +144,22 @@ class DashboardController extends Controller
 
         if ($user->can('deposit.adjust')) {
             $panels['reconciliationIssues'] = DepositReconciliation::where('is_resolved', false)->count();
+        }
+
+        $openSessions = CashierSession::where('status', 'open')->get()->keyBy('cash_account_id');
+        $drawers = CashAccount::where('is_drawer', true)->where('is_active', true)->get();
+        $totalKasLaci = 0;
+        foreach ($drawers as $d) {
+            $open = $openSessions->get($d->id);
+            $totalKasLaci += $open ? $this->cashierSessionService->calculateExpected($open) : (int) $d->current_balance;
+        }
+
+        if ($user->can('cash.view') || $user->can('report.view')) {
+            $panels['kasLaci'] = [
+                'total' => $totalKasLaci,
+                'active' => $openSessions->count(),
+                'count' => $drawers->count(),
+            ];
         }
 
         $data['panels'] = $panels;
