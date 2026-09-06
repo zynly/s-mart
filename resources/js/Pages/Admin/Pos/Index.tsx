@@ -982,6 +982,7 @@ export default function Index({
           setCart([])
           setMember(null)
           setAppliedCoupon('')
+          setDirectMethodId(null)
           setPaymentOpen(false)
           idempotencyKeyRef.current = newIdempotencyKey()
         },
@@ -1098,6 +1099,7 @@ export default function Index({
           setAppliedCoupon('')
           setCouponValidationResult(null)
           setCashInput(0)
+          setDirectMethodId(null)
           setCashPin('')
           setDepositPin('')
           setCreditPin('')
