@@ -474,7 +474,7 @@ class JournalService
             $account = $accountsByCode->get($line['account_code']);
 
             if ($account === null) {
-                throw (new ModelNotFoundException)->setModel(Account::class);
+                throw new DomainException("Akun jurnal dengan kode \"{$line['account_code']}\" belum terdaftar di Bagan Akun (Chart of Accounts).");
             }
 
             if ($parentIds->contains($account->id)) {
