@@ -168,9 +168,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::get('/deposit', [DepositController::class, 'index'])->name('deposit.index');
         Route::get('/deposit/adjustments/export', [DepositController::class, 'exportAdjustments'])->name('deposit.adjustments.export');
     });
-    Route::post('/deposit/topup', [DepositController::class, 'storeTopup'])->name('deposit.topup')->middleware(['can:topup.create', 'idempotent']);
-    Route::post('/deposit/withdrawal', [DepositController::class, 'storeWithdrawal'])->name('deposit.withdrawal')->middleware(['can:withdrawal.create', 'idempotent']);
-    Route::post('/deposit/adjustment', [DepositController::class, 'storeAdjustment'])->name('deposit.adjustment')->middleware(['can:deposit.adjust', 'idempotent']);
+    Route::post('/deposit/topup', [DepositController::class, 'storeTopup'])->name('deposit.topup')->middleware(['can:topup.create', 'idempotent', 'throttle:deposit-topup']);
+    Route::post('/deposit/withdrawal', [DepositController::class, 'storeWithdrawal'])->name('deposit.withdrawal')->middleware(['can:withdrawal.create', 'idempotent', 'throttle:deposit-mutation']);
+    Route::post('/deposit/adjustment', [DepositController::class, 'storeAdjustment'])->name('deposit.adjustment')->middleware(['can:deposit.adjust', 'idempotent', 'throttle:deposit-mutation']);
 
     // Verifikasi top-up wali (Fase 16, T-098) — tab saudara dari Deposit.
     Route::middleware('can:topup.view')->group(function () {
@@ -267,7 +267,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::put('/coupons/{coupon}/cancel', [CouponController::class, 'cancel'])->name('coupons.cancel')->middleware('can:coupon.update');
 
     Route::get('/points', [PointController::class, 'index'])->name('points.index')->middleware('can:member.view');
-    Route::post('/points/adjust', [PointController::class, 'adjust'])->name('points.adjust')->middleware('can:member.update');
+    Route::post('/points/adjust', [PointController::class, 'adjust'])->name('points.adjust')->middleware(['can:member.update', 'throttle:deposit-mutation']);
     Route::post('/points/bulk-reset', [PointController::class, 'bulkReset'])->name('points.bulk-reset')->middleware('can:member.update');
 
     // Retur, Void & Koreksi (Fase 11)

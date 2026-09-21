@@ -35,6 +35,9 @@ use App\Services\Midtrans\NullMidtransGateway;
 use App\Services\SettingsOverrideService;
 use App\Services\WhatsApp\NullGateway;
 use App\Services\WhatsApp\WhatsAppGatewayInterface;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 use Illuminate\Support\Facades\URL;
@@ -69,6 +72,8 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
+        $this->configureRateLimiters();
+
         \Illuminate\Support\Facades\Gate::define('viewLogViewer', function ($user = null) {
             return true;
         });
@@ -92,5 +97,33 @@ class AppServiceProvider extends ServiceProvider
         StockWriteOff::observe(StockWriteOffObserver::class);
         StockOpname::observe(StockOpnameObserver::class);
         StockAdjustment::observe(StockAdjustmentObserver::class);
+    }
+
+    /**
+     * Named rate limiters untuk proteksi route sensitif admin.
+     *
+     * - deposit-topup    : 30 req/menit — top-up relatif sering, tapi bukan tiap detik
+     * - deposit-mutation : 10 req/menit — withdrawal & adjustment sangat jarang; limit ketat
+     * - admin-general    : 120 req/menit — fallback semua route admin biasa
+     *
+     * Semua limiter di-scope per user ID (bukan IP) karena admin sudah
+     * terautentikasi — menekan risiko false-positive di balik NAT/proxy.
+     */
+    private function configureRateLimiters(): void
+    {
+        // Top-Up deposit: operator melakukan top-up beberapa kali per menit wajar
+        RateLimiter::for('deposit-topup', function (Request $request) {
+            return Limit::perMinute(30)->by($request->user()?->id ?? $request->ip());
+        });
+
+        // Withdrawal & Adjustment: aksi berdampak besar — dibatasi lebih ketat
+        RateLimiter::for('deposit-mutation', function (Request $request) {
+            return Limit::perMinute(10)->by($request->user()?->id ?? $request->ip());
+        });
+
+        // Fallback umum admin: cukup longgar agar tidak mengganggu navigasi normal
+        RateLimiter::for('admin-general', function (Request $request) {
+            return Limit::perMinute(120)->by($request->user()?->id ?? $request->ip());
+        });
     }
 }

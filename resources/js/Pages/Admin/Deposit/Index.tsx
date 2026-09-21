@@ -13,6 +13,7 @@ import { Money } from '@/Components/common/Money'
 import { MoneyInput } from '@/Components/common/MoneyInput'
 import { DateRangePicker } from '@/Components/common/DateRangePicker'
 import { SupervisorPinDialog } from '@/Components/common/SupervisorPinDialog'
+import { MemberPicker } from '@/Components/common/MemberPicker'
 import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
 import { Label } from '@/Components/ui/label'
@@ -565,23 +566,19 @@ export default function Index({ tab, transactions, adjustments, members, payment
       </Tabs>
 
       <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Tarik Saldo</DialogTitle>
           </DialogHeader>
           <form onSubmit={submitWithdraw} className="flex flex-col gap-4 px-1">
             <div className="space-y-1.5">
               <Label>Anggota</Label>
-              <Select value={withdrawForm.data.member_id} onValueChange={(v) => withdrawForm.setData('member_id', v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih anggota" />
-                </SelectTrigger>
-                <SelectContent>
-                  {members.map((m) => (
-                    <SelectItem key={m.id} value={String(m.id)}>{m.name} ({m.member_number})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <MemberPicker
+                members={members}
+                value={withdrawForm.data.member_id}
+                onChange={(id) => withdrawForm.setData('member_id', id)}
+                actionLabel="Pilih Anggota"
+              />
               {withdrawForm.errors.member_id && <p className="text-sm text-danger">{withdrawForm.errors.member_id}</p>}
             </div>
             <div className="space-y-1.5">
@@ -594,30 +591,26 @@ export default function Index({ tab, transactions, adjustments, members, payment
               <Textarea value={withdrawForm.data.note} onChange={(e) => withdrawForm.setData('note', e.target.value)} />
             </div>
             <DialogFooter>
-              <Button type="submit" disabled={withdrawForm.processing}>Proses Penarikan</Button>
+              <Button type="submit" disabled={withdrawForm.processing || !withdrawForm.data.member_id}>Proses Penarikan</Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
       <Dialog open={adjustOpen} onOpenChange={setAdjustOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Sesuaikan Saldo (Owner)</DialogTitle>
           </DialogHeader>
           <form onSubmit={submitAdjust} className="flex flex-col gap-4 px-1">
             <div className="space-y-1.5">
               <Label>Anggota</Label>
-              <Select value={adjustForm.data.member_id} onValueChange={(v) => adjustForm.setData('member_id', v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih anggota" />
-                </SelectTrigger>
-                <SelectContent>
-                  {members.map((m) => (
-                    <SelectItem key={m.id} value={String(m.id)}>{m.name} ({m.member_number})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <MemberPicker
+                members={members}
+                value={adjustForm.data.member_id}
+                onChange={(id) => adjustForm.setData('member_id', id)}
+                actionLabel="Pilih Anggota"
+              />
               {adjustForm.errors.member_id && <p className="text-sm text-danger">{adjustForm.errors.member_id}</p>}
             </div>
             <div className="space-y-1.5">
@@ -648,7 +641,7 @@ export default function Index({ tab, transactions, adjustments, members, payment
               {adjustForm.errors.reason && <p className="text-sm text-danger">{adjustForm.errors.reason}</p>}
             </div>
             <DialogFooter>
-              <Button type="submit" disabled={adjustForm.processing || adjustForm.data.reason.length < 20}>Simpan Penyesuaian</Button>
+              <Button type="submit" disabled={adjustForm.processing || adjustForm.data.reason.length < 20 || !adjustForm.data.member_id}>Simpan Penyesuaian</Button>
             </DialogFooter>
           </form>
         </DialogContent>
