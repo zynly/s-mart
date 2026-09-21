@@ -566,7 +566,7 @@ export default function Index({ tab, transactions, adjustments, members, payment
       </Tabs>
 
       <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-5xl">
           <DialogHeader>
             <DialogTitle>Tarik Saldo</DialogTitle>
           </DialogHeader>
@@ -598,7 +598,7 @@ export default function Index({ tab, transactions, adjustments, members, payment
       </Dialog>
 
       <Dialog open={adjustOpen} onOpenChange={setAdjustOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-5xl">
           <DialogHeader>
             <DialogTitle>Sesuaikan Saldo (Owner)</DialogTitle>
           </DialogHeader>
@@ -635,13 +635,19 @@ export default function Index({ tab, transactions, adjustments, members, payment
               )
             })()}
             <div className="space-y-1.5">
-              <Label>Alasan (wajib, minimal 20 karakter, tercatat di audit)</Label>
-              <Textarea value={adjustForm.data.reason} onChange={(e) => adjustForm.setData('reason', e.target.value)} />
-              <p className="text-xs text-content-muted">{adjustForm.data.reason.length}/20 karakter minimum</p>
+              <Label>Alasan (wajib, tercatat di audit)</Label>
+              <Textarea value={adjustForm.data.reason} onChange={(e) => adjustForm.setData('reason', e.target.value)} placeholder="Tulis alasan penyesuaian saldo…" />
+              <p className={`text-xs transition-colors ${adjustForm.data.reason.length >= 10 ? 'text-emerald-600 font-medium' : adjustForm.data.reason.length > 0 ? 'text-amber-600' : 'text-content-muted'}`}>
+                {adjustForm.data.reason.length >= 10
+                  ? `✓ ${adjustForm.data.reason.length} karakter`
+                  : adjustForm.data.reason.length > 0
+                    ? `${10 - adjustForm.data.reason.length} karakter lagi…`
+                    : 'Minimal 10 karakter'}
+              </p>
               {adjustForm.errors.reason && <p className="text-sm text-danger">{adjustForm.errors.reason}</p>}
             </div>
             <DialogFooter>
-              <Button type="submit" disabled={adjustForm.processing || adjustForm.data.reason.length < 20 || !adjustForm.data.member_id}>Simpan Penyesuaian</Button>
+              <Button type="submit" disabled={adjustForm.processing || adjustForm.data.reason.length < 10 || !adjustForm.data.member_id}>Simpan Penyesuaian</Button>
             </DialogFooter>
           </form>
         </DialogContent>
