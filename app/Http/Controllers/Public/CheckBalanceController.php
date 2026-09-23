@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Public;
 use App\Http\Controllers\Controller;
 use App\Models\Member;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -28,31 +29,37 @@ class CheckBalanceController extends Controller
 
         $columns = ['id', 'name', 'nis', 'member_number', 'class_name', 'major', 'type', 'balance_cache', 'point_balance'];
 
-        // 1. Tier 1: Exact Match (NIS, Nomor Anggota, atau Nama Lengkap Persis)
-        $member = Member::select($columns)
-            ->where('status', 'active')
-            ->where(function ($query) use ($identity, $lower) {
-                $query->where('nis', $identity)
-                    ->orWhere('member_number', $identity)
-                    ->orWhereRaw('LOWER(name) = ?', [$lower]);
-            })
-            ->first();
+        $cacheKey = 'cek-saldo:' . md5($lower);
 
-        // 2. Tier 2: Prefix Match (Nama Depan / Awalan Kata)
-        if ($member === null && mb_strlen($identity) >= 2) {
-            $member = Member::select($columns)
+        $member = Cache::remember($cacheKey, 60, function () use ($identity, $lower, $columns) {
+            // 1. Tier 1: Exact Match (NIS, Nomor Anggota, atau Nama Lengkap Persis)
+            $found = Member::select($columns)
                 ->where('status', 'active')
-                ->where('name', 'ilike', "{$identity}%")
+                ->where(function ($query) use ($identity, $lower) {
+                    $query->where('nis', $identity)
+                        ->orWhere('member_number', $identity)
+                        ->orWhereRaw('LOWER(name) = ?', [$lower]);
+                })
                 ->first();
-        }
 
-        // 3. Tier 3: Substring Trigram Match (Mengandung Kata / Suku Kata di Tengah)
-        if ($member === null && mb_strlen($identity) >= 3) {
-            $member = Member::select($columns)
-                ->where('status', 'active')
-                ->where('name', 'ilike', "%{$identity}%")
-                ->first();
-        }
+            // 2. Tier 2: Prefix Match (Nama Depan / Awalan Kata)
+            if ($found === null && mb_strlen($identity) >= 2) {
+                $found = Member::select($columns)
+                    ->where('status', 'active')
+                    ->where('name', 'ilike', "{$identity}%")
+                    ->first();
+            }
+
+            // 3. Tier 3: Substring Trigram Match (Mengandung Kata / Suku Kata di Tengah)
+            if ($found === null && mb_strlen($identity) >= 3) {
+                $found = Member::select($columns)
+                    ->where('status', 'active')
+                    ->where('name', 'ilike', "%{$identity}%")
+                    ->first();
+            }
+
+            return $found;
+        });
 
         if ($member === null) {
             return Inertia::render('Public/CheckBalance', [

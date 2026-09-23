@@ -16,6 +16,7 @@
         "maatwebsite/excel": "^3.1",
         "opcodesio/log-viewer": "^3.24",
         "picqer/php-barcode-generator": "^3.2",
+        "predis/predis": "^3.6",
         "spatie/laravel-activitylog": "^4.12",
         "spatie/laravel-backup": "^9.3",
         "spatie/laravel-data": "^4.23",

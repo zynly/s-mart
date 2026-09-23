@@ -47,10 +47,11 @@ Route::get('/produk/{product:slug}', [ProductController::class, 'show'])->name('
 Route::get('/promo', [PromoController::class, 'index'])->name('promo.index');
 Route::get('/cek-saldo', [CheckBalanceController::class, 'index'])->name('cek-saldo.index');
 Route::post('/cek-saldo', [CheckBalanceController::class, 'check'])
-    // Audit Fase 6 (Temuan Tinggi): diperketat dari 10/menit — bersama
-    // faktor kedua (tanggal lahir) di controller, ruang percobaan yang
-    // realistis bagi penyerang sekarang jauh lebih kecil.
-    ->middleware('throttle:5,1')
+    // Dinaikkan dari 5 → 30 per menit per IP: pengguna pesantren/sekolah
+    // berbagi satu IP NAT, throttle 5 terlalu ketat dan memblokir pengguna
+    // yang sah. Endpoint ini hanya baca (read-only, tanpa auth), risikonya
+    // rendah — perlindungan utama tetap dari validasi input di controller.
+    ->middleware('throttle:30,1')
     ->name('cek-saldo.check');
 
 // Media Proxy Streaming dari S3 (RustFS) / Public Storage dengan Browser Caching 7 Hari
